@@ -25,11 +25,17 @@ Cliente (navegador)
                           GitHub Actions (programado)
 ```
 
+*Nota de alcance: el diseño agrega una cuenta de tipo Personal (la asistente del negocio), que
+usa la misma aplicación para registrar las citas que le llegan por teléfono — así no hay una
+segunda fuente de verdad que se pueda desincronizar con la de la app. No contradice
+`PROYECTO.md`; lo completa. Detalle completo en `DISENO1.md`.*
+
 ## Componentes
 
-**1. Autenticación** — Login, sesión (7 días) y recuperación de contraseña por correo (enlace
-de un solo uso, vence en 1 hora). *Límite:* los demás componentes le preguntan quién es antes de
-dejarla actuar; no sabe nada de citas ni servicios.
+**1. Autenticación** — Login y sesión (7 días) para dos tipos de cuenta (Cliente y Personal,
+esta última precargada), y recuperación de contraseña por correo (enlace de un solo uso, vence
+en 1 hora). *Límite:* los demás componentes le preguntan quién es y de qué tipo antes de dejarla
+actuar; no sabe nada de citas ni servicios.
 
 **2. Catálogo** — Servicios, proveedores por servicio, y la configuración precargada del negocio
 (horario, feriados, logo, colores), sin panel de administración. *Límite:* Reservas y Calendario
@@ -42,37 +48,43 @@ consulta a Reservas qué está ocupado; no crea ni cancela citas.
 
 **4. Reservas** — Crea, cancela y reagenda citas aplicando las reglas de negocio de
 `PROYECTO.md`: no doble reserva, no mismo día, no cancelar/reagendar con menos de 4 horas de
-anticipación. Avisa a Notificaciones cuando algo cambia. *Límite:* es el único componente que
-modifica el estado de una cita.
+anticipación. Permite que Personal cree una cita en nombre de un cliente que llamó — mismas
+reglas, sin excepción. Avisa a Notificaciones cuando algo cambia. *Límite:* es el único
+componente que modifica el estado de una cita.
 
 **5. Notificaciones** — Manda los correos (confirmación, recordatorio de 48h, recuperación de
 contraseña) hablando con Resend; revisa recordatorios pendientes cuando GitHub Actions le avisa.
 *Límite:* solo lee de Reservas, Catálogo y Autenticación; no decide reglas de negocio.
 
-**6. Interfaz del cliente (frontend)** — Login, catálogo, calendario, reserva,
-cancelación/reagendamiento; envía cada acción al backend por el API. *Límite:* no decide
-ninguna regla de negocio por su cuenta.
+**6. Interfaz (frontend)** — Login, catálogo, calendario, reserva, cancelación/reagendamiento
+para el cliente; vista equivalente para que Personal reserve en nombre de quien llama. Envía
+cada acción al backend por el API. *Límite:* no decide ninguna regla de negocio por su cuenta.
 
 ## Modelo de datos
 
 **Entidades:**
 - **Cliente** — correo, contraseña (cifrada), nombre.
+- **Personal** — correo, contraseña (cifrada), nombre. Precargada, sin autorregistro.
 - **Servicio** — nombre, duración (fija en 1 hora para este prototipo).
 - **Proveedor** — nombre; puede atender uno o más servicios.
 - **Configuración del negocio** — horario semanal, feriados de Costa Rica, logo, colores.
 - **Cita** — cliente, servicio, proveedor, fecha y hora de inicio, estado (activa, cancelada,
-  completada), fecha de creación.
+  completada), fecha de creación, **canal** (en línea o asistida), y qué cuenta de Personal la
+  creó si fue asistida.
 - **Correo enviado** — cliente destinatario, cita relacionada (no aplica a recuperación de
   contraseña), tipo, fecha de envío, si tuvo éxito.
-- **Token de recuperación** — cliente, código, fecha de vencimiento, si ya se usó.
+- **Token de recuperación** — cliente o Personal, código, fecha de vencimiento, si ya se usó.
 
 **Relaciones:**
 ```
 Cliente 1 ──> N Cita          Servicio 1 ──> N Cita         Proveedor 1 ──> N Cita
-Servicio N <──> N Proveedor
+Servicio N <──> N Proveedor          Personal 1 ──> N Cita (canal "asistida")
 Cliente 1 ──> N Correo enviado     Cita 1 ──> N Correo enviado (opcional)
 Cliente 1 ──> N Token de recuperación
 ```
+
+El campo **canal** es el mismo dato que necesita el reporte semestral de `NEGOCIO.md` (en línea
+vs. teléfono) — solo hace falta agrupar por este campo, sin cálculo adicional.
 
 Un horario está disponible si cae dentro del horario del negocio, no es feriado, y no hay
 ninguna Cita activa para ese proveedor en ese horario.

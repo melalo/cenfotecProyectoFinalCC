@@ -75,6 +75,24 @@ caso concreto — no se inventa una para completar esta sección.
   versiones: `DISENO1.md` (completo, de referencia, ignorado por Git) y `DISENO.md` (compacto,
   el que se sube). Se ajustó el nivel de recorte una vez, a pedido de la estudiante, para que la
   versión compacta perdiera el mínimo de detalle posible dentro de las dos páginas.
+- **NEGOCIO.md — escrito y aprobado**, con la oportunidad (reutilizada de `PROYECTO.md`), un
+  escenario de riesgo, y la hoja de ruta con dos estimaciones de ROI (~7.3 hs/semana de personal
+  liberadas, ~10 citas/semana recuperadas fuera de horario), ambas declaradas como estimación,
+  no medición.
+- **Se agrega una cuenta de tipo Personal.** Al redactar el escenario de riesgo del documento de
+  negocio, la estudiante identificó que la asistente debía coordinar también las citas
+  telefónicas desde la misma aplicación (no con un método aparte), para no crear una segunda
+  fuente de verdad. Esto amplía el alcance de `PROYECTO.md` (que solo describe el recorrido del
+  cliente) sin contradecirlo, y **elimina en el diseño** el riesgo que se había identificado
+  minutos antes en `NEGOCIO.md` — se actualizaron `DISENO.md`, `DISENO1.md` (dos tipos de
+  cuenta, campo "canal" en la Cita) y la sección de riesgo de `NEGOCIO.md` en consecuencia.
+- **Se agrega a la hoja de ruta (sin construir): expediente por cliente**, editable por
+  Personal, más amplio de lo que pareció al principio — no es solo consumo de paquetes de
+  sesiones, sino cualquier información relevante del cliente para el negocio: padecimientos,
+  medicamentos, contraindicaciones, tratamientos en curso (por ejemplo, radioterapia), además de
+  los paquetes. Es un adendum declarado a propósito, sin definir su estructura todavía — eso
+  queda para una próxima sesión de diseño. Ya se señaló que el consumo de paquetes en particular
+  depende de una decisión previa sin resolver: el sistema no registra compras ni pagos.
 
 **Encargos determinantes:** ninguno nuevo — se siguió trabajando sobre el enunciado
 (`PROYECTO.md`) y las decisiones ya tomadas el 2026-08-10.
