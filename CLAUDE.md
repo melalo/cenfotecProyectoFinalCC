@@ -17,8 +17,20 @@
 
 ## Comandos
 
-[Completar cuando exista el proyecto: cómo instalar dependencias, cómo correr el prototipo
-localmente, cómo correr las pruebas, cómo aplicar migraciones de base de datos, si aplica.]
+**Todavía no existen: los crea la pieza 1 de `PLAN.md`.** Están declarados acá y en `README.md`
+como el contrato que esa pieza tiene que cumplir, para que quien la construya sepa qué nombres usar.
+
+| Comando | Qué hace |
+|---|---|
+| `npm install` | Instala las dependencias. |
+| `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta. |
+| `npm start` | Levanta la aplicación en **http://localhost:3000**. |
+| `npm test` | Corre las pruebas de los criterios de aceptación (CA-1, CA-2 y CA-3). |
+
+Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
+`PORT` y `SESION_SECRETO` (desde la pieza 1), `RESEND_API_KEY` y `CORREO_REMITENTE` (desde la 4), y
+`RECORDATORIOS_SECRETO` (desde la 6). Sin `RESEND_API_KEY` la aplicación tiene que levantar igual:
+los correos fallan y quedan registrados como fallidos, pero las citas se siguen creando (RF-19).
 
 ## Convenciones
 

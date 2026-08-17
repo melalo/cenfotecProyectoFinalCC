@@ -120,6 +120,14 @@ No es una pieza aparte porque «el proyecto compila» no comprueba nada del nego
     sesión, `401` si no.
   - El campo `tipo` vale `"cliente"` o `"personal"`, y toda pieza posterior lo usa para saber quién
     está actuando.
+  - **El contrato de arranque que `README.md` declara**, con estos nombres exactos: `npm install`,
+    `npm run datos` (crea la base y carga los datos de prueba, y se puede correr las veces que haga
+    falta), `npm start` (levanta la aplicación en **http://localhost:3000**) y `npm test`. También
+    un `.env.ejemplo` versionado con las claves vacías, y la lectura de las variables `PORT` y
+    `SESION_SECRETO`. El puerto 3000 se fija como decisión del proyecto para que no dependa de la
+    máquina; `PORT` lo puede cambiar. Ningún dato de la máquina donde se construyó puede quedar en
+    el código: la comprobación de referencia del curso es clonar en una carpeta limpia y levantar
+    desde ahí siguiendo solo el README.
 
 **Evidencia**
 
