@@ -1,9 +1,9 @@
 ---
 name: Clinical Excellence
 colors:
-  surface: '#fcf9f8'
+  surface: '#F4F6F8'
   surface-dim: '#dcd9d9'
-  surface-bright: '#fcf9f8'
+  surface-bright: '#F4F6F8'
   surface-container-lowest: '#ffffff'
   surface-container-low: '#f6f3f2'
   surface-container: '#f0edec'
@@ -16,9 +16,9 @@ colors:
   outline: '#747780'
   outline-variant: '#c4c6d0'
   surface-tint: '#435e90'
-  primary: '#00112d'
+  primary: '#002554'
   on-primary: '#ffffff'
-  primary-container: '#002554'
+  primary-container: '#00112d'
   on-primary-container: '#738ec2'
   inverse-primary: '#acc7ff'
   secondary: '#6250a8'
@@ -45,7 +45,7 @@ colors:
   tertiary-fixed-dim: '#c4c7c9'
   on-tertiary-fixed: '#191c1e'
   on-tertiary-fixed-variant: '#444749'
-  background: '#fcf9f8'
+  background: '#F4F6F8'
   on-background: '#1c1b1b'
   surface-variant: '#e5e2e1'
   med-white: '#FFFFFF'

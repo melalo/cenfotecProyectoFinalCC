@@ -323,11 +323,17 @@ completos contra esa referencia.
   archivos) en vez de pedírsela a Google Fonts en cada visita. Razón: un servicio de terceros más
   contradice las restricciones que se acababan de escribir en `CLAUDE.md`, y la página se vería
   distinta en una máquina sin internet.
-- **`VISUALS.md` se contradice consigo mismo en dos puntos** y hubo que elegir: su lista de valores
-  dice que el fondo es `#fcf9f8` y el color principal `#00112d`, mientras su prosa dice que el
+- **`VISUALS.md` se contradecía consigo mismo en dos puntos** y hubo que elegir: su lista de valores
+  decía que el fondo era `#fcf9f8` y el color principal `#00112d`, mientras su prosa decía que el
   lienzo es el «Cool Slate Tint» `#F4F6F8` y el principal el «Deep Navy» `#002554`. Se siguió la
-  prosa, porque explica para qué sirve cada capa. **Queda señalado en `DISENO.md` para que la
-  estudiante lo corrija en el archivo si quiere.**
+  prosa, porque explica para qué sirve cada capa. **Y la estudiante zanjó la contradicción ese mismo
+  día, corrigiendo el propio `VISUALS.md`:** `surface`, `surface-bright` y `background` pasaron a
+  `#F4F6F8`, y `primary` a `#002554`. `#00112d` no se eliminó —pasó a ser `primary-container`, el
+  tono más oscuro del mismo azul— porque hace falta un tono más oscuro que el principal para que un
+  botón muestre que responde al pasarle el mouse. Se recorrió la carpeta buscando las dos
+  instrucciones en cualquier forma y se corrigieron las 9 apariciones, incluida una escrita como
+  `rgb(0 17 45 / 5%)` en la sombra de las tarjetas, que ninguna búsqueda por código hexadecimal
+  encuentra.
 
 **El «ojito» de las contraseñas — pedido de la estudiante, con su razón:** un campo de contraseña
 muestra puntitos y no hay forma de saber si se escribió bien. Se agregó un botón que la destapa y la
@@ -360,6 +366,26 @@ el bloque `Evidencia`. La estudiante hizo después la revisión visual en el nav
 2, 3, 4, 5 y 8, más el ojito y el acomodo en pantalla angosta— y confirmó que todos pasan. Recién
 con eso la pieza pasó de «construida» a «cerrada»: la parte que solo se ve en pantalla no la puede
 dar por buena el agente.
+
+**El tiempo dedicado al proyecto sube de 4 a 6 horas por semana.** Decisión de la estudiante el
+2026-08-17, al terminar la primera sesión de construcción.
+
+- **Lo que cambia el número:** el presupuesto de tiempo del proyecto pasa de **20 horas** (4 × 5
+  semanas) a **30 horas** (6 × 5 semanas). Son **10 horas más, un 50 % de holgura adicional**.
+- **Lo que eso significa para el plan:** *nada se reordena ni se recorta.* Las nueve vertical slices
+  siguen iguales, en el mismo orden y con las mismas comprobaciones. Lo que cambia es el margen: con
+  la pieza 1 cerrada quedan ocho piezas y unas 24 horas por delante, aproximadamente **3 horas por
+  pieza**, contra las 2 que salían con el presupuesto viejo.
+- **Lo que eso significa para el riesgo declarado:** `FICHA-APROBACION.md` marcó la pieza del
+  recordatorio como «la de mayor riesgo técnico **con 4 horas por semana**… si el tiempo aprieta,
+  sería la primera en recortar». Ese riesgo **baja**, porque la razón que lo sostenía era justamente
+  el presupuesto de tiempo. **No se declara resuelto:** sigue siendo la pieza más frágil por su
+  naturaleza —depende de un disparador externo que puede no correr— y ese riesgo no es de tiempo.
+- **Dos documentos conservan el «4» a propósito**, con el mismo criterio que ya se aplicó al cambio
+  de 48 a 24 horas del recordatorio: `FICHA-APROBACION.md`, porque es lo que el docente aprobó el 3
+  de agosto y cambiarlo falsearía ese acuerdo, y la entrada del 2026-08-10 de esta bitácora, porque
+  es registro fechado de lo que se decidió entonces. **Si alguien encuentra «4 horas por semana» en
+  la ficha, esta entrada es la que explica por qué.**
 
 **Encargos determinantes:** ninguno nuevo. Se construyó contra lo ya escrito.
 

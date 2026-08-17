@@ -51,13 +51,16 @@ $tipografia: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif
 
 // ══════════════════════════════════════════════════════ colores (VISUALS.md → Colors)
 
-// Capa 0: el lienzo de la página. «Cool Slate Tint».
-$canvas: #f4f6f8;
+// Capa 0: el lienzo de la página. «Cool Slate Tint» (`surface` y `background` de VISUALS.md).
+$canvas: #F4F6F8;
 // Capa 1: las tarjetas y los campos, blanco puro, para que se despeguen del lienzo.
 $blanco: #ffffff;
 
-// El azul de la marca: «Deep Navy». Es autoridad médica, no espá.
+// El azul de la marca: «Deep Navy». Es autoridad médica, no espá. Es el `primary` de VISUALS.md.
 $navy: #002554;
+// El tono más oscuro del mismo azul, para cuando algo se presiona o se pasa el mouse por encima.
+// Es el `primary-container` de VISUALS.md. Tiene que existir un tono más oscuro que $navy: si el
+// botón no cambiara nada al pasarle el mouse, parecería que no responde.
 $navy-oscuro: #00112d;
 // El acento secundario: «Medical Indigo».
 $indigo: #402d84;
@@ -252,7 +255,9 @@ body {
 
   // Al pasar el mouse, el sistema pide una sombra apenas insinuada, no un salto.
   &:hover {
-    box-shadow: 0 2px 8px rgb(0 17 45 / 5%);
+    // Es el mismo $navy escrito en la otra notación, porque una sombra necesita transparencia:
+    // rgb(0 37 84) es #002554, y el 5% final es cuánto se deja ver.
+    box-shadow: 0 2px 8px rgb(0 37 84 / 5%);
   }
 
   &--sola {

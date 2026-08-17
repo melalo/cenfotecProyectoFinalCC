@@ -221,6 +221,7 @@ proyectoFinal/
 ├── PLAN.md                ← las 9 piezas, sus comprobaciones y su evidencia
 ├── CLAUDE.md              ← stack, comandos, convenciones y restricciones
 ├── VISUALS.md             ← el sistema visual: colores, tipografía, medidas (la autoridad)
+├── PROXIMA-SESION.md      ← cómo retomar: qué pieza toca y qué hay que saber antes de empezar
 ├── PROYECTO.md            ← el enunciado original (no se modifica; dice "48 horas", ver arriba)
 ├── FICHA-APROBACION.md    ← lo aprobado por el docente (histórico; dice "48 horas", ver arriba)
 ├── NEGOCIO.md             ← oportunidad, riesgos, ROI y hoja de ruta
