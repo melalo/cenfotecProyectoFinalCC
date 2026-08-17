@@ -1,0 +1,23 @@
+{
+  "name": "reservas-bienestar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reservas en línea para negocios de bienestar y salud — proyecto final del curso SINT-732, Universidad CENFOTEC",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "estilos": "sass estilos/estilos.scss publico/css/estilos.css --no-source-map",
+    "prestart": "npm run estilos",
+    "start": "node servidor/index.js",
+    "datos": "node guiones/cargar-datos.js",
+    "test": "node --test \"pruebas/**/*.test.js\""
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "sass": "^1.102.0"
+  }
+}

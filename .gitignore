@@ -1,3 +1,11 @@
 .claude/
 DISENO1.md
 SEGUIMIENTO.md
+
+# Se generan con un comando, no se suben al repositorio
+node_modules/
+datos/
+publico/css/
+
+# Las claves de esta máquina
+.env

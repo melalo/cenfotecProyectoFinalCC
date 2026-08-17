@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reservas en línea</title>
+    <link rel="stylesheet" href="/css/estilos.css" />
+  </head>
+
+  <body>
+    <header class="encabezado">
+      <div class="envoltura encabezado__interior">
+        <h1 class="encabezado__titulo">Reservas en línea</h1>
+        <p class="encabezado__bajada">Bienestar y salud</p>
+      </div>
+    </header>
+
+    <main class="contenido">
+      <div class="envoltura">
+        <!-- Pantalla de quien todavía no entró: entrar o crear cuenta. -->
+        <section id="pantalla-entrada" class="pantalla" hidden>
+          <div class="tarjetas">
+            <article class="tarjeta">
+              <h2 class="tarjeta__titulo">Entrar</h2>
+
+              <form id="forma-entrar" class="forma" novalidate>
+                <label class="campo">
+                  <span class="campo__etiqueta">Correo</span>
+                  <input
+                    class="campo__control"
+                    type="email"
+                    name="correo"
+                    autocomplete="email"
+                    inputmode="email"
+                    required
+                  />
+                </label>
+
+                <label class="campo">
+                  <span class="campo__etiqueta">Contraseña</span>
+                  <input
+                    class="campo__control"
+                    type="password"
+                    name="contrasena"
+                    autocomplete="current-password"
+                    required
+                  />
+                </label>
+
+                <button class="boton" type="submit">Entrar</button>
+                <p id="aviso-entrar" class="aviso" role="alert" hidden></p>
+              </form>
+            </article>
+
+            <article class="tarjeta">
+              <h2 class="tarjeta__titulo">Crear mi cuenta</h2>
+              <p class="tarjeta__nota">Para reservar hace falta tener cuenta.</p>
+
+              <form id="forma-registro" class="forma" novalidate>
+                <label class="campo">
+                  <span class="campo__etiqueta">Nombre</span>
+                  <input class="campo__control" type="text" name="nombre" autocomplete="name" required />
+                </label>
+
+                <label class="campo">
+                  <span class="campo__etiqueta">Correo</span>
+                  <input
+                    class="campo__control"
+                    type="email"
+                    name="correo"
+                    autocomplete="email"
+                    inputmode="email"
+                    required
+                  />
+                </label>
+
+                <label class="campo">
+                  <span class="campo__etiqueta">Contraseña</span>
+                  <input
+                    class="campo__control"
+                    type="password"
+                    name="contrasena"
+                    autocomplete="new-password"
+                    required
+                  />
+                </label>
+
+                <button class="boton" type="submit">Crear mi cuenta</button>
+                <p id="aviso-registro" class="aviso" role="alert" hidden></p>
+              </form>
+            </article>
+          </div>
+        </section>
+
+        <!-- Pantalla de quien ya entró. -->
+        <section id="pantalla-dentro" class="pantalla" hidden>
+          <article class="tarjeta tarjeta--sola">
+            <h2 class="tarjeta__titulo">Hola, <span id="nombre-de-quien-entro"></span></h2>
+
+            <p>
+              <span id="tipo-de-cuenta" class="etiqueta-estado"></span>
+            </p>
+
+            <p class="tarjeta__nota">
+              Elegir el servicio y ver el calendario llega con la pieza 2 del plan. Esta pieza cubre
+              solo entrar a la aplicación.
+            </p>
+
+            <button id="boton-cerrar-sesion" class="boton boton--suave" type="button">
+              Cerrar sesión
+            </button>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <!--
+      El pie de página. Hoy solo lleva el texto de derechos, y es TEXTO DE RELLENO INVENTADO:
+      «Belleza y Bienestar» no es un negocio real, y el nombre verdadero va a llegar como
+      configuración del negocio (REG-4) más adelante.
+
+      Acá arriba del texto va a ir un menú de navegación, cuando existan secciones que enlazar
+      (desde la pieza 2). Ver `DISENO.md`, «Pendientes del sistema visual».
+    -->
+    <footer class="pie">
+      <div class="envoltura pie__interior">
+        <p class="pie__texto">© 2026 Belleza y Bienestar. Todos los derechos reservados.</p>
+      </div>
+    </footer>
+
+    <script src="/aplicacion-cliente.js"></script>
+  </body>
+</html>

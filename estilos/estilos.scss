@@ -1,0 +1,432 @@
+// Estilos de la aplicación, escritos en SASS.
+//
+// SASS es CSS con dos comodidades: se pueden guardar valores en variables (así un color se escribe
+// una sola vez) y se pueden anidar reglas (lo que pertenece a una tarjeta se escribe adentro de la
+// tarjeta). El navegador no entiende SASS: `npm start` lo traduce a CSS normal antes de levantar la
+// aplicación y deja el resultado en `publico/css/estilos.css`.
+//
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// TODOS los valores de acá abajo salen de `VISUALS.md`, el sistema visual «Clinical Excellence».
+// Ese archivo es la referencia: si un color, un tamaño de letra o un redondeo no está ahí, no se
+// inventa acá.
+//
+// Está escrito **mobile-first**: lo que se lee primero es cómo se ve en un teléfono, y las
+// pantallas más grandes solo agregan cosas más abajo, dentro de los bloques `@media`. Nunca al
+// revés. La razón práctica: el teléfono es la pantalla más angosta y la más difícil, así que se
+// resuelve primero y lo demás es holgura.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════ la tipografía, traída al proyecto
+//
+// Manrope no viene instalada en ninguna computadora. En vez de pedírsela a un servicio de
+// terceros cada vez que alguien abre la página, los dos archivos viven dentro del proyecto, en
+// `publico/fuentes/`. Así la aplicación se ve igual aunque la máquina no tenga internet, y se
+// sigue cumpliendo la promesa del README de que corre clonada, sin depender de nadie.
+//
+// Un solo archivo por juego de caracteres cubre todos los pesos de 400 a 700: es una «fuente
+// variable», que en vez de un archivo por grosor trae uno que se estira.
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fuentes/manrope-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fuentes/manrope-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+$tipografia: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+// ══════════════════════════════════════════════════════ colores (VISUALS.md → Colors)
+
+// Capa 0: el lienzo de la página. «Cool Slate Tint».
+$canvas: #f4f6f8;
+// Capa 1: las tarjetas y los campos, blanco puro, para que se despeguen del lienzo.
+$blanco: #ffffff;
+
+// El azul de la marca: «Deep Navy». Es autoridad médica, no espá.
+$navy: #002554;
+$navy-oscuro: #00112d;
+// El acento secundario: «Medical Indigo».
+$indigo: #402d84;
+
+$texto: #1c1b1b;
+$texto-suave: #44474f;
+$borde: #e2e8f0;
+$borde-fuerte: #c4c6d0;
+
+$error: #ba1a1a;
+$error-fondo: #ffdad6;
+$error-texto: #93000a;
+
+// ══════════════════════════════════════════════════════ medidas (VISUALS.md → Layout & Spacing)
+//
+// Todo es múltiplo de 4px, la unidad base del sistema.
+
+$base: 4px;
+$stack-xs: 8px;
+$stack-sm: 16px;
+$stack-md: 32px;
+$stack-lg: 64px;
+$gutter: 24px;
+
+$margen-movil: 16px;
+$margen-escritorio: 48px;
+$ancho-maximo: 1280px;
+
+// El sistema pide esquinas geométricas, no redondeadas de más: 4px en botones y campos, 8 o 12 en
+// tarjetas.
+$radio-control: 0.25rem;
+$radio-tarjeta: 0.75rem;
+
+// Los dos puntos donde la pantalla cambia. Mobile-first: hasta acá, todo es teléfono.
+$tableta: 48rem; // 768px
+$escritorio: 64rem; // 1024px
+
+@mixin columna($separacion: $stack-sm) {
+  display: flex;
+  flex-direction: column;
+  gap: $separacion;
+}
+
+// ══════════════════════════════════════════════════════ base
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  // Para que el ancho de la barra de desplazamiento no mueva el contenido al aparecer.
+  scrollbar-gutter: stable;
+}
+
+body {
+  // La página se arma en tres franjas apiladas —encabezado, contenido, pie— y el contenido es el
+  // que se estira. Así el pie queda pegado abajo aunque la pantalla tenga poco que mostrar, en vez
+  // de quedar flotando a media altura. `100dvh` es «todo el alto visible», y en un teléfono
+  // descuenta la barra del navegador, que aparece y desaparece al desplazarse.
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  margin: 0;
+  background-color: $canvas;
+  color: $texto;
+  font-family: $tipografia;
+  // body-md del sistema: 16px con línea de 24px. 16px es el mínimo accesible.
+  font-size: 16px;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+// El contenedor de ancho fijo-fluido: crece con la pantalla pero nunca pasa de 1280px.
+.envoltura {
+  width: 100%;
+  max-width: $ancho-maximo;
+  margin: 0 auto;
+  padding-inline: $margen-movil;
+
+  @media (min-width: $tableta) {
+    padding-inline: $gutter;
+  }
+
+  @media (min-width: $escritorio) {
+    padding-inline: $margen-escritorio;
+  }
+}
+
+// ══════════════════════════════════════════════════════ encabezado
+
+.encabezado {
+  background-color: $navy;
+  color: $blanco;
+
+  &__interior {
+    @include columna($base);
+
+    padding-block: $stack-sm;
+
+    @media (min-width: $tableta) {
+      padding-block: $gutter;
+    }
+  }
+
+  &__titulo {
+    margin: 0;
+    // headline-lg-mobile: 28px / 36px. En pantalla grande sube a headline-lg: 32px / 40px.
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 36px;
+
+    @media (min-width: $tableta) {
+      font-size: 32px;
+      line-height: 40px;
+      letter-spacing: -0.01em;
+    }
+  }
+
+  &__bajada {
+    margin: 0;
+    // label-md: 14px, semibold, con un poco de espacio entre letras para que se lea chiquito.
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #acc7ff;
+  }
+}
+
+// ══════════════════════════════════════════════════════ contenido
+
+.contenido {
+  // Es la franja que se estira para empujar el pie hasta abajo.
+  flex: 1;
+  padding-block: $stack-md;
+
+  @media (min-width: $tableta) {
+    padding-block: $stack-lg;
+  }
+}
+
+// ══════════════════════════════════════════════════════ pie de página
+//
+// Va en azul marino igual que el encabezado, para que la página quede enmarcada arriba y abajo. El
+// sistema reserva ese azul para «la navegación global, los botones principales y los encabezados
+// críticos» (VISUALS.md → Colors), y acá va a vivir el menú de navegación cuando exista.
+
+.pie {
+  background-color: $navy;
+  color: #acc7ff;
+
+  &__interior {
+    padding-block: $gutter;
+  }
+
+  &__texto {
+    margin: 0;
+    // label-sm del sistema: 12px, para un texto de servicio que no compite con el contenido.
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    letter-spacing: 0.04em;
+  }
+}
+
+// En teléfono las tarjetas van una debajo de otra. Desde tableta, lado a lado.
+.tarjetas {
+  display: grid;
+  gap: $gutter;
+  grid-template-columns: 1fr;
+
+  @media (min-width: $tableta) {
+    grid-template-columns: repeat(2, 1fr);
+    align-items: start;
+  }
+}
+
+.tarjeta {
+  @include columna;
+
+  padding: $stack-sm;
+  background-color: $blanco;
+  border: 1px solid $borde;
+  border-radius: $radio-tarjeta;
+
+  @media (min-width: $tableta) {
+    padding: $gutter;
+  }
+
+  // Al pasar el mouse, el sistema pide una sombra apenas insinuada, no un salto.
+  &:hover {
+    box-shadow: 0 2px 8px rgb(0 17 45 / 5%);
+  }
+
+  &--sola {
+    max-width: 34rem;
+  }
+
+  &__titulo {
+    margin: 0;
+    // headline-md: 24px / 32px.
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 32px;
+    color: $navy-oscuro;
+  }
+
+  &__nota {
+    margin: 0;
+    font-size: 16px;
+    line-height: 24px;
+    color: $texto-suave;
+  }
+}
+
+// ══════════════════════════════════════════════════════ formas
+
+.forma {
+  @include columna;
+}
+
+.campo {
+  @include columna($stack-xs * 0.5);
+
+  // La etiqueta siempre visible, nunca flotando dentro del campo: el sistema lo pide así por
+  // accesibilidad (quien usa un lector de pantalla o quien vuelve a mirar el formulario a medio
+  // llenar necesita seguir viendo qué pedía cada casilla).
+  &__etiqueta {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: 0.01em;
+    color: $texto-suave;
+  }
+
+  // La caja que envuelve un campo de contraseña, para poder apoyar el ojito adentro, sobre el
+  // borde derecho. La crea el JavaScript; en el HTML no está escrita.
+  &__caja {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    // Se le deja lugar al botón para que el texto de la contraseña no se le meta debajo.
+    .campo__control {
+      padding-right: 48px;
+    }
+  }
+
+  &__control {
+    width: 100%;
+    padding: 12px;
+    font: inherit;
+    color: $texto;
+    background-color: $blanco;
+    border: 1px solid $borde-fuerte;
+    border-radius: $radio-control;
+
+    &::placeholder {
+      color: $texto-suave;
+    }
+
+    // Al enfocarlo, el borde pasa a navy y se engrosa por dentro, sin mover nada de lugar.
+    &:focus {
+      border-color: $navy;
+      box-shadow: inset 0 0 0 1px $navy;
+      outline: 2px solid transparent; // se mantiene visible en modo de alto contraste
+      outline-offset: 2px;
+    }
+  }
+}
+
+// El ojito que destapa la contraseña. Vive apoyado adentro del campo, contra el borde derecho.
+.ojito {
+  position: absolute;
+  right: $base;
+  display: grid;
+  place-items: center;
+  // 40px de lado: lo bastante grande para acertarle con el pulgar en un teléfono, sin taparle el
+  // campo. El sistema pide múltiplos de 4px.
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: $texto-suave;
+  background-color: transparent;
+  border: 0;
+  border-radius: $radio-control;
+  cursor: pointer;
+
+  &:hover {
+    color: $navy;
+    background-color: $canvas;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $navy;
+    outline-offset: -2px;
+  }
+}
+
+.boton {
+  width: 100%;
+  padding: 12px $gutter;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  color: $blanco;
+  background-color: $navy;
+  border: 1px solid $navy;
+  border-radius: $radio-control;
+  cursor: pointer;
+
+  // En teléfono el botón ocupa todo el ancho, que es lo cómodo para el pulgar. Desde tableta se
+  // encoge a su contenido.
+  @media (min-width: $tableta) {
+    width: auto;
+    align-self: flex-start;
+  }
+
+  &:hover {
+    background-color: $navy-oscuro;
+    border-color: $navy-oscuro;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $indigo;
+    outline-offset: 2px;
+  }
+
+  // El botón secundario: solo borde indigo y texto indigo.
+  &--suave {
+    color: $indigo;
+    background-color: transparent;
+    border-color: $indigo;
+
+    &:hover {
+      color: $blanco;
+      background-color: $indigo;
+      border-color: $indigo;
+    }
+  }
+}
+
+// El aviso de error. Está escondido con el atributo `hidden` del HTML y el JavaScript se lo quita
+// cuando hay algo que decir.
+.aviso {
+  margin: 0;
+  padding: 12px;
+  font-size: 16px;
+  line-height: 24px;
+  color: $error-texto;
+  background-color: $error-fondo;
+  border: 1px solid $error;
+  border-radius: $radio-control;
+}
+
+// Una etiqueta de estado, con el redondeo geométrico que pide el sistema para los datos.
+.etiqueta-estado {
+  display: inline-block;
+  padding: $base ($base * 2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: $indigo;
+  background-color: #e7deff;
+  border-radius: $radio-control;
+}

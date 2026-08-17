@@ -248,3 +248,140 @@ tomadas el 2026-08-10 y el 2026-08-11.
 **Entradas de gobernanza:** ninguna todavía. Los dos hallazgos de arriba salieron de la revisión
 del propio agente, no de una afirmación falsa que alguien más tuviera que detectar — mismo
 criterio que se aplicó el 2026-08-11. Sigue sin haber un caso real de ese tipo en este proyecto.
+
+### 2026-08-17 — construcción de la pieza 1
+
+Primera sesión de construcción: **la pieza 1 de `PLAN.md`, «Entrar a la aplicación»**, que trae
+adentro el arranque del proyecto. Antes de escribir código se leyeron `ESPECIFICACION.md`,
+`DISENO.md`, `PLAN.md` y `README.md`, y se buscó en la carpeta cada dato que hacía falta.
+
+**Un dato faltaba y se preguntó en vez de inventarlo:** la comprobación 8 de la pieza pedía entrar
+con la cuenta de Personal precargada, pero **ningún documento decía con qué correo ni con qué
+contraseña**. Se buscó en los cinco documentos y no estaba. La estudiante eligió
+`personal@ejemplo.com` / `Personal123`, siguiendo el estilo inventado que el plan ya usaba para la
+clienta de prueba. Quedó escrito en la comprobación 8 de `PLAN.md` —con la nota de que faltaba— y
+en la sección «Datos de prueba» del `README.md`.
+
+**Decisiones tomadas y su justificación** *(las cinco primeras quedaron también en `DISENO.md`,
+sección «Decisiones tomadas al construir la pieza 1», porque afectan a todas las piezas que
+siguen)*:
+
+- **Cifrado de contraseñas — `scrypt`, que Node ya trae, en vez de `bcrypt`.** Razón: `bcrypt`
+  hay que compilarlo en la máquina donde se instala, y el `README.md` promete que el proyecto se
+  levanta clonándolo en una máquina cualquiera. Cada contraseña se guarda como `sal:huella`, con
+  una sal distinta por cuenta.
+- **La sesión se sostiene con una cookie firmada**, no con la memoria del servidor. Razón: la
+  comprobación 6 apaga y vuelve a levantar la aplicación; la memoria del servidor se pierde en ese
+  reinicio y la cookie firmada no.
+- **Corredor de pruebas — `node --test`**, que viene incluido, en vez de Jest o Vitest. Misma razón
+  que el cifrado: nada extra que instalar ni configurar.
+- **Los estilos SASS se compilan dentro de `npm start`**, no con un comando aparte que haya que
+  recordar. Razón: mantener el contrato de arranque del `README.md` en cuatro comandos.
+- **El archivo `.env` se lee con `dotenv`**, no con la bandera `--env-file` de Node. Razón: esa
+  bandera pide Node 22.9 o superior y el `README.md` promete que corre desde Node 20. Se prefirió
+  agregar una dependencia mínima antes que cambiar una promesa ya publicada.
+- **Si falta `SESION_SECRETO`, la aplicación arranca igual**, con una firma inventada al momento y
+  un aviso en la consola. Razón: la comprobación de referencia del curso es clonar y correr tres
+  comandos; negarse a arrancar por una clave que en un prototipo local no protege nada haría
+  fallar esa comprobación. El costo —las sesiones se cierran en cada reinicio— lo dice el aviso.
+- **`npm test` nace con pruebas propias de la pieza 1**, en vez de quedar como un comando vacío
+  hasta la pieza 3. Decisión de la estudiante entre las dos opciones. Son 14 pruebas, escritas
+  antes del código y vistas fallar primero.
+- **Los correos se guardan y se buscan en minúscula y sin espacios de sobra.** Razón: sin esto,
+  `Ana@Ejemplo.com` y `ana@ejemplo.com` serían dos cuentas distintas, y la pieza exige que dos
+  cuentas no puedan tener el mismo correo. Hay una prueba que lo cubre.
+- **Al registrarse, la sesión queda abierta.** No estaba dicho en el bloque *Produce* del plan,
+  pero la comprobación 1 pide que la persona se registre «y vea que entra y la pantalla la saluda
+  por su nombre»: para saludarla, la aplicación ya tiene que reconocerla. Se agregó una prueba
+  para eso antes de implementarlo.
+- **El registro ignora a propósito un `tipo` que venga en el pedido**, y siempre crea un cliente.
+  Razón: RN-10 dice que la cuenta de Personal viene precargada y no se autorregistra. Hay una
+  prueba que intenta registrarse como `personal` y comprueba que queda como cliente.
+- **`POST /api/registro` devuelve `422 {error: "datos_incompletos"}`** cuando falta alguno de los
+  tres campos. El plan no lo había previsto; se agregó porque el frontend necesita saber qué
+  contestar, y quedó anotado en el bloque *Produce* de la pieza 1 junto con el nombre del error del
+  `409` y el hecho de que el registro deje la sesión abierta.
+- **No se inventó ningún largo mínimo de contraseña.** Ningún documento lo pide, y una regla de
+  negocio no se agrega en silencio desde el código. Queda señalado como algo que la estudiante
+  puede decidir.
+
+**El sistema visual entró al proyecto a mitad de la sesión.** La estudiante agregó dos archivos de
+referencia visual, `VISUALDESKTOP.md` y `VISUALSMOBILE.md`, con el sistema «Clinical Excellence»
+—una estética clínica y profesional, azul marino de autoridad médica en vez de la estética de espá—
+y pidió además que los estilos fueran **mobile-first**. Los estilos ya escritos se rehicieron
+completos contra esa referencia.
+
+- **Los dos archivos tenían contenido idéntico** (los mismos 7.600 bytes), así que no existía una
+  guía aparte para teléfono: la parte móvil vive dentro del mismo sistema. La estudiante los
+  consolidó en un solo **`VISUALS.md`**, que es el que manda.
+- **`VISUALS.md` pasa a ser autoridad**, al mismo nivel que `ESPECIFICACION.md` para el
+  comportamiento: si un color o una medida no está ahí, no se inventa en el `.scss`. Quedó escrito
+  en `DISENO.md` («El sistema visual») y en las convenciones de `CLAUDE.md`.
+- **Mobile-first, decidido por la estudiante.** En el código se traduce en una regla verificable:
+  todos los `@media` son `min-width` y ninguno es `max-width`. Los cortes son 48rem y 64rem.
+- **La tipografía Manrope se copió dentro del proyecto** (`publico/fuentes/`, 40 KB en dos
+  archivos) en vez de pedírsela a Google Fonts en cada visita. Razón: un servicio de terceros más
+  contradice las restricciones que se acababan de escribir en `CLAUDE.md`, y la página se vería
+  distinta en una máquina sin internet.
+- **`VISUALS.md` se contradice consigo mismo en dos puntos** y hubo que elegir: su lista de valores
+  dice que el fondo es `#fcf9f8` y el color principal `#00112d`, mientras su prosa dice que el
+  lienzo es el «Cool Slate Tint» `#F4F6F8` y el principal el «Deep Navy» `#002554`. Se siguió la
+  prosa, porque explica para qué sirve cada capa. **Queda señalado en `DISENO.md` para que la
+  estudiante lo corrija en el archivo si quiere.**
+
+**El «ojito» de las contraseñas — pedido de la estudiante, con su razón:** un campo de contraseña
+muestra puntitos y no hay forma de saber si se escribió bien. Se agregó un botón que la destapa y la
+vuelve a tapar. **Decisión de cómo hacerlo:** no se puso campo por campo, sino con una función que
+recorre la página y se lo agrega a todos los campos de contraseña que encuentre. Razón: la
+estudiante pidió que estuviera «donde haya passwords siempre», y las piezas 7 y 9 traen más
+pantallas con contraseña — con esta forma lo heredan solas, sin que nadie tenga que acordarse. Quedó
+escrito como convención en `CLAUDE.md`.
+
+**Lo que la construcción obligó a corregir hacia atrás** (dentro de la carpeta, como manda el
+`CLAUDE.md` de la carpeta madre):
+
+- `CLAUDE.md` de `proyectoFinal/` — las secciones **Convenciones** y **Restricciones** estaban en
+  blanco, esperando que el proyecto existiera. Se llenaron con la estructura de carpetas, cómo se
+  nombran archivos, variables, tablas y campos del API, el estilo de código, cómo se organizan las
+  pruebas, y las restricciones que salen del compromiso de «clonar y levantar en otra máquina». La
+  tabla de **Comandos** decía «todavía no existen»: ahora existen, y se agregó `npm run estilos`.
+- `README.md` — se quitó el aviso de «TODAVÍA NO HAY CÓDIGO» y la advertencia de que los comandos
+  no funcionaban, tal como la propia pieza 1 pedía hacer al construirla. Se corrigieron además
+  tres afirmaciones que quedaron falsas: que `npm run datos` carga servicios y proveedores (hoy
+  carga solo la cuenta de Personal, las demás tablas las crea la pieza 2), que `npm test` cubre
+  los tres criterios de aceptación (hoy cubre la pieza 1), y que las pruebas corren solas en cada
+  push (eso se monta en la pieza 3). Se agregó la estructura del código.
+- `PLAN.md` — la comprobación 8 recibió las credenciales que le faltaban, y el bloque `Evidencia`
+  de la pieza 1 quedó lleno con el resultado de cada comprobación.
+
+**Estado en que quedó la pieza: CERRADA.** Las 14 pruebas pasan y las 8 comprobaciones del plan se
+corrieron contra la aplicación escuchando en `http://localhost:3000`, con sus resultados copiados en
+el bloque `Evidencia`. La estudiante hizo después la revisión visual en el navegador —los pasos 1,
+2, 3, 4, 5 y 8, más el ojito y el acomodo en pantalla angosta— y confirmó que todos pasan. Recién
+con eso la pieza pasó de «construida» a «cerrada»: la parte que solo se ve en pantalla no la puede
+dar por buena el agente.
+
+**Encargos determinantes:** ninguno nuevo. Se construyó contra lo ya escrito.
+
+**Entradas de gobernanza — primera del proyecto.**
+
+- **Qué afirmó el agente:** que el entorno de trabajo estaba matando el proceso del servidor. Lo
+  dijo como un hecho —«el entorno sandbox corta los procesos que escuchan en un puerto»— después
+  de ver que el servidor arrancaba, imprimía que estaba levantado, y no respondía a los pedidos.
+- **Por qué era falso:** el proceso no se estaba muriendo. Seguía vivo y ocupando el puerto 3000.
+  Lo que fallaba era otra cosa: los pedidos hechos **desde otro proceso** no llegaban a
+  `localhost`.
+- **Cómo se detectó:** por la salida del paso siguiente, no por el razonamiento del agente. Al
+  intentar levantar la aplicación otra vez, Node cortó con el error `EADDRINUSE: address already in
+  use :::3000` — es decir, «ese puerto ya está ocupado». Ese mensaje contradijo directamente lo
+  afirmado. Al buscar quién ocupaba el puerto apareció un proceso `node` vivo, de un arranque
+  anterior.
+- **Consecuencia real:** ninguna sobre el entregable. El diagnóstico equivocado no cambió nada del
+  código; costó tres intentos y obligó a verificar de otra manera (corriendo las comprobaciones
+  dentro del mismo proceso que levanta la aplicación).
+- **Control que queda establecido:** la causa de una falla del entorno no se declara sin una
+  comprobación que la respalde — si no se comprobó, se dice «no sé por qué falla» y se busca. Y,
+  sobre todo: **el bloque `Evidencia` de una pieza no se apoya nunca en lo que el agente afirme,
+  sino en la salida literal de los comandos**, copiada ahí para que se pueda contrastar. Es
+  exactamente el control que la «Declaración de supervisión» de esta bitácora describe, aplicado
+  por primera vez a un caso real.

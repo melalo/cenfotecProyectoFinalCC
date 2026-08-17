@@ -52,7 +52,7 @@ todas las piezas)*:
 
 | # | Pieza | Depende de | Estado |
 |---|---|---|---|
-| 1 | Entrar a la aplicación | — | pendiente |
+| 1 | Entrar a la aplicación | — | **cerrada el 2026-08-17** |
 | 2 | Elegir servicio y proveedor, y ver el calendario | 1 | pendiente |
 | 3 | Reservar un horario | 2 | pendiente |
 | 4 | Correo de confirmación | 3 | pendiente |
@@ -100,8 +100,11 @@ No es una pieza aparte porque «el proyecto compila» no comprueba nada del nego
    los datos sobrevivieron.
 7. Abrir el archivo de la base con un visor de SQLite y ver que la contraseña guardada no es
    `Prueba123` en texto legible.
-8. Entrar con la cuenta precargada de Personal y ver que la aplicación la reconoce como tipo
-   `personal`.
+8. Entrar con la cuenta precargada de Personal —`personal@ejemplo.com` / `Personal123`— y ver que
+   la aplicación la reconoce como tipo `personal`. *(Estas credenciales faltaban: la comprobación
+   pedía entrar con esa cuenta sin decir con qué correo ni con qué contraseña. Se decidieron al
+   construir la pieza 1, siguiendo el mismo estilo inventado de `ana@ejemplo.com` / `Prueba123`, y
+   quedaron escritas también en la sección «Datos de prueba» del `README.md`.)*
 
 **Toca:** Autenticación, Interfaz.
 
@@ -111,7 +114,12 @@ No es una pieza aparte porque «el proyecto compila» no comprueba nada del nego
   - Base SQLite en archivo, con las tablas `cliente` (id, nombre, correo, contrasena_cifrada,
     debe_cambiar_contrasena) y `personal` (id, nombre, correo, contrasena_cifrada).
   - `POST /api/registro` — recibe `{nombre, correo, contrasena}`; devuelve `201` con
-    `{id, nombre, correo, tipo}` donde `tipo` es `"cliente"`; devuelve `409` si el correo ya existe.
+    `{id, nombre, correo, tipo}` donde `tipo` es `"cliente"`, y deja la sesión abierta; devuelve
+    `409` con `{error: "correo_ya_registrado"}` si el correo ya existe, y `422` con
+    `{error: "datos_incompletos"}` si falta alguno de los tres campos. *(Los tres detalles —que la
+    sesión quede abierta, el nombre del error del 409 y el caso 422— se agregaron al construir la
+    pieza: la comprobación 1 exige que quien se registra quede saludado por su nombre, y el
+    frontend necesita saber qué contestar cuando el correo está repetido o falta un campo.)*
   - `POST /api/sesion` — recibe `{correo, contrasena}`; devuelve `200` con
     `{id, nombre, correo, tipo, debeCambiarContrasena}` y abre la sesión; devuelve `401` con
     `{error: "credenciales_invalidas"}` tanto si el correo no existe como si la contraseña está mal.
@@ -130,6 +138,60 @@ No es una pieza aparte porque «el proyecto compila» no comprueba nada del nego
     desde ahí siguiendo solo el README.
 
 **Evidencia**
+
+*Construida el 2026-08-17.*
+
+**Pruebas automáticas — `npm test`: 14 pruebas, 14 pasan, 0 fallan.** Se escribieron antes del
+código y se vieron fallar primero. Viven en `pruebas/autenticacion.test.js` y cubren: registro,
+que la sesión quede abierta al registrarse, contraseña cifrada, correo repetido (también escrito
+con mayúsculas), datos incompletos, entrar, el mensaje idéntico para contraseña equivocada y
+correo inexistente, `GET /api/yo` sin sesión, cerrar sesión, una cookie de sesión falsificada, la
+cuenta de Personal precargada, que el registro no pueda crear una cuenta de Personal, y la
+persistencia tras apagar y levantar.
+
+**Las 8 comprobaciones de arriba, corridas contra la aplicación escuchando en
+`http://localhost:3000` y sobre la base real `datos/reservas.sqlite`:**
+
+| # | Resultado |
+|---|---|
+| 1 | Registro de `ana@ejemplo.com` / `Prueba123` → `201`, y el pedido siguiente ya la reconoce con su nombre («Ana Rodríguez»). |
+| 2 | Cerrar sesión → `204`, y después `GET /api/yo` → `401`. Volver a entrar con las mismas credenciales → `200`. |
+| 3 | `ana@ejemplo.com` / `Prueba124` → `401 {"error":"credenciales_invalidas"}`. |
+| 4 | `noexiste@ejemplo.com` / `Prueba123` → `401 {"error":"credenciales_invalidas"}`: estado y cuerpo **idénticos** al del punto 3, comparados carácter por carácter. |
+| 5 | Registrar otra vez `ana@ejemplo.com` → `409 {"error":"correo_ya_registrado"}`. |
+| 6 | Apagada y vuelta a levantar la aplicación, `ana@ejemplo.com` / `Prueba123` entra igual → `200`. |
+| 7 | Lo guardado en `cliente.contrasena_cifrada` es `6a45b043aae1f372871ff9f25ebec55b:421a931ee31f4…` (sal y huella). No es `Prueba123` ni lo contiene. Leído del archivo SQLite real, no de la memoria de la aplicación. |
+| 8 | `personal@ejemplo.com` / `Personal123` → `200` con `tipo: "personal"`. |
+
+Además, sobre la interfaz: la página se sirve en `/` con las dos formas (entrar y crear cuenta), el
+CSS compilado se sirve en `/css/estilos.css`, la tipografía Manrope se sirve desde el propio
+proyecto (`/fuentes/manrope-latin.woff2`, sin pedirle nada a internet), y los estilos son
+**mobile-first**: los 8 bloques `@media` del CSS generado son todos `min-width`, ninguno
+`max-width`. Los estilos siguen `VISUALS.md`, el sistema visual «Clinical Excellence» que entró al
+proyecto ese mismo día (ver `DISENO.md`, «El sistema visual»).
+
+**Revisión visual en el navegador — hecha por la estudiante el 2026-08-17.** Todo lo de arriba se
+comprobó por HTTP y leyendo la base, así que faltaba que alguien mirara la página dibujada. La
+estudiante abrió `http://localhost:3000`, hizo a mano los pasos 1, 2, 3, 4, 5 y 8, y confirmó que
+**todos pasan**: el saludo dice su nombre, y en los pasos 3 y 4 aparece el mismo texto «correo o
+contraseña incorrectos» en los dos casos. Confirmó además el «ojito» de las contraseñas y que en
+pantalla angosta las tarjetas se acomodan una debajo de otra.
+
+**Con eso la pieza 1 queda CERRADA.**
+
+**Se agregó también un pie de página**, a pedido de la estudiante después de cerrar la pieza, con
+**texto de relleno inventado**: «© 2026 Belleza y Bienestar». No cambia ninguna condición de
+aceptación de la pieza. El menú de navegación y el botón «hamburguesa» que van ahí quedaron
+pendientes hasta que existan secciones que enlazar — anotados en `DISENO.md`, «Pendientes del
+sistema visual».
+
+**Lo que se agregó durante la construcción y no estaba en el encargo:** el **«ojito»** que muestra y
+oculta la contraseña en todo campo de contraseña, pedido por la estudiante ese mismo día. No se
+agrega campo por campo: una función recorre la página y se lo pone a todos los
+`input[type="password"]`, así que las pantallas de contraseña de las piezas 7 y 9 lo van a heredar
+solas. Quedó como convención en `CLAUDE.md`. *No tiene prueba automática:* comprobarlo exigiría
+instalar un navegador simulado, y eso contradice la decisión de cero dependencias extra de
+`DISENO.md`. Se comprobó mirando la pantalla.
 
 ---
 

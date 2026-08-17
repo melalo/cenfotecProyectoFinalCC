@@ -180,6 +180,56 @@ producción real.
 | Vencimiento del enlace de recuperación | 15 min, 1 hora, 24 horas | 1 hora | Tiempo suficiente sin dejarlo abierto de más. |
 | Duración de la sesión de login | Hasta cerrar el navegador, 7 días, 30 días | 7 días | Evita reiniciar sesión seguido, sin dejarla abierta indefinidamente. |
 
+## Decisiones tomadas al construir la pieza 1
+
+Estas cinco no estaban decididas cuando se escribió el diseño: aparecieron al arrancar el proyecto
+y quedan acá, con su razón, porque afectan a todas las piezas siguientes.
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| Cómo se cifra la contraseña | `scrypt` del módulo `crypto` que Node ya trae, `bcrypt` como dependencia aparte | `scrypt` de Node | No agrega ninguna dependencia y, sobre todo, no hay que compilar nada en la máquina de quien clone el repositorio — que es la condición que el `README.md` promete. Cada contraseña se guarda como `sal:huella`, con una sal distinta por cuenta, y se compara en tiempo constante. |
+| Cómo se sostiene la sesión de 7 días | Cookie firmada por el servidor, sesión guardada en la memoria del servidor, sesión guardada en la base | Cookie firmada con `SESION_SECRETO` | La memoria del servidor se pierde al reiniciar, y la comprobación 6 de la pieza 1 apaga y vuelve a levantar la aplicación. La cookie firmada sobrevive el reinicio y no obliga a montar un almacén de sesiones. La firma es lo que impide que alguien se fabrique una cookie a mano. |
+| Con qué corren las pruebas | `node --test`, que Node ya trae, Jest, Vitest | `node --test` | Misma razón que el cifrado: cero dependencias que instalar o configurar. Obliga a que los archivos de prueba se llamen `algo.test.js`, que es un requisito de la herramienta y no una elección de estilo. |
+| Cuándo se compilan los estilos SASS | Un comando aparte que haya que recordar, un paso automático dentro de `npm start` | Paso automático dentro de `npm start` | Mantiene el contrato de arranque del `README.md` en cuatro comandos. Quien clona el repositorio no tiene que saber que SASS existe. |
+| Cómo se lee el archivo `.env` | La dependencia `dotenv`, la bandera `--env-file` de Node | `dotenv` | La bandera pide Node 22.9 o superior, y el `README.md` promete que el proyecto corre desde Node 20. Cambiar el README sería cambiar una promesa del curso para acomodar una comodidad del código. |
+| Qué pasa si falta `SESION_SECRETO` | Negarse a arrancar, arrancar con una firma inventada al momento | Arrancar con una firma inventada al momento, avisando en la consola | La comprobación de referencia del curso es clonar el repositorio y correr tres comandos. Si la aplicación se negara a arrancar sin `.env`, esa comprobación fallaría por una clave que no protege nada en un prototipo local. El costo es que las sesiones abiertas se cierran en cada reinicio, y el aviso en la consola lo dice. |
+
+## El sistema visual
+
+La apariencia de la aplicación no se inventa en el código: sale de **`VISUALS.md`**, el sistema
+visual «Clinical Excellence», que la estudiante trajo al proyecto el 2026-08-17. Ese archivo es la
+autoridad sobre colores, tipografía, tamaños, redondeos y espaciado, igual que `ESPECIFICACION.md`
+lo es sobre el comportamiento. **Si un valor no está ahí, no se inventa en el `.scss`.**
+
+Lo que el sistema decide, resumido: fondo gris azulado frío (`#F4F6F8`) como lienzo, tarjetas
+blancas con un borde de 1px (`#E2E8F0`) en vez de sombras marcadas, azul marino profundo
+(`#002554`) para lo principal, índigo (`#402D84`) para lo secundario, tipografía Manrope, esquinas
+de 4px en botones y campos y de 12px en tarjetas, y todas las medidas múltiplos de 4px.
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| Orden en que se escriben los estilos | De escritorio hacia abajo, **mobile-first** (del teléfono hacia arriba) | Mobile-first | Pedido de la estudiante el 2026-08-17. Además es lo que le conviene al proyecto: el teléfono es la pantalla más angosta y la más difícil, así que se resuelve primero y las grandes solo agregan. En el `.scss` esto se ve en que todos los `@media` son `min-width`, nunca `max-width`. Los dos cortes son 48rem (768px) y 64rem (1024px). |
+| De dónde sale la tipografía Manrope | Pedirla a Google Fonts en cada visita, copiar los archivos dentro del proyecto | Copiarlos dentro del proyecto, en `publico/fuentes/` | Son 40 KB en dos archivos y cubren todos los pesos de 400 a 700. Pedírsela a Google agregaría un servicio de terceros —justo lo que las restricciones de `CLAUDE.md` limitan al correo— y la página se vería distinta en una máquina sin internet. Con los archivos adentro, la aplicación se ve igual clonada en cualquier parte, que es la promesa del `README.md`. |
+| Qué hacer con las dos contradicciones internas de `VISUALS.md` | Seguir la lista de valores de arriba (el bloque YAML), seguir la explicación en prosa | Seguir la prosa | El archivo se contradice en dos puntos: la lista dice que el fondo es `#fcf9f8` (un blanco cálido) y que el color principal es `#00112d`, mientras la prosa dice que el lienzo es el «Cool Slate Tint» `#F4F6F8` y que el principal es el «Deep Navy» `#002554`. Se eligió la prosa porque explica **para qué** sirve cada capa —lienzo gris frío para que las tarjetas blancas se despeguen— y esa intención es lo que hay que respetar. `#00112d` se usó igual, como el tono más oscuro para el texto de los títulos y el paso del mouse. **Queda señalado para que la estudiante lo corrija en `VISUALS.md` si quiere.** |
+
+### Pendientes del sistema visual
+
+Decididos el 2026-08-17 pero **no construidos todavía**, porque hoy no habría qué poner adentro.
+Quedan escritos acá para que no se pierdan y para que quien construya las piezas siguientes sepa que
+existen.
+
+| Qué falta | Cuándo se construye | Por qué no ahora |
+|---|---|---|
+| **Un menú de navegación en el pie de página**, arriba del texto de derechos | Cuando existan secciones que enlazar — desde la pieza 2, que trae el catálogo y el calendario | Hoy la aplicación tiene una sola pantalla: un menú con un solo destino no es un menú. |
+| **Un botón «hamburguesa»** (las tres rayitas que abren el menú en pantalla de teléfono) | Junto con el menú | Depende de que el menú exista. |
+| **El nombre real del negocio en el pie** | Cuando llegue la configuración del negocio (REG-4, pieza 2) | Hoy el pie dice «© 2026 Belleza y Bienestar», que es **texto de relleno inventado**: no es un negocio real. El nombre verdadero va a salir de la configuración, junto con el logo y los colores, no escrito a mano en el HTML. |
+| **El año del pie** | Cuando se decida | Hoy el «2026» está escrito a mano, como se pidió. Si la aplicación siguiera viva en 2027 seguiría diciendo 2026: cuando deje de ser un prototipo, conviene que lo calcule solo. |
+
+*Nota:* los archivos originales `VISUALDESKTOP.md` y `VISUALSMOBILE.md` tenían **contenido
+idéntico** (los mismos 7.600 bytes), así que no había una guía aparte para teléfono: la parte móvil
+vive dentro del mismo sistema (márgenes de 16px, titular de 28px, grilla de 4 columnas). Por eso se
+consolidaron en un solo `VISUALS.md`.
+
 ## Decisiones dejadas abiertas
 
 | Qué no se decidió | Quién lo decide y cuándo |

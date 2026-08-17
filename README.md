@@ -10,15 +10,17 @@ CENFOTEC).
 
 ---
 
-> ## ⚠ ESTADO ACTUAL: TODAVÍA NO HAY CÓDIGO
+> ## ESTADO ACTUAL: la pieza 1 está cerrada (2026-08-17)
 >
-> Este repositorio contiene **la especificación, el diseño y el plan de construcción**. El
-> prototipo no está construido: **ninguna de las 9 piezas de `PLAN.md` está cerrada**.
+> Los comandos de este README **ya funcionan**: el proyecto arranca, se puede crear una cuenta,
+> entrar, cerrar sesión, y los datos sobreviven al reinicio.
 >
-> Por eso este README **no tiene comandos que funcionen todavía**. Lo que tiene, más abajo, es el
-> **contrato** que la primera pieza debe cumplir: los comandos exactos que el proyecto tiene que
-> exponer cuando exista. Cualquier comando de este archivo que se ejecute hoy va a fallar, y eso es
-> lo esperado.
+> De las 9 piezas de `PLAN.md` está cerrada **la 1** (entrar a la aplicación): sus 14 pruebas
+> automáticas pasan, sus 8 comprobaciones se corrieron con el resultado anotado en su bloque
+> `Evidencia`, y la revisión visual en el navegador la hizo la estudiante.
+>
+> Las otras 8 están pendientes, así que todavía **no** se puede elegir un servicio, ni ver el
+> calendario, ni reservar, ni llega ningún correo. **Si venís a construir, te toca la pieza 2.**
 
 ---
 
@@ -33,12 +35,14 @@ Leé esto antes de tocar nada.
 | 1.º | `ESPECIFICACION.md` | **Qué tiene que hacer el sistema.** Reglas de negocio (RN), requisitos funcionales (RF), recorridos y preguntas abiertas. Es la autoridad sobre el comportamiento. |
 | 2.º | `DISENO.md` | **Qué forma tiene la solución.** Componentes, modelo de datos, manejo de errores y las decisiones de tecnología con su razón. Es la autoridad sobre la arquitectura. |
 | 3.º | `PLAN.md` | **Qué se construye y en qué orden.** Nueve vertical slices, cada una con lo que tiene que ser cierto, con qué se comprueba, y qué consume y produce. Es tu hoja de ruta. |
-| 4.º | `CLAUDE.md` | Stack, comandos y convenciones del proyecto. |
+| 4.º | `VISUALS.md` | **Cómo se ve.** El sistema visual «Clinical Excellence»: colores, tipografía, tamaños, redondeos y espaciado. Es la autoridad sobre la apariencia, igual que `ESPECIFICACION.md` lo es sobre el comportamiento. Si un valor no está ahí, **no se inventa en el `.scss`**. |
+| 5.º | `CLAUDE.md` | Stack, comandos, convenciones y restricciones del proyecto. Las convenciones no son sugerencias: fijan la estructura de carpetas, cómo se nombra cada cosa y las reglas de lo visual. |
 | Si hace falta | `PROYECTO.md`, `NEGOCIO.md`, `BITACORA.md` | El enunciado original, el caso de negocio y el registro fechado de decisiones. |
 
 **No necesitás leer las nueve piezas del plan.** Leé la que te toca construir: cada una declara qué
 consume de las anteriores y qué produce para las siguientes, con los nombres exactos de tablas y de
-endpoints del API. Ese bloque existe justamente para que no tengas que leer las demás.
+endpoints del API. Ese bloque existe justamente para que no tengas que leer las demás. **Leé también
+la `Evidencia` de las piezas ya cerradas:** ahí está qué se comprobó y qué se agregó sobre la marcha.
 
 ### 2. Tres trampas de este repositorio
 
@@ -69,6 +73,14 @@ Estas te van a hacer construir lo incorrecto si no las sabés:
 - **No hagas commit ni push por tu cuenta**, salvo que la estudiante lo pida.
 - El vocabulario del proyecto está en el glosario de `ESPECIFICACION.md`. Usalo: se dice
   **horario** (no "slot") y **reagendar** (no "reprogramar").
+- **Los estilos son mobile-first**, y eso es verificable: todos los `@media` son `min-width` y
+  ninguno es `max-width`. Los cortes son 48rem y 64rem.
+- **Todo campo de contraseña lleva el «ojito»** para mostrarla y ocultarla, en cualquier pantalla.
+  No lo agregues campo por campo: ya hay una función que se lo pone a todos los
+  `input[type="password"]` de la página, así que una pantalla nueva lo hereda sola.
+- **Nada de dependencias que haya que compilar o configurar.** El cifrado de contraseñas, el
+  corredor de pruebas y la tipografía usan lo que Node ya trae o archivos que viven dentro del
+  proyecto, justamente para que esto se levante clonado en cualquier máquina.
 
 ---
 
@@ -100,10 +112,6 @@ negocio, y a este tamaño el costo de aprender y configurar React no se justific
   dentro del proyecto.
 
 ## Cómo se levanta
-
-> **Nada de esto funciona todavía.** Es el contrato que **la pieza 1 de `PLAN.md` tiene que dejar
-> cumplido**. Quien construya esa pieza debe crear exactamente estos comandos, con estos nombres, y
-> después borrar esta advertencia y esta línea.
 
 ```bash
 git clone https://github.com/melalo/laboratorioClaudeCenfotec.git
@@ -154,14 +162,20 @@ registrados como fallidos, pero las citas se siguen creando: así lo exige RF-19
 `npm run datos` crea la base desde cero y carga datos **inventados**. Se puede correr las veces que
 haga falta: borra lo anterior y vuelve a empezar.
 
-Lo que carga, según `PLAN.md`:
+**Hoy, con la pieza 1 construida, carga solo la cuenta de Personal**, porque las demás tablas
+todavía no existen: las crea la pieza 2. El comando lo dice en pantalla cuando termina.
+
+Lo que va a cargar cuando el plan esté completo:
 
 - **Servicios:** «Masaje relajante» y «Limpieza facial».
 - **Proveedores:** «Ana» y «Carlos». Ana atiende los dos servicios; Carlos solo el masaje.
 - **Horario del negocio:** lunes a viernes de 9:00 a 18:00 con el almuerzo bloqueado de 12:00 a
   13:00, y sábados de 9:00 a 13:00. Domingo cerrado. Cada cita dura una hora.
 - **Feriados de ley de Costa Rica**, precargados como dato fijo.
-- **Una cuenta de Personal** (la asistente), precargada — no hay pantalla para registrarla.
+- **Una cuenta de Personal** (la asistente, «Marta Jiménez»), precargada — no hay pantalla para
+  registrarla. Entra con **`personal@ejemplo.com`** y la contraseña **`Personal123`**. Es una cuenta de prueba
+  inventada, y como está escrita acá a la vista de todos, **no sirve para nada real**: si el
+  proyecto algún día se usara de verdad, lo primero es cambiarla.
 
 ## Pruebas
 
@@ -169,8 +183,12 @@ Lo que carga, según `PLAN.md`:
 npm test
 ```
 
-Cubren los tres criterios de aceptación de `ESPECIFICACION.md`, que son las tres reglas que el
-curso exige proteger:
+**Hoy corre 14 pruebas, las de la pieza 1:** registrarse, entrar, el mensaje idéntico cuando el
+correo no existe y cuando la contraseña está mal, la contraseña cifrada, el correo repetido, la
+cuenta de Personal precargada y la persistencia tras reiniciar. Están en `pruebas/`.
+
+A medida que avance el plan, este mismo comando irá cubriendo además los tres criterios de
+aceptación de `ESPECIFICACION.md`, que son las tres reglas que el curso exige proteger:
 
 | | Qué comprueba | Desde qué pieza |
 |---|---|---|
@@ -178,7 +196,9 @@ curso exige proteger:
 | **CA-2** | Un intento de reservar un horario de hoy se rechaza, a cualquier hora que se intente. | 3 |
 | **CA-3** | Cancelar o reagendar faltando menos de 4 horas: el cliente es rechazado, Personal es aceptado. | 5 y 7 |
 
-Estas pruebas corren solas en cada `push` mediante GitHub Actions.
+Que estas pruebas corran solas en cada `push` mediante GitHub Actions se monta en la **pieza 3**
+(así lo dice su bloque *Produce* en `PLAN.md`). Hoy todavía no corren solas: hay que escribir
+`npm test` a mano.
 
 ## Qué no está en el repositorio
 
@@ -189,17 +209,42 @@ Estas pruebas corren solas en cada `push` mediante GitHub Actions.
   `.gitignore`. No los necesitás.
 - **`.claude/`** — la skill con la que se generó el enunciado del proyecto.
 
-## Estructura de los documentos
+## Estructura del proyecto
+
+Los documentos:
 
 ```
 proyectoFinal/
 ├── README.md              ← estás acá
 ├── ESPECIFICACION.md      ← qué tiene que hacer el sistema  (la autoridad)
 ├── DISENO.md              ← qué forma tiene la solución     (la autoridad)
-├── PLAN.md                ← las 9 piezas y sus comprobaciones
-├── CLAUDE.md              ← stack, comandos y convenciones
+├── PLAN.md                ← las 9 piezas, sus comprobaciones y su evidencia
+├── CLAUDE.md              ← stack, comandos, convenciones y restricciones
+├── VISUALS.md             ← el sistema visual: colores, tipografía, medidas (la autoridad)
 ├── PROYECTO.md            ← el enunciado original (no se modifica; dice "48 horas", ver arriba)
 ├── FICHA-APROBACION.md    ← lo aprobado por el docente (histórico; dice "48 horas", ver arriba)
 ├── NEGOCIO.md             ← oportunidad, riesgos, ROI y hoja de ruta
 └── BITACORA.md            ← registro fechado de decisiones y correcciones de rumbo
+```
+
+Y el código, que nació con la pieza 1. Las convenciones de esta estructura están explicadas en
+`CLAUDE.md`:
+
+```
+proyectoFinal/
+├── servidor/              el backend: acá viven las reglas de negocio
+│   ├── index.js             arranca el servidor (es lo que corre npm start)
+│   ├── aplicacion.js        arma la aplicación de Express, sin ponerla a escuchar
+│   ├── base-de-datos.js     abre el archivo SQLite y crea las tablas
+│   ├── contrasenas.js       cifrar una contraseña y comprobar si coincide
+│   ├── sesion.js            la cookie firmada que sostiene la sesión
+│   └── rutas/               un archivo por grupo de endpoints del API
+├── guiones/               comandos de mantenimiento (hoy: cargar los datos de prueba)
+├── estilos/               los .scss que se escriben a mano, siguiendo VISUALS.md
+├── publico/               lo que el navegador recibe: HTML, su JavaScript, el CSS generado
+│   └── fuentes/             la tipografía Manrope, dentro del proyecto (no se pide a internet)
+├── pruebas/               las pruebas automáticas de npm test
+├── datos/                 el archivo SQLite — se genera, no se sube
+├── package.json           las dependencias y los cuatro comandos
+└── .env.ejemplo           qué variables de entorno hacen falta
 ```
