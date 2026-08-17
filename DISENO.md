@@ -49,10 +49,14 @@ consulta a Reservas qué está ocupado; no crea ni cancela citas.
 **4. Reservas** — Crea, cancela y reagenda citas aplicando las reglas de negocio de
 `PROYECTO.md`: no doble reserva, no mismo día, no cancelar/reagendar con menos de 4 horas de
 anticipación. Permite que Personal cree una cita en nombre de un cliente que llamó — mismas
-reglas, sin excepción. Avisa a Notificaciones cuando algo cambia. *Límite:* es el único
-componente que modifica el estado de una cita.
+reglas, sin excepción. **Personal sí puede cancelar y reagendar dentro de las 4 horas** (RN-6 de
+`ESPECIFICACION.md`): es lo que hace útil el mensaje "llame al negocio" que recibe el cliente, y
+deja esa cancelación registrada en vez de fuera del sistema. Avisa a Notificaciones cuando algo
+cambia. Cierra cada cita pasada cuando Personal la marca **completada** o **no asistió** (RN-17,
+RN-19); ningún estado se alcanza solo por el paso del tiempo. *Límite:* es el único componente que
+modifica el estado de una cita.
 
-**5. Notificaciones** — Manda los correos (confirmación, recordatorio de 48h, recuperación de
+**5. Notificaciones** — Manda los correos (confirmación, recordatorio de 24h, recuperación de
 contraseña) hablando con Resend; revisa recordatorios pendientes cuando GitHub Actions le avisa.
 *Límite:* solo lee de Reservas, Catálogo y Autenticación; no decide reglas de negocio.
 
@@ -63,14 +67,18 @@ cada acción al backend por el API. *Límite:* no decide ninguna regla de negoci
 ## Modelo de datos
 
 **Entidades:**
-- **Cliente** — correo, contraseña (cifrada), nombre.
+- **Cliente** — correo, contraseña (cifrada), nombre, y si tiene una **contraseña temporal
+  pendiente de cambiar** (cuenta creada por Personal, RN-11).
 - **Personal** — correo, contraseña (cifrada), nombre. Precargada, sin autorregistro.
 - **Servicio** — nombre, duración (fija en 1 hora para este prototipo).
 - **Proveedor** — nombre; puede atender uno o más servicios.
 - **Configuración del negocio** — horario semanal, feriados de Costa Rica, logo, colores.
 - **Cita** — cliente, servicio, proveedor, fecha y hora de inicio, estado (activa, cancelada,
-  completada), fecha de creación, **canal** (en línea o asistida), y qué cuenta de Personal la
-  creó si fue asistida.
+  completada o **no asistió**), fecha de creación, **canal** (en línea o asistida), qué cuenta de
+  Personal la creó si fue asistida, si fue cancelada: **cuándo se canceló y quién la canceló** (el
+  cliente o Personal), para poder distinguir las cancelaciones normales de las que Personal hizo
+  dentro de las 4 horas; y si fue completada o no asistió: **qué cuenta de Personal la marcó y
+  cuándo** (RN-17, RN-19).
 - **Correo enviado** — cliente destinatario, cita relacionada (no aplica a recuperación de
   contraseña), tipo, fecha de envío, si tuvo éxito.
 - **Token de recuperación** — cliente o Personal, código, fecha de vencimiento, si ya se usó.
@@ -94,7 +102,8 @@ ninguna Cita activa para ese proveedor en ese horario.
 - **Dos clientes eligen el mismo horario a la vez:** se avisa a quien pierde la carrera y se
   muestra el calendario actualizado.
 - **Reservar el mismo día:** rechazado; se pide llamar al negocio.
-- **Cancelar/reagendar con menos de 4 horas:** rechazado; se pide llamar al negocio.
+- **Cancelar/reagendar con menos de 4 horas:** rechazado para el cliente; se pide llamar al
+  negocio. Personal, atendiendo esa llamada, sí puede hacerlo desde la aplicación.
 - **Sin horarios libres en los próximos 7 días:** aviso para revisar más adelante.
 - **Falla el envío de un correo:** se reintenta; si sigue fallando, queda registrado como
   fallido — la cita sigue siendo válida.
@@ -149,7 +158,7 @@ concurrencia, varias sucursales con servidores independientes, volumen masivo) y
 
 ---
 
-### Disparador del recordatorio de 48 horas
+### Disparador del recordatorio de 24 horas
 
 | | Opción A: tarea propia dentro de la aplicación | Opción B: GitHub Actions (programado) |
 |---|---|---|

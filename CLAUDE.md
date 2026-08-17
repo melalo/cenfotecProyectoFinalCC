@@ -7,9 +7,9 @@
 - **Backend:** JavaScript (Node.js), con Express para el API.
 - **Base de datos:** SQLite, accedida con `better-sqlite3`.
 - **Autenticación:** contraseña (no enlace mágico).
-- **Correo (confirmaciones y recordatorio de 48h):** Resend — más simple de configurar que
+- **Correo (confirmaciones y recordatorio de 24h):** Resend — más simple de configurar que
   SendGrid para un proyecto de este tamaño.
-- **Disparador del recordatorio de 48h:** tarea programada en GitHub Actions, que le avisa al
+- **Disparador del recordatorio de 24h:** tarea programada en GitHub Actions, que le avisa al
   backend cada cierto tiempo para que revise si hay recordatorios pendientes de mandar.
   *(Nota para el futuro: si esto se convierte en una aplicación real en producción, migrar este
   disparador al sistema de tareas programadas del hosting elegido — por ejemplo Render o

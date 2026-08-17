@@ -82,7 +82,7 @@ continuación natural del proyecto:
 - Panel de administración con interfaz, para que el negocio cargue su propia cartelera sin
   depender de que alguien edite la configuración directamente.
 - Posible expansión a varias sucursales del mismo negocio.
-- Migrar el hosting de producción y el disparador del recordatorio de 48h de GitHub Actions al
+- Migrar el hosting de producción y el disparador del recordatorio de 24h de GitHub Actions al
   sistema de tareas programadas del hosting elegido (Render o Vercel), si el proyecto pasa a
   producción real.
 - **Expediente por cliente, visible y editable para Personal:** un lugar donde el negocio anote
