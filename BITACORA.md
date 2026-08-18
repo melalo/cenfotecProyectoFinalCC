@@ -335,6 +335,17 @@ completos contra esa referencia.
   `rgb(0 17 45 / 5%)` en la sombra de las tarjetas, que ninguna búsqueda por código hexadecimal
   encuentra.
 
+**Un fondo con imagen, pedido por la estudiante.** Trajo una imagen (`bg-img.jpg`) para poner de
+fondo. **Se revisó antes de aplicarla**, como ella pidió: es un patrón botánico en gris azulado
+clarísimo, del mismo tono frío que el `#F4F6F8` del sistema y de contraste muy bajo, así que no
+compite con el texto ni rompe la estética clínica —si hubiera tenido zonas oscuras habría hecho
+falta un velo encima, y no lo necesita. **Se movió de `proyectoFinal/img/` a `publico/img/`**, porque
+`publico/` es lo único que el servidor entrega al navegador: desde la carpeta original no habría
+cargado nunca. El color del sistema quedó escrito **antes** que la imagen, como respaldo, para que la
+página nunca se vea en blanco si la imagen falta o tarda. Queda quieta al desplazarse solo de tableta
+para arriba, porque varios navegadores de celular hacen eso a los saltos. Todo anotado en `DISENO.md`
+y como convención en `CLAUDE.md`.
+
 **El «ojito» de las contraseñas — pedido de la estudiante, con su razón:** un campo de contraseña
 muestra puntitos y no hay forma de saber si se escribió bien. Se agregó un botón que la destapa y la
 vuelve a tapar. **Decisión de cómo hacerlo:** no se puso campo por campo, sino con una función que

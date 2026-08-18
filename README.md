@@ -243,7 +243,8 @@ proyectoFinal/
 ├── guiones/               comandos de mantenimiento (hoy: cargar los datos de prueba)
 ├── estilos/               los .scss que se escriben a mano, siguiendo VISUALS.md
 ├── publico/               lo que el navegador recibe: HTML, su JavaScript, el CSS generado
-│   └── fuentes/             la tipografía Manrope, dentro del proyecto (no se pide a internet)
+│   ├── fuentes/             la tipografía Manrope, dentro del proyecto (no se pide a internet)
+│   └── img/                 las imágenes (hoy: el fondo de la página)
 ├── pruebas/               las pruebas automáticas de npm test
 ├── datos/                 el archivo SQLite — se genera, no se sube
 ├── package.json           las dependencias y los cuatro comandos

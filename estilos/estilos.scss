@@ -126,13 +126,30 @@ body {
   flex-direction: column;
   min-height: 100dvh;
   margin: 0;
+
+  // El fondo. El color va PRIMERO y la imagen encima: si la imagen tardara en cargar o no
+  // estuviera, la página se ve igual de bien con el gris azulado del sistema, nunca en blanco.
   background-color: $canvas;
+  background-image: url("/img/bg-img.jpg");
+  background-repeat: no-repeat;
+  background-position: center top;
+  // «cover» = que cubra toda la pantalla aunque tenga que recortar los bordes de la imagen. Como
+  // es un patrón parejo, no importa qué parte se recorte.
+  background-size: cover;
+
   color: $texto;
   font-family: $tipografia;
   // body-md del sistema: 16px con línea de 24px. 16px es el mínimo accesible.
   font-size: 16px;
   line-height: 24px;
   -webkit-font-smoothing: antialiased;
+
+  // De tableta para arriba, el fondo queda quieto mientras el contenido se desplaza por encima.
+  // No se pone en teléfono a propósito: varios navegadores de celular ignoran esto o lo hacen a
+  // los saltos, y un fondo que tiembla al desplazarse se ve peor que uno que acompaña.
+  @media (min-width: $tableta) {
+    background-attachment: fixed;
+  }
 }
 
 // El contenedor de ancho fijo-fluido: crece con la pantalla pero nunca pasa de 1280px.

@@ -52,7 +52,8 @@ proyectoFinal/
 ├── estilos/             los archivos .scss que se escriben a mano
 ├── publico/             lo que el navegador recibe tal cual: HTML, JavaScript del navegador
 │   ├── css/               el CSS que SASS genera — no se escribe a mano y no se sube
-│   └── fuentes/           la tipografía Manrope, copiada dentro del proyecto (sí se sube)
+│   ├── fuentes/           la tipografía Manrope, copiada dentro del proyecto (sí se sube)
+│   └── img/               las imágenes (hoy: el fondo de la página)
 ├── pruebas/             las pruebas automáticas
 └── datos/               el archivo SQLite — se genera y no se sube
 ```
@@ -108,6 +109,12 @@ cada pieza en `PLAN.md`, y se copian de ahí tal cual.
   es una excepción y va escrita con su razón.
 - La tipografía **Manrope vive dentro del proyecto**, en `publico/fuentes/`. No se le pide a
   ningún servicio de terceros — ver la razón en `DISENO.md`, «El sistema visual».
+- **Las imágenes van en `publico/img/`.** Es la única carpeta de imágenes que el navegador puede
+  ver: `publico/` es lo que el servidor entrega. Una imagen guardada en otro lado no carga, aunque
+  la ruta parezca correcta.
+- **Detrás de una imagen de fondo va siempre el color del sistema como respaldo**, con el color
+  escrito primero y la imagen encima. Si la imagen tarda o falta, la página se ve igual y nunca en
+  blanco.
 - Los colores y el logo del **negocio** (los que se cargan como configuración, RF/REG-4) llegan con
   la pieza 2 y son otra cosa: `VISUALS.md` es la apariencia de la aplicación; la configuración es la
   marca del negocio que la usa.
