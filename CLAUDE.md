@@ -24,7 +24,7 @@
 | `npm install` | Instala las dependencias. |
 | `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita: esas se crean desde la aplicación a partir de la pieza 3. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
-| `npm test` | Corre las pruebas automáticas. Hoy son **95**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10 y 12 de la pieza 11. **Los criterios de aceptación CA-1 y CA-2 ya están cubiertos** (pieza 3); CA-3 se agrega en las piezas 5 y 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
+| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **95**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10 y 12 de la pieza 11. **Los criterios de aceptación CA-1 y CA-2 ya están cubiertos** (pieza 3); CA-3 se agrega en las piezas 5 y 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
@@ -169,6 +169,10 @@ todos los errores posibles de este proyecto, así que las reglas son estrictas:
 - **Los comandos también hay que correrlos.** `npm test` no ejecuta `npm run datos` ni `npm start`, así
   que un error en esos guiones no lo detecta ninguna prueba. Pasó en la pieza 11: `npm run datos` quedó
   roto por un nombre que había cambiado, y solo se vio al correrlo.
+- **Ninguna prueba se cuelga del día en que se corre.** No solo las del calendario: **cualquiera** que
+  toque una fecha. Una prueba que busca «algún día del mes en curso con horarios libres» pasa hoy y
+  falla el 30 de un mes. Si una prueba necesita una fecha, para el reloj con `relojDetenidoEn` y escribe
+  la fecha fija. Rompió la integración continua la primera vez que corrió.
 - **Ninguna prueba mira la página dibujada.** Todas hablan con el API, así que un defecto visual
   —una cuadrícula desbordada, un `hidden` que no esconde— no lo detecta ninguna. Por eso **una pieza
   no se cierra sin que una persona abra el navegador y mire.** Los tres defectos visuales

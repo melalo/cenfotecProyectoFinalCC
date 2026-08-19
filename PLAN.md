@@ -520,7 +520,7 @@ negocio fue un miércoles, así que «mañana» fue el jueves 2026-08-20):
 | 4 | Reservado además `2026-08-20T14:00:00-06:00` con el mismo cliente → **`201`**, y `GET /api/citas` devuelve **las dos**, ordenadas por hora. RN-16 cumplida: nadie le impuso un máximo. |
 | 5 | **CA-1.** La prueba automática dispara las dos reservas del mismo horario con `Promise.all`, sin que ninguna espere a la otra: **una recibe `201` y la otra `409 horario_no_disponible`**, y en la base queda **exactamente 1** cita activa para ese horario. Se comprobó además, aparte de la prueba, que **el candado es de la base y no del código**: insertando dos veces a mano la misma cita activa, la segunda se estrella contra `SQLITE_CONSTRAINT_UNIQUE`; y después de pasar la primera a `cancelada`, el horario se puede volver a tomar. |
 | 6 | **CA-2.** La prueba automática pide reservar un horario de hoy → **`422 mismo_dia`**, y lo prueba con **los ocho horarios del día**, no con uno: «sin importar la hora a la que se intente», como dice el criterio. Comprobado también contra la aplicación de verdad: `2026-08-19T15:00:00-06:00` → `422 mismo_dia`. Un horario de ayer da lo mismo. |
-| 7 | **PENDIENTE.** Necesita un push al repositorio, y el push se hace cuando la estudiante lo pide. La configuración ya está escrita en `.github/workflows/pruebas.yml` (en la raíz del repositorio, autorizado el 2026-08-19). Esta comprobación se cierra mirando la pestaña **Actions** de GitHub después del push. |
+| 7 | **PENDIENTE.** El push se hizo el 2026-08-19 y **la primera corrida salió en ROJO**. Encontró dos defectos reales, los dos arreglados el mismo día (ver abajo). Se cierra cuando la estudiante confirme que la corrida siguiente quedó en verde: el agente no tiene forma de mirar la pestaña **Actions**. |
 
 **Revisión visual — hecha por la estudiante el 2026-08-19.** Abrió `http://localhost:3000`, recorrió
 la lista de comprobaciones visuales de `PROXIMA-SESION.md` y **confirmó que la pieza se ve y funciona
@@ -531,8 +531,24 @@ quedó y no el que existía antes.
 
 **Con esto la pieza 3 queda CONSTRUIDA y con 6 de sus 7 comprobaciones cerradas.** Falta solo la
 **comprobación 7**, que no se puede cerrar sin haber hecho el push y haber visto el resultado en la
-pestaña Actions de GitHub. El push se hizo el 2026-08-19, a pedido de la estudiante; el resultado se
-anota acá abajo cuando ella lo confirme, porque **el agente no tiene forma de mirar esa pestaña**.
+pestaña Actions de GitHub.
+
+**La primera corrida de la integración continua salió en ROJO** (2026-08-19, `Pruebas #1`, commit
+`e4267e0`), y encontró **dos defectos que las 95 pruebas locales no podían encontrar** — que es
+exactamente para lo que existe:
+
+1. **El comando de pruebas no funcionaba en Node 20.** Estaba escrito
+   `node --test "pruebas/**/*.test.js"`, y **el buscador de pruebas de Node entiende ese patrón de
+   comodines solo desde la versión 22**. En Node 20 ese texto se toma como el nombre de un archivo, no
+   lo encuentra, y falla. Es **la segunda promesa de «Node 20 o superior» que resultó falsa** —la
+   primera fue `better-sqlite3`—, y las dos las destapó la integración continua. Arreglado escribiendo
+   `node --test` sin decirle qué archivos: así Node los busca solo, y funciona igual en las dos
+   versiones. Se comprobó que encuentra las mismas 95.
+2. **Una prueba de la pieza 11 dependía del día en que se corriera.** La comprobación 5 buscaba «algún
+   día del mes en curso con horarios libres» **con el reloj de verdad**, y un mes que se está acabando
+   —o una corrida un sábado a fin de mes— se queda sin ninguno. Arreglado parando el reloj en
+   `MOMENTO_DE_PRUEBA` como el resto de las pruebas, y escribiendo la fecha fija. Quedó como convención
+   en `CLAUDE.md`: **ninguna prueba se cuelga del día en que se corre**, no solo las del calendario.
 
 **Lo que se construyó además, y no era parte del encargo de la pieza:**
 

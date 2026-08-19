@@ -12,7 +12,7 @@
     "prestart": "npm run estilos",
     "start": "node servidor/index.js",
     "datos": "node guiones/cargar-datos.js",
-    "test": "node --test \"pruebas/**/*.test.js\""
+    "test": "node --test"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

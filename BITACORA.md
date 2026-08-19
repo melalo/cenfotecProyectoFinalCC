@@ -896,3 +896,48 @@ más la configuración de integración continua en la raíz del repositorio. Es 
 proyecto corre fuera de la máquina de la estudiante**. La **comprobación 7 de la pieza 3** se cierra
 cuando ella confirme lo que muestra la pestaña Actions de GitHub: el agente no tiene `gh` instalado ni
 ninguna otra forma de mirarla, así que no puede darla por buena por su cuenta.
+
+### 2026-08-19 — la primera corrida de integración continua salió en rojo, y valió la pena
+
+*Entrada de gobernanza. Es la primera vez que este proyecto corre **fuera de la máquina de la
+estudiante**, y lo primero que hizo fue encontrar dos defectos que las 95 pruebas locales no podían
+encontrar. Vale anotarlo completo porque es la mejor justificación de por qué la comprobación 7 de la
+pieza 3 existe.*
+
+**Qué pasó.** Se subieron las piezas 2, 3, 10 y 11 más la configuración de integración continua. La
+corrida `Pruebas #1` (commit `e4267e0`) salió en **rojo**. La estudiante lo vio en la pestaña Actions y
+lo trajo con una captura.
+
+**Defecto 1 — el comando de pruebas no funcionaba en Node 20.** Estaba escrito
+`node --test "pruebas/**/*.test.js"`. Ese patrón de comodines **el buscador de pruebas de Node lo
+entiende solo desde la versión 22**: en Node 20 el texto se toma como el nombre de un archivo, no lo
+encuentra, y falla.
+
+- **Por qué nadie lo había notado:** en esta máquina corre Node 24, donde el patrón sí funciona. La
+  promesa del `README.md` es «Node 20 o superior», y **nada la comprobaba** hasta que existió la
+  integración continua.
+- **Es la segunda promesa de Node 20 que resultó falsa el mismo día.** La primera fue
+  `better-sqlite3`, que exigía Node 22 y se bajó a la línea 12. Las dos las destapó lo mismo: correr
+  fuera de esta máquina. Y no es casualidad que las dos aparecieran juntas: **una promesa que nada
+  comprueba se rompe sola con el tiempo**, sin que nadie haga nada mal.
+- **El arreglo:** `node --test`, sin decirle qué archivos. Node los busca solo y funciona igual en Node
+  20 y en Node 24. Se comprobó que encuentra las mismas 95 pruebas.
+
+**Defecto 2 — una prueba dependía del día en que se corriera.** La comprobación 5 de la pieza 11
+buscaba «algún día del mes en curso con horarios libres» **con el reloj de verdad**, en vez de parar el
+reloj como hacen las pruebas del calendario. Un mes que se está acabando, o una corrida un sábado a fin
+de mes, se queda sin ningún día que sirva y la prueba falla sin que nada esté mal.
+
+- **Es un defecto del agente, de esta misma sesión**, y contra una convención que el propio proyecto ya
+  tenía escrita desde la pieza 2: *«una prueba que dice cosas distintas según el día en que se corre no
+  comprueba nada»*. Estaba escrita para las pruebas del calendario, y el agente no la aplicó a una
+  prueba del catálogo que resultó tocar una fecha.
+- **El arreglo:** parar el reloj en `MOMENTO_DE_PRUEBA` y escribir la fecha fija.
+- **La convención se amplió en `CLAUDE.md`:** ninguna prueba se cuelga del día en que se corre — **no
+  solo las del calendario, cualquiera que toque una fecha**.
+
+**La moraleja, que es la de toda la sesión.** Las 95 pruebas locales pasaban. La revisión visual estaba
+hecha y no había encontrado nada. Y aun así quedaban dos defectos, y los dos eran del mismo tipo: **algo
+que solo se puede ver en un lugar distinto de donde se construyó.** Es la misma lección que dieron los
+defectos visuales de las piezas 2 y 3 —que solo se ven mirando la pantalla— aplicada a otra dimensión:
+la máquina donde corre.

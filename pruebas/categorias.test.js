@@ -17,10 +17,18 @@ import {
   crearNavegador,
   entrarComoClienta,
   buscarPorNombre,
+  relojDetenidoEn,
+  MOMENTO_DE_PRUEBA,
 } from "./ayudas.js"
 
 async function prepararCatalogo(contexto) {
-  const entorno = await crearEntornoDePrueba(contexto)
+  // El reloj se para en `MOMENTO_DE_PRUEBA` —martes 1 de setiembre de 2026— igual que en las pruebas
+  // del calendario. Al principio estas pruebas usaban el reloj de verdad, porque el catálogo no tiene
+  // nada que ver con las fechas… salvo la comprobación 5, que reserva. Y una prueba que reserva **con
+  // el reloj de verdad dice cosas distintas según el día en que se corra**: buscaba «algún día del mes
+  // en curso con horarios libres», y un mes que arranca en sus últimos días —o una corrida un sábado
+  // de fin de mes— se queda sin ninguno. Eso rompió la integración continua la primera vez que corrió.
+  const entorno = await crearEntornoDePrueba(contexto, { reloj: relojDetenidoEn(MOMENTO_DE_PRUEBA) })
   const navegador = crearNavegador(entorno)
   await entrarComoClienta(navegador)
 
@@ -177,24 +185,14 @@ test("comprobación 5: se reserva un subtipo y la cita dice el nombre del servic
   const carlos = buscarPorNombre(proveedores.cuerpo, "Carlos")
 
   // El calendario y la reserva no cambiaron nada con esta pieza: la cita sigue apuntando al
-  // servicio. Se busca un día con horarios en el calendario de verdad, sin parar el reloj, y se
-  // toma el primero libre.
-  const mes = (await navegador("/api/negocio")).cuerpo.hoy.slice(0, 7)
-  const calendario = await navegador(
-    `/api/disponibilidad?servicioId=${descontracturante.id}&proveedorId=${carlos.id}&mes=${mes}`,
-  )
-
-  const diaConHorarios = calendario.cuerpo.dias.find((dia) => dia.estado === "con_horarios")
-  assert.ok(diaConHorarios, "tiene que haber algún día con horarios libres en el mes en curso")
-
-  const libre = diaConHorarios.horarios.find((horario) => horario.disponible)
-
+  // servicio. Con el reloj parado el martes 1 de setiembre, el miércoles 2 a las 10 es un horario
+  // libre de un día hábil — escrito así, fijo, en vez de ir a buscar «algún día que sirva».
   const creada = await navegador("/api/citas", {
     method: "POST",
     cuerpo: {
       servicioId: descontracturante.id,
       proveedorId: carlos.id,
-      inicio: libre.inicio,
+      inicio: "2026-09-02T10:00:00-06:00",
     },
   })
 
