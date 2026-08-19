@@ -64,6 +64,10 @@ $navy: #002554;
 $navy-oscuro: #00112d;
 // El acento secundario: «Medical Indigo».
 $indigo: #402d84;
+// El azul claro que se lee bien encima del azul marino. Es el `inverse-primary` de VISUALS.md, y
+// desde la pieza 3 tiene nombre porque lo usan tres cosas: la bajada del encabezado, el texto del
+// pie y el menú de navegación.
+$azul-claro: #acc7ff;
 
 $texto: #1c1b1b;
 $texto-suave: #44474f;
@@ -73,6 +77,16 @@ $borde-fuerte: #c4c6d0;
 $error: #ba1a1a;
 $error-fondo: #ffdad6;
 $error-texto: #93000a;
+
+// Los tonos con los que el calendario distingue un día de otro. Ninguno se inventó acá: los cinco
+// salen de la lista de colores de VISUALS.md, y al lado de cada uno está con qué nombre aparece
+// ahí. El sistema nombra un «verde de éxito» y un «ámbar de alerta» para los estados, pero no dice
+// cuáles son, así que no se usan: se arma todo con los tonos que sí están escritos.
+$indigo-suave: #e7deff; // secondary-fixed  — el fondo lavanda de un día feriado
+$indigo-texto: #453289; // on-secondary-container — el texto que va encima de ese lavanda
+$gris-apagado: #f0edec; // surface-container — el fondo de un día cerrado o que ya pasó
+$gris-medio: #ebe7e7; // surface-container-high — el fondo de un día sin cupo
+$gris-texto: #747780; // outline — el texto apagado de los días que no ofrecen nada
 
 // ══════════════════════════════════════════════════════ medidas (VISUALS.md → Layout & Spacing)
 //
@@ -93,6 +107,8 @@ $ancho-maximo: 1280px;
 // tarjetas.
 $radio-control: 0.25rem;
 $radio-tarjeta: 0.75rem;
+// El `rounded.full` de VISUALS.md: un número enorme para que algo cuadrado quede redondo.
+$radio-circulo: 9999px;
 
 // Los dos puntos donde la pantalla cambia. Mobile-first: hasta acá, todo es teléfono.
 $tableta: 48rem; // 768px
@@ -110,6 +126,21 @@ $escritorio: 64rem; // 1024px
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+// ── Que `hidden` de verdad esconda ──────────────────────────────────────────────────────────────
+//
+// El HTML tiene un atributo `hidden` para decir «esto no se muestra», y el navegador lo cumple con
+// una regla propia: `[hidden] { display: none }`. Pero **cualquier regla que escribamos nosotros le
+// gana a la del navegador**, sin importar cuál sea más específica. Así que un elemento con
+// `class="tarjeta"` —que dice `display: flex`— se seguía viendo aunque tuviera `hidden`, y por eso
+// la tarjeta del detalle del día y el paso 2 aparecían desde el arranque, vacíos.
+//
+// Esta línea lo arregla de una vez para toda la aplicación: el `!important` es lo que hace que
+// `hidden` gane siempre. Es el único `!important` del archivo y tiene esa razón. Encontrado al
+// construir la pieza 3, el 2026-08-19; el detalle está en `BITACORA.md`.
+[hidden] {
+  display: none !important;
 }
 
 html {
@@ -175,13 +206,25 @@ body {
   color: $blanco;
 
   &__interior {
-    @include columna($base);
+    @include columna($stack-sm);
 
     padding-block: $stack-sm;
 
     @media (min-width: $tableta) {
       padding-block: $gutter;
     }
+  }
+
+  // El nombre de la aplicación a la izquierda, la hamburguesa a la derecha, en la misma línea.
+  &__fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $stack-sm;
+  }
+
+  &__marca {
+    @include columna($base);
   }
 
   &__titulo {
@@ -206,7 +249,102 @@ body {
     line-height: 20px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #acc7ff;
+    color: $azul-claro;
+  }
+}
+
+// ══════════════════════════════════════════════════════ el menú de navegación (pieza 3)
+//
+// El mismo menú vive en dos lados: acá arriba, detrás de la hamburguesa, y abajo en el pie como
+// fila. Arriba es donde se toca; abajo es donde `DISENO.md` lo había pedido.
+
+// Las tres rayitas. Solo existen en teléfono: desde tableta el menú se muestra siempre y un botón
+// para abrir lo que ya está abierto no tiene sentido.
+.hamburguesa {
+  display: grid;
+  place-items: center;
+  // 44px es el tamaño mínimo cómodo para tocar con el pulgar.
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  color: $blanco;
+  background-color: transparent;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: $radio-control;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $navy-oscuro;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $azul-claro;
+    outline-offset: 2px;
+  }
+
+  @media (min-width: $tableta) {
+    display: none;
+  }
+}
+
+.navegacion {
+  // En teléfono arranca cerrado y se abre con la hamburguesa.
+  display: none;
+
+  &--abierta {
+    @include columna($base);
+  }
+
+  // Desde tableta el menú está siempre a la vista, como una fila de enlaces.
+  @media (min-width: $tableta) {
+    display: flex;
+    flex-direction: row;
+    gap: $stack-sm;
+  }
+
+  &__enlace {
+    // Es un botón porque cambia de vista, no un enlace a otra página: no hay ninguna dirección a
+    // la que ir. Pero se tiene que ver y tocar como un enlace del menú.
+    padding: 12px $stack-xs;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: 0.04em;
+    text-align: left;
+    text-transform: uppercase;
+    color: $azul-claro;
+    background-color: transparent;
+    border: 0;
+    // La rayita de abajo existe siempre, transparente, para que marcar la sección actual no mueva
+    // el texto dos píxeles.
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+
+    &:hover {
+      color: $blanco;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $azul-claro;
+      outline-offset: 2px;
+    }
+
+    // En qué sección se está. No alcanza con el color: el subrayado lo dice también para quien no
+    // distingue bien los tonos.
+    &.esta-aca {
+      color: $blanco;
+      border-bottom-color: $azul-claro;
+    }
+
+    // «Salir» vive en los dos menús, pero se ve en uno solo a la vez: en teléfono acá arriba,
+    // adentro de la hamburguesa, y desde tableta abajo en el pie. Así nunca hay dos en pantalla.
+    &--solo-telefono {
+      @media (min-width: $tableta) {
+        display: none;
+      }
+    }
   }
 }
 
@@ -230,10 +368,58 @@ body {
 
 .pie {
   background-color: $navy;
-  color: #acc7ff;
+  color: $azul-claro;
 
   &__interior {
     padding-block: $gutter;
+  }
+
+  // El menú del pie, arriba del texto de derechos, tal como estaba decidido en `DISENO.md`. Son
+  // los mismos enlaces de arriba: acá no se pliegan nunca, porque son pocos y caben.
+  &__menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $stack-sm;
+    margin-bottom: $stack-sm;
+    padding-bottom: $stack-sm;
+    border-bottom: 1px solid rgb(255 255 255 / 20%);
+  }
+
+  &__enlace {
+    padding: 0;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    color: $azul-claro;
+    background-color: transparent;
+    border: 0;
+    cursor: pointer;
+
+    &:hover {
+      color: $blanco;
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $azul-claro;
+      outline-offset: 2px;
+    }
+
+    &.esta-aca {
+      color: $blanco;
+      text-decoration: underline;
+    }
+
+    // La otra mitad de la regla de «Salir»: en el pie solo se ve desde tableta, porque en teléfono
+    // ya está adentro de la hamburguesa.
+    &--desde-tableta {
+      display: none;
+
+      @media (min-width: $tableta) {
+        display: block;
+      }
+    }
   }
 
   &__texto {
@@ -244,16 +430,41 @@ body {
     line-height: 16px;
     letter-spacing: 0.04em;
   }
+
+  // El teléfono y la ubicación del negocio. En teléfono van uno debajo del otro; desde tableta,
+  // en la misma línea separados por un punto.
+  &__contacto {
+    @include columna($base);
+
+    margin: 0 0 $stack-xs;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    color: $blanco;
+
+    @media (min-width: $tableta) {
+      flex-direction: row;
+      gap: $stack-xs;
+
+      span + span::before {
+        content: "·";
+        margin-right: $stack-xs;
+      }
+    }
+  }
 }
 
 // En teléfono las tarjetas van una debajo de otra. Desde tableta, lado a lado.
 .tarjetas {
   display: grid;
   gap: $gutter;
-  grid-template-columns: 1fr;
+  // `minmax(0, 1fr)` y no `1fr`, que es la convención del proyecto desde el defecto del calendario
+  // de la pieza 2: `1fr` promete además que una columna no se encoge más de lo que su contenido
+  // necesita, y eso desborda en pantalla angosta. Ver `CLAUDE.md`, «Lo visual».
+  grid-template-columns: minmax(0, 1fr);
 
   @media (min-width: $tableta) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
 }
@@ -329,6 +540,15 @@ body {
     .campo__control {
       padding-right: 48px;
     }
+  }
+
+  // Un texto de ayuda debajo de un grupo de campos, para lo que la etiqueta sola no alcanza a
+  // explicar: qué es opcional, qué no se puede cambiar acá.
+  &__ayuda {
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: $texto-suave;
   }
 
   &__control {
@@ -439,6 +659,16 @@ body {
   border-radius: $radio-control;
 }
 
+// El aviso informativo (RN-14: «no quedan horarios en los próximos 7 días»). Comparte la forma del
+// aviso de error pero no su color: no es que algo haya fallado, es una noticia.
+.aviso {
+  &--informativo {
+    color: $indigo-texto;
+    background-color: $indigo-suave;
+    border-color: $indigo;
+  }
+}
+
 // Una etiqueta de estado, con el redondeo geométrico que pide el sistema para los datos.
 .etiqueta-estado {
   display: inline-block;
@@ -449,6 +679,563 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: $indigo;
-  background-color: #e7deff;
+  background-color: $indigo-suave;
   border-radius: $radio-control;
+}
+
+// ══════════════════════════════════════════════════════ la pantalla de reservar (pieza 2)
+
+// El saludo de arriba. Desde la pieza 3 es solo el saludo: salir se mudó al menú.
+// El saludo. Desde la pieza 3 es solo el saludo: el botón de salir se mudó al menú, así que ya no
+// hace falta repartir esta franja en dos lados.
+.saludo {
+  @include columna($base);
+
+  margin-bottom: $stack-md;
+
+  &__titulo {
+    margin: 0 0 $base;
+    // headline-md: 24px / 32px.
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 32px;
+    color: $navy-oscuro;
+  }
+}
+
+// Cada uno de los tres pasos: elegir servicio, elegir proveedor, elegir día.
+.paso {
+  @include columna;
+
+  margin-bottom: $stack-md;
+
+  &__titulo {
+    display: flex;
+    align-items: center;
+    gap: $stack-xs;
+    margin: 0;
+    // headline-md: 24px / 32px.
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 32px;
+    color: $navy-oscuro;
+  }
+
+  // El paso del calendario deja de crecer de tableta para arriba. Sin este tope, en una pantalla
+  // ancha las casillas del mes se estiran hasta unos 150px de lado —son cuadradas, así que al
+  // crecer a lo ancho crecen también a lo alto— y el mes queda enorme y desparramado. El tope va
+  // en el paso completo, no solo en el calendario, para que la tarjeta del calendario y la de los
+  // horarios queden **del mismo ancho**, una debajo de la otra.
+  &--calendario {
+    @media (min-width: $tableta) {
+      max-width: 40rem;
+    }
+  }
+
+  // El número del paso, en un círculo azul, para que se vea de un vistazo por dónde va.
+  &__numero {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 24px;
+    color: $blanco;
+    background-color: $navy;
+    border-radius: $radio-circulo;
+  }
+}
+
+// Las opciones de categoría, de servicio y de proveedor. En teléfono, una debajo de otra; desde
+// tableta, en tarjetas lado a lado que se acomodan solas según el ancho.
+.opciones {
+  display: grid;
+  gap: $stack-sm;
+  // `minmax(0, 1fr)` y no `1fr`, que es la convención del proyecto (`CLAUDE.md`, «Lo visual»): con
+  // `1fr` la columna se niega a encogerse más allá de lo que su contenido necesita, y un nombre
+  // largo como «Masaje con piedras calientes» la desbordaría en una pantalla angosta.
+  grid-template-columns: minmax(0, 1fr);
+
+  @media (min-width: $tableta) {
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  }
+}
+
+.opcion {
+  @include columna($base);
+
+  align-items: flex-start;
+  padding: $stack-sm;
+  font: inherit;
+  text-align: left;
+  color: $texto;
+  background-color: $blanco;
+  border: 1px solid $borde;
+  border-radius: $radio-tarjeta;
+  cursor: pointer;
+
+  &:hover {
+    border-color: $indigo;
+    box-shadow: 0 2px 8px rgb(0 37 84 / 5%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $navy;
+    outline-offset: 2px;
+  }
+
+  // La que está elegida se pinta sólida, para no tener que acordarse de qué se tocó.
+  &--elegida {
+    color: $blanco;
+    background-color: $indigo;
+    border-color: $indigo;
+
+    .opcion__nota {
+      color: $blanco;
+    }
+  }
+
+  &__nombre {
+    // body-lg: 18px / 28px.
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 28px;
+  }
+
+  &__nota {
+    // label-md: 14px.
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: 0.01em;
+    color: $texto-suave;
+  }
+}
+
+// ── El calendario ────────────────────────────────────────────────────────────────────────────
+
+.calendario {
+  // El ancho máximo no se pone acá sino en `.paso--calendario`, para que esta tarjeta y la de los
+  // horarios queden del mismo ancho.
+
+  &__barra {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $stack-xs;
+  }
+
+  &__mes {
+    margin: 0;
+    // headline-md: 24px / 32px.
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 32px;
+    color: $navy-oscuro;
+  }
+
+  // Las flechas de mes anterior y siguiente. 44px de lado para poder tocarlas con el pulgar.
+  &__flecha {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font: inherit;
+    font-size: 24px;
+    line-height: 24px;
+    color: $navy;
+    background-color: $blanco;
+    border: 1px solid $borde-fuerte;
+    border-radius: $radio-control;
+    cursor: pointer;
+
+    &:hover {
+      color: $blanco;
+      background-color: $navy;
+      border-color: $navy;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $indigo;
+      outline-offset: 2px;
+    }
+  }
+
+  // Las 7 columnas del mes.
+  //
+  // Va `minmax(0, 1fr)` y no `1fr` a propósito. Parecen lo mismo —«repartan el ancho en 7 partes
+  // iguales»— pero no lo son: `1fr` promete además que ninguna columna se va a encoger más allá de
+  // lo que su contenido necesita. Como cada casilla es cuadrada, ese «lo que necesita» incluía su
+  // alto, así que las 7 columnas exigían más ancho del que la tarjeta tenía en una pantalla
+  // angosta y la cuadrícula se salía por la derecha, pasándose del borde de la tarjeta.
+  //
+  // `minmax(0, 1fr)` quita esa promesa: el mínimo de cada columna pasa a ser 0, así que las 7
+  // entran siempre, por angosta que sea la pantalla, encogiéndose todas por igual.
+  &__dias-semana,
+  &__cuadricula {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: $base;
+  }
+
+  &__dias-semana {
+    // label-sm: 12px, en mayúscula, para las iniciales de los días.
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: center;
+    color: $texto-suave;
+  }
+}
+
+// Cada casilla del mes. Es un botón: al tocarla se abren los horarios de ese día.
+.dia-casilla {
+  @include columna(0);
+
+  align-items: center;
+  justify-content: center;
+  // Cuadrada, para que el mes entero entre en la pantalla de un teléfono sin deformarse.
+  aspect-ratio: 1;
+  // `min-width: 0` es la otra mitad del arreglo del desborde: sin esto, la casilla se niega a
+  // encogerse más allá de su contenido y vuelve a empujar la columna.
+  min-width: 0;
+  padding: 0;
+  font: inherit;
+  border: 1px solid transparent;
+  border-radius: $radio-control;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid $navy;
+    outline-offset: 2px;
+  }
+
+  &__numero {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+
+  // El numerito de cuántos horarios quedan libres. Ocupa su lugar siempre, aunque esté vacío, para
+  // que los números de los días no se muevan de una casilla a otra.
+  &__marca {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    min-height: 16px;
+  }
+
+  // Un día con horarios libres: blanco con borde índigo, igual que las fichas de horario que
+  // describe VISUALS.md.
+  &--con_horarios {
+    color: $indigo-texto;
+    background-color: $blanco;
+    border-color: $indigo;
+
+    &:hover {
+      color: $blanco;
+      background-color: $indigo;
+    }
+  }
+
+  // Abre, pero no queda ningún horario libre.
+  &--lleno {
+    color: $texto-suave;
+    background-color: $gris-medio;
+    border-color: $borde-fuerte;
+  }
+
+  &--feriado {
+    color: $indigo-texto;
+    background-color: $indigo-suave;
+  }
+
+  // Cerrado, o un día que ya pasó: los dos se ven igual de apagados porque para el cliente
+  // significan lo mismo — no hay nada que elegir ahí.
+  &--cerrado,
+  &--hoy_o_pasado {
+    color: $gris-texto;
+    background-color: $gris-apagado;
+  }
+
+  // El día de hoy queda subrayado con una línea gruesa abajo, para ubicarse en el mes.
+  &--hoy {
+    border-bottom: 3px solid $navy;
+  }
+
+  // Las casillas que rellenan antes del día 1: no son días, así que no se pueden tocar.
+  &--vacia {
+    background-color: transparent;
+    cursor: default;
+  }
+}
+
+// La leyenda que explica los colores del calendario.
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $stack-xs $stack-sm;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: $texto-suave;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: $base;
+  }
+
+  &__marca {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 1px solid transparent;
+    border-radius: $radio-control;
+
+    &--libre {
+      background-color: $blanco;
+      border-color: $indigo;
+    }
+
+    &--lleno {
+      background-color: $gris-medio;
+      border-color: $borde-fuerte;
+    }
+
+    &--feriado {
+      background-color: $indigo-suave;
+    }
+
+    &--cerrado {
+      background-color: $gris-apagado;
+    }
+  }
+}
+
+// ── Los horarios de un día ───────────────────────────────────────────────────────────────────
+//
+// Son las «Appointment Chips» de VISUALS.md: rectangulares, apenas redondeadas, blancas con borde
+// índigo cuando están libres, e **índigo sólido la que está elegida**. Desde la pieza 3 son botones
+// de verdad: se tocan para elegir el horario. En la pieza 2 eran etiquetas a propósito, porque
+// reservar todavía no existía y un botón que no hace nada engaña.
+
+// Las fichas van en cuadrícula, no una al lado de la otra.
+//
+// Puestas una al lado de la otra, cada ficha medía según su propio texto — y «11:00» es más
+// angosto que «09:00», porque en esta tipografía el 1 ocupa menos que el 0. Con anchos distintos,
+// las fichas de la fila de abajo no caían debajo de las de arriba.
+//
+// En cuadrícula todas las columnas miden exactamente lo mismo, así que las filas quedan alineadas
+// siempre. Son 4 columnas en teléfono y 8 desde tableta, que es justo la cantidad de horarios de
+// un día entre semana: en teléfono quedan dos filas parejas de 4, y en pantalla grande una sola
+// fila de 8. Si algún día el negocio cambia su horario y hay más o menos horarios, las fichas
+// simplemente pasan a la fila siguiente — y siguen alineadas.
+.horarios {
+  display: grid;
+  // `minmax(0, 1fr)` y no `1fr`: la misma letra chica del calendario. Con `1fr` una columna se
+  // niega a encogerse más allá de su texto y la cuadrícula se desborda en pantalla angosta.
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $stack-xs;
+
+  @media (min-width: $tableta) {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+.horario {
+  display: grid;
+  place-items: center;
+  // Desde la pieza 3 la ficha es un `<button>`, no un cartelito: se toca para elegir el horario.
+  // Un botón trae su propia tipografía del navegador, así que hay que decirle que use la de la
+  // página.
+  font-family: inherit;
+  cursor: pointer;
+  // El relleno de los lados es chico a propósito: el ancho de la ficha ya lo fija la columna, y
+  // este número solo marca el mínimo por debajo del cual el texto se apretaría.
+  padding: $stack-xs $base;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  // Números de ancho fijo: el 1 pasa a ocupar lo mismo que el 0, así las horas quedan alineadas
+  // también entre una ficha y otra, no solo las cajas.
+  font-variant-numeric: tabular-nums;
+  color: $indigo-texto;
+  background-color: $blanco;
+  border: 1px solid $indigo;
+  border-radius: $radio-control;
+
+  &:hover {
+    background-color: $indigo-suave;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $indigo;
+    outline-offset: 2px;
+  }
+
+  // El horario elegido: índigo lleno. Es lo que `VISUALS.md` pide para las «Appointment Chips»
+  // —libres en blanco con borde índigo, elegido en índigo sólido—, y se distingue del tomado sin
+  // depender solo del color, porque el tomado además está tachado.
+  &--elegido {
+    color: $blanco;
+    background-color: $indigo;
+    border-color: $indigo;
+  }
+
+  // Un horario que no está disponible.
+  //
+  // Va en **azul marino con letra blanca**, el mismo par del botón «Confirmar la reserva», por
+  // pedido de la estudiante el 2026-08-19: en gris sobre gris la hora no se alcanzaba a leer, y un
+  // dato que no se puede leer no informa nada. Se conserva el tachado, que es lo que dice «este no
+  // se puede tomar» sin depender del color — hace falta para RF-6, que pide distinguir los
+  // disponibles de los que no lo están, y para quien no distingue bien los tonos.
+  &--tomado {
+    color: $blanco;
+    background-color: $navy;
+    border-color: $navy;
+    text-decoration: line-through;
+    cursor: default;
+
+    // No cambia nada al pasarle el mouse: no hay nada que tocar.
+    &:hover {
+      background-color: $navy;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════ confirmar la reserva (pieza 3)
+
+// El resumen de lo que se va a reservar: el dato a la derecha y qué dato es a la izquierda, con una
+// rayita de 1px entre filas. Es el estilo «de reporte» que `VISUALS.md` pide para las listas de
+// datos, en vez de una caja por fila.
+.resumen {
+  display: grid;
+  margin: 0;
+
+  &__fila {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: $stack-sm;
+    padding-block: $stack-xs;
+    border-bottom: 1px solid $borde;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  &__que {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: 0.01em;
+    color: $texto-suave;
+  }
+
+  &__dato {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+    text-align: right;
+    color: $navy-oscuro;
+  }
+}
+
+.confirmacion__botones {
+  @include columna($stack-xs);
+
+  // En teléfono los dos botones van uno debajo del otro y ocupan todo el ancho; desde tableta, uno
+  // al lado del otro.
+  @media (min-width: $tableta) {
+    flex-direction: row;
+    gap: $stack-sm;
+  }
+}
+
+// ══════════════════════════════════════════════════════ mis citas (pieza 3)
+
+.citas {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cita {
+  display: grid;
+  gap: $base;
+  padding-block: $stack-sm;
+  // Una rayita de 1px entre cita y cita, no una caja por cita (`VISUALS.md` → Components, Lists).
+  border-top: 1px solid $borde;
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+
+  // Desde tableta las tres partes de la cita se acomodan en columnas: cuándo, qué, y en qué estado
+  // está. `minmax(0, 1fr)` y no `1fr`, que es la convención del proyecto.
+  @media (min-width: $tableta) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: $stack-sm;
+  }
+
+  &__cuando {
+    @include columna(0);
+  }
+
+  &__fecha {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    color: $texto-suave;
+  }
+
+  &__hora {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 32px;
+    // El 1 ocupa lo mismo que el 0, así las horas quedan alineadas de una fila a la otra.
+    font-variant-numeric: tabular-nums;
+    color: $navy-oscuro;
+  }
+
+  &__que {
+    @include columna(0);
+  }
+
+  &__servicio {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+  }
+
+  &__proveedor {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    color: $texto-suave;
+  }
+
+  // La etiqueta de estado no se estira: se queda del tamaño de su texto, arrimada al inicio.
+  .etiqueta-estado {
+    justify-self: start;
+  }
 }

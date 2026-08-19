@@ -65,6 +65,32 @@ export function crearSesiones(sesionSecreto) {
   return { abrir, leer, cerrar }
 }
 
+/**
+ * El guardia que deja pasar solo a un **cliente** con la sesión abierta, y le deja su id en el
+ * pedido para que la ruta no tenga que volver a leer la galleta.
+ *
+ * Vive acá y no adentro de un archivo de rutas porque desde la pieza 10 son **dos** grupos de
+ * endpoints los que lo necesitan —las citas y la información del cliente—, y la regla de
+ * `CLAUDE.md` es que eso se escribe en un solo lugar.
+ *
+ * Son dos rechazos distintos a propósito. **Sin sesión es `401`**: no existe la reserva como
+ * invitado (RN-9). **Con la sesión de Personal es `403`**: la cuenta es válida, pero estos endpoints
+ * guardan y leen cosas *del cliente en sesión*, y Personal no es un cliente. Sin ese rechazo, una
+ * cita quedaría guardada con el id de Personal en la columna `cliente_id`, que es el id de otra
+ * persona de la tabla `cliente`. Lo que Personal necesita es la pieza 7, con su propio recorrido.
+ */
+export function crearGuardiaDeCliente(sesiones) {
+  return function exigirCliente(pedido, respuesta, seguir) {
+    const sesion = sesiones.leer(pedido)
+
+    if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })
+    if (sesion.tipo !== "cliente") return respuesta.status(403).json({ error: "solo_clientes" })
+
+    pedido.clienteId = sesion.id
+    return seguir()
+  }
+}
+
 function buscarGalleta(cabecera, nombre) {
   if (!cabecera) return null
 

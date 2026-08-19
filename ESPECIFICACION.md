@@ -14,7 +14,8 @@ solo calendario y no dos agendas que se puedan desincronizar.
 |---|---|
 | Cliente | La persona que reserva una cita para sí misma. Tiene cuenta propia en el sistema. Se descartan "usuario" y "paciente" como sinónimos. |
 | Personal | La asistente del negocio. Su cuenta viene precargada y no se autorregistra. Reserva, cancela y reagenda en nombre de clientes que llaman por teléfono. |
-| Servicio | Lo que el negocio ofrece y el cliente contrata: un masaje, una limpieza facial. Dura una hora fija en este prototipo. |
+| Categoría | El grupo al que pertenece un servicio: «Masaje», «Facial». **No se contrata una categoría**: se contrata un servicio de adentro. Existe para que el cliente no tenga que mirar una lista plana de todo lo que el negocio ofrece. *(Agregada el 2026-08-19, pedida por la estudiante.)* |
+| Servicio | Lo que el negocio ofrece y el cliente contrata: un masaje relajante, una limpieza facial. **Cada servicio pertenece a una categoría**, y es el servicio —no la categoría— lo que queda guardado en la cita. Dura una hora fija en este prototipo, y eso vale para todos por igual. |
 | Proveedor | La persona que atiende el servicio. Un servicio puede tener uno o varios proveedores, y un proveedor puede atender varios servicios. |
 | Horario | Un espacio de una hora en la agenda de un proveedor, en una fecha y hora determinadas. Es la unidad que el cliente elige en el calendario. Se descarta "slot" como sinónimo, aunque `PROYECTO.md` lo use: el documento se escribe en español. |
 | Cita | El compromiso de que un cliente sea atendido por un proveedor, para un servicio, en un horario. Tiene un estado: **activa**, **cancelada**, **completada** o **no asistió**. |
@@ -130,6 +131,22 @@ solo calendario y no dos agendas que se puedan desincronizar.
     libre en los próximos 7 días, el cliente recibe el aviso de RN-14 y decide si cancela y
     reserva con otro.)*
 
+21. **RN-21:** El cliente puede corregir su nombre, su teléfono y su fecha de nacimiento, pero
+    **no su correo**. El correo es con lo que entra al sistema: cambiarlo es cambiar su identidad, y
+    arrastra cosas que esta entrega no resuelve —comprobar que el nuevo correo no sea de otra cuenta,
+    y confirmar que la persona de verdad tiene acceso a él antes de que su forma de entrar dependa de
+    eso—. *(Decidido el 2026-08-19, al construir RF-22. Quien necesite cambiar de correo llama al
+    negocio, que es el mismo camino de RN-4 y RN-5.)*
+
+22. **RN-22:** Cuando una categoría tiene **más de un** servicio, el cliente elige cuál quiere; cuando
+    tiene **uno solo**, el sistema lo toma por él y **no le muestra ese paso**. *(Decidido por la
+    estudiante el 2026-08-19.)*
+
+    **Es a propósito lo contrario de lo que hace RN-8 con los proveedores**, donde el paso se muestra
+    igual aunque haya uno solo, y la diferencia tiene su razón: saber **quién** te va a atender es
+    información que el cliente quiere tener incluso cuando no hay nada que elegir; saber que la
+    categoría «Facial» contiene un solo servicio no le aporta nada, y le cuesta un toque de más.
+
 ## Qué queda registrado
 
 1. **REG-1:** De cada cita: el cliente, el servicio, el proveedor, la fecha y hora de inicio, su
@@ -138,12 +155,24 @@ solo calendario y no dos agendas que se puedan desincronizar.
    canceló y quién la canceló** —el propio cliente, o Personal— porque solo Personal puede hacerlo
    dentro de la ventana de cancelación (RN-6) y el negocio necesita poder distinguir esos casos.
    Y si fue completada o no asistió: **qué cuenta de Personal la marcó y cuándo** (RN-17, RN-19).
-2. **REG-2:** De cada cliente: nombre, correo, su contraseña cifrada, y si tiene una contraseña
-   temporal pendiente de cambiar (RN-11).
+2. **REG-2:** De cada cliente: nombre, correo, su contraseña cifrada, si tiene una contraseña
+   temporal pendiente de cambiar (RN-11), y **su teléfono y su fecha de nacimiento**. *(El teléfono y
+   la fecha de nacimiento se agregaron el 2026-08-19, pedidos por la estudiante para la sección
+   «Usuario» (RF-22). Los dos son **opcionales**: una cuenta se crea sin ellos y se completan después,
+   porque exigirlos al registrarse alargaría el registro justo cuando la persona quiere reservar. **La
+   edad no se guarda: se calcula** a partir de la fecha de nacimiento cada vez que se muestra — una
+   edad guardada como número queda vieja en el próximo cumpleaños y nadie la va a ir a corregir.)*
 3. **REG-3:** De cada correo que el sistema envía: a quién, de qué cita (no aplica a los correos de
    contraseña), de qué tipo, cuándo se envió y si el envío tuvo éxito.
-4. **REG-4:** El catálogo del negocio: qué servicios existen, qué proveedores atiende cada uno, y
-   la configuración del negocio (horario semanal, feriados, ubicación, logo, colores).
+4. **REG-4:** El catálogo del negocio: **qué categorías existen y qué servicios tiene cada una**
+   (agregado el 2026-08-19 con la pieza 11), qué proveedores atiende cada servicio, y
+   la configuración del negocio (**nombre**, **teléfono**, horario semanal, feriados, ubicación,
+   logo, colores). *(El nombre y el teléfono se agregaron al construir la pieza 2, decididos por la
+   estudiante. El **nombre** hacía falta porque la aplicación lo muestra en pantalla y hasta
+   entonces estaba escrito a mano como texto de relleno inventado, que es exactamente lo que esta
+   configuración existe para evitar. El **teléfono** hacía falta porque RN-4 y RN-5 le dicen al
+   cliente que llame al negocio y hasta entonces el sistema no tenía dónde guardar a qué número:
+   un aviso que manda a llamar sin dar el número no resuelve nada.)*
 5. **REG-5:** Con lo anterior se puede contestar: cuántas citas entraron en línea y cuántas por
    teléfono, qué tan ocupada está la agenda por día y por horario, cuántas cancelaciones hubo y
    con cuánta anticipación, qué servicios y qué proveedores se piden más, y si los correos
@@ -162,13 +191,15 @@ solo calendario y no dos agendas que se puedan desincronizar.
 ### Reserva en línea (termina bien)
 
 1. El cliente entra a la aplicación con su correo y contraseña.
-2. Escoge el tipo de servicio que quiere.
-3. Si ese servicio tiene más de un proveedor, elige a quién quiere que lo atienda.
-4. Ve el calendario del mes con los horarios disponibles marcados y los no disponibles
+2. Escoge la **categoría** de lo que busca: un masaje, un facial.
+3. Si esa categoría tiene más de un servicio, escoge cuál quiere —un masaje relajante, uno
+   descontracturante— (RN-22). Si tiene uno solo, el sistema lo toma y no le pregunta.
+4. Si ese servicio tiene más de un proveedor, elige a quién quiere que lo atienda.
+5. Ve el calendario del mes con los horarios disponibles marcados y los no disponibles
    bloqueados. Puede navegar mes a mes. Solo aparecen horarios a partir del día siguiente.
-5. Escoge un horario y confirma la reserva.
-6. Recibe de inmediato un correo con la fecha, hora, servicio, proveedor y ubicación del negocio.
-7. 24 horas antes de la cita recibe un correo recordatorio con un enlace para cancelar o
+6. Escoge un horario y confirma la reserva.
+7. Recibe de inmediato un correo con la fecha, hora, servicio, proveedor y ubicación del negocio.
+8. 24 horas antes de la cita recibe un correo recordatorio con un enlace para cancelar o
    reagendar desde la aplicación.
 
 ### Reserva asistida por teléfono (termina bien)
@@ -206,6 +237,14 @@ solo calendario y no dos agendas que se puedan desincronizar.
 3. En los dos casos queda registrado qué cuenta lo marcó y cuándo.
 4. Si el cliente no se presentó, pierde esa cita: no se le repone ni se le devuelve nada. Ninguna
    cita se borra (RN-15).
+
+### El cliente revisa y completa su información
+
+1. El cliente entra a la aplicación y abre la sección «Usuario».
+2. Ve su nombre y su correo, que dio al registrarse; su teléfono y su edad, si los completó antes; y
+   **desde cuándo es cliente**, que es la fecha de su primera cita.
+3. Completa o corrige su nombre, su teléfono y su fecha de nacimiento, y guarda.
+4. El correo no se puede cambiar desde ahí (RN-21).
 
 ### Dos clientes eligen el mismo horario a la vez
 
@@ -261,8 +300,10 @@ igual a las cuentas de Personal.
    uso que vence.
 4. **RF-4:** El sistema obliga a cambiar la contraseña en el primer ingreso cuando la cuenta fue
    creada por Personal con una contraseña temporal (RN-11).
-5. **RF-5:** El sistema muestra los servicios del negocio y, para el servicio elegido, los
-   proveedores que lo atienden (RN-8).
+5. **RF-5:** El sistema muestra las **categorías** del negocio; para la categoría elegida, los
+   servicios que contiene (RN-22); y para el servicio elegido, los proveedores que lo atienden
+   (RN-8). *(Corregido el 2026-08-19: hasta entonces los servicios eran una lista plana, sin
+   categorías. La razón del cambio está en la pieza 11 de `PLAN.md`.)*
 6. **RF-6:** El sistema muestra un calendario mensual, navegable mes a mes, que distingue los
    horarios disponibles de los que no lo están, para el servicio y proveedor elegidos.
 7. **RF-7:** El sistema calcula la disponibilidad de un horario aplicando el horario del negocio y
@@ -298,6 +339,11 @@ igual a las cuentas de Personal.
     nada (RN-15).
 21. **RF-21:** El sistema permite que Personal, con su cuenta, marque una cita como **completada**
     o como **no asistió**, y registra en ambos casos qué cuenta lo hizo y cuándo (RN-17, RN-19).
+22. **RF-22:** El sistema le muestra al cliente su propia información —nombre, correo, teléfono,
+    **edad** y **desde cuándo es cliente**— y le permite completar o corregir su nombre, su teléfono
+    y su fecha de nacimiento (REG-2, RN-21). La edad se calcula a partir de la fecha de nacimiento, y
+    «desde cuándo es cliente» es la fecha de su primera cita. *(Pedido por la estudiante el
+    2026-08-19. No estaba en el encargo original.)*
 
 ## Requisitos no funcionales
 
@@ -337,7 +383,7 @@ automáticas que corran en cada cambio.
 
 | # | Pregunta | Qué se hace mientras no se resuelva |
 |---|---|---|
-| PA-1 | El expediente del cliente: qué campos tiene exactamente (padecimientos, medicamentos, contraindicaciones, tratamientos en curso, consumo de paquetes de sesiones). Ya declarado en `NEGOCIO.md` y `SEGUIMIENTO.md`. | Queda fuera de alcance. El sistema solo guarda de cada cliente lo de REG-2 y su historial de citas. |
+| PA-1 | El expediente del cliente: qué campos tiene exactamente (padecimientos, medicamentos, contraindicaciones, tratamientos en curso, consumo de paquetes de sesiones). Ya declarado en `NEGOCIO.md` y `SEGUIMIENTO.md`. | **Sigue fuera de alcance**, y sigue bloqueado por PA-2. El sistema solo guarda de cada cliente lo de REG-2 y su historial de citas. *(El 2026-08-19 se agregó la sección «Usuario» (RF-22), que muestra y deja corregir **los datos de REG-2** — nombre, correo, teléfono, fecha de nacimiento— más desde cuándo es cliente. **Eso no es el expediente:** ni padecimientos, ni medicamentos, ni contraindicaciones, ni tratamientos, ni paquetes. La estudiante decidió ese día dejar esa parte afuera, porque decidir cómo se registra un paquete es una decisión de negocio —quién dice que alguien lo compró y cómo se descuenta una sesión— y no una decisión técnica.)* |
 | PA-2 | Cómo se registra que un cliente "tiene" un paquete de sesiones, dado que el sistema no maneja dinero. Bloquea a PA-1. | No se registra nada de paquetes ni de pagos. |
 
 ## Referencias

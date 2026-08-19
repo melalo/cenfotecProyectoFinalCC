@@ -22,9 +22,9 @@
 | Comando | Qué hace |
 |---|---|
 | `npm install` | Instala las dependencias. |
-| `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta. Hoy carga solo la cuenta de Personal; los servicios, proveedores, horario y feriados llegan con la pieza 2. |
+| `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita: esas se crean desde la aplicación a partir de la pieza 3. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
-| `npm test` | Corre las pruebas automáticas. Hoy son las 14 de la pieza 1; los criterios de aceptación CA-1 y CA-2 se agregan en la pieza 3, y CA-3 en las piezas 5 y 7. |
+| `npm test` | Corre las pruebas automáticas. Hoy son **95**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10 y 12 de la pieza 11. **Los criterios de aceptación CA-1 y CA-2 ya están cubiertos** (pieza 3); CA-3 se agrega en las piezas 5 y 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
@@ -47,6 +47,11 @@ proyectoFinal/
 │   ├── base-de-datos.js   abre el archivo SQLite y crea las tablas si no existen
 │   ├── contrasenas.js     cifrar una contraseña y comprobar si una coincide
 │   ├── sesion.js          escribir, leer y borrar la cookie firmada de la sesión
+│   ├── tiempo.js          fechas y horas, siempre en la hora del negocio (Costa Rica)
+│   ├── catalogo.js        preguntas al catálogo: si un servicio existe, quién lo atiende
+│   ├── clientes.js        los datos del cliente: leerlos, comprobarlos y guardarlos
+│   ├── disponibilidad.js  qué horarios están libres — la regla, en un solo lugar
+│   ├── reservas.js        crear una cita — el único que toca el estado de una cita
 │   └── rutas/             un archivo por grupo de endpoints del API
 ├── guiones/             comandos de mantenimiento (hoy: cargar los datos de prueba)
 ├── estilos/             los archivos .scss que se escriben a mano
@@ -86,7 +91,29 @@ cada pieza en `PLAN.md`, y se copian de ahí tal cual.
 - Una regla de negocio se escribe **en un solo lugar** del servidor, y quien la necesite la llama.
   Nunca copiada en dos archivos: si cambia, cambia en uno.
 - El frontend **no decide reglas de negocio** (`DISENO.md`, límite del componente Interfaz). Si
-  una pantalla necesita saber si algo se permite, se lo pregunta al API.
+  una pantalla necesita saber si algo se permite, se lo pregunta al API. Y no solo *si*: también
+  **por qué**. Un día del calendario no llega con una lista vacía para que la pantalla adivine si
+  está cerrado, es feriado o ya pasó — llega con un campo `estado` que lo dice.
+
+### Fechas y horas
+
+Quedaron fijadas al construir la pieza 2, que es la que trae el calendario. Son la fuente de casi
+todos los errores posibles de este proyecto, así que las reglas son estrictas:
+
+- **La hora que vale es la del negocio, que está en Costa Rica (UTC−6)**, y está escrita en
+  `servidor/tiempo.js`. **Nunca se usa la hora de la máquina** donde corre el servidor ni la del
+  navegador de quien mira: si se usara, el mismo calendario mostraría días distintos según dónde se
+  levante la aplicación, y la regla «no hay citas para hoy» (RN-4) se rompería. Costa Rica no
+  cambia de hora en verano, así que alcanza con restar seis: no hace falta ninguna librería.
+- **Todo lo que tenga que ver con fechas se escribe en `servidor/tiempo.js`**, no suelto donde haga
+  falta. Si una pieza nueva necesita una cuenta de fechas que no está ahí, se agrega ahí.
+- **Un momento se escribe siempre igual:** `2026-09-02T10:00:00-06:00`, con el desfase al final. Es
+  el mismo texto que viaja al navegador, que el navegador devuelve, y que queda guardado en la
+  base. Un solo formato en todo el proyecto, y ninguna conversión donde equivocarse.
+- **Nada averigua la hora por su cuenta.** La aplicación recibe un `reloj` —una función que
+  devuelve el momento actual— y lo va pasando hacia adentro. En `npm start` es el reloj de verdad;
+  en las pruebas es un reloj parado en una fecha fija. Sin eso, una prueba del calendario diría
+  cosas distintas según el día en que se corra, y una prueba así no comprueba nada.
 
 ### Lo visual
 
@@ -96,6 +123,11 @@ cada pieza en `PLAN.md`, y se copian de ahí tal cual.
 - **Los estilos se escriben mobile-first.** Primero cómo se ve en un teléfono; las pantallas más
   grandes solo agregan, más abajo, dentro de bloques `@media (min-width: …)`. **Nunca
   `max-width`.** Los dos cortes son 48rem (768px) y 64rem (1024px).
+- **Toda cuadrícula de ancho repartido se escribe `minmax(0, 1fr)`, nunca `1fr` a secas.** Parecen
+  lo mismo, pero `1fr` promete además que una columna no se encoge más allá de lo que su contenido
+  necesita, y eso desborda el contenedor en pantalla angosta apenas las casillas tengan alto mínimo
+  o proporción fija. Pasó de verdad con el calendario de la pieza 2 — el detalle está en la entrada
+  del 2026-08-19 de `BITACORA.md`.
 - Todas las medidas son múltiplos de **4px**, la unidad base del sistema.
 - **Las etiquetas de los campos siempre visibles**, nunca flotando dentro del campo: lo pide el
   sistema por accesibilidad.
@@ -115,9 +147,11 @@ cada pieza en `PLAN.md`, y se copian de ahí tal cual.
 - **Detrás de una imagen de fondo va siempre el color del sistema como respaldo**, con el color
   escrito primero y la imagen encima. Si la imagen tarda o falta, la página se ve igual y nunca en
   blanco.
-- Los colores y el logo del **negocio** (los que se cargan como configuración, RF/REG-4) llegan con
-  la pieza 2 y son otra cosa: `VISUALS.md` es la apariencia de la aplicación; la configuración es la
-  marca del negocio que la usa.
+- Los colores y el logo del **negocio** (los que se cargan como configuración, REG-4) **existen
+  desde la pieza 2, y la aplicación no los aplica**: se guardan en `configuracion_negocio` y se
+  devuelven en `GET /api/negocio`, pero ninguna pantalla los usa para pintarse. Son otra cosa:
+  `VISUALS.md` es la apariencia de **la aplicación**; la configuración es la marca de **quien la
+  usa**. Aplicarlos pisaría el sistema visual aprobado.
 
 ### Pruebas
 
@@ -128,6 +162,30 @@ cada pieza en `PLAN.md`, y se copian de ahí tal cual.
   tocan `datos/reservas.sqlite`, la base de trabajo.
 - Hablan con el API de verdad, por HTTP, como lo haría el navegador. No se prueba una imitación
   del servidor: se prueba el servidor.
+- **Una prueba no se ata a cuántos datos de demostración hay hoy.** Si comprueba «hay dos servicios»,
+  se rompe el día que el negocio agregue un tercero, sin que nada esté mal. Comprobá que estén los que
+  importan, no cuántos son. Pasó dos veces: al sumarse Luisa (pieza 2) y al sumarse los tipos de
+  masaje (pieza 11).
+- **Los comandos también hay que correrlos.** `npm test` no ejecuta `npm run datos` ni `npm start`, así
+  que un error en esos guiones no lo detecta ninguna prueba. Pasó en la pieza 11: `npm run datos` quedó
+  roto por un nombre que había cambiado, y solo se vio al correrlo.
+- **Ninguna prueba mira la página dibujada.** Todas hablan con el API, así que un defecto visual
+  —una cuadrícula desbordada, un `hidden` que no esconde— no lo detecta ninguna. Por eso **una pieza
+  no se cierra sin que una persona abra el navegador y mire.** Los tres defectos visuales
+  encontrados hasta hoy (dos en la pieza 2, uno en la pieza 3) salieron todos de ahí.
+
+### Integración continua
+
+Existe desde la pieza 3. Las 95 pruebas corren solas en **cada push y cada pull request**, en
+**Node 20 y Node 24**, configuradas en `.github/workflows/pruebas.yml`.
+
+- **Ese archivo vive en la raíz del repositorio, no en esta carpeta.** Es la única excepción a la
+  regla «todo el trabajo queda adentro de la carpeta del día», autorizada por la estudiante el
+  2026-08-19: GitHub solo ejecuta los archivos que están en `.github/workflows/` en la raíz.
+- **Correr en Node 20 no es un detalle:** es lo que comprueba la promesa del `README.md`. Si una
+  dependencia nueva exige una versión mayor, la integración continua se pone roja y hay que elegir
+  la dependencia, no cambiar la promesa. Ya pasó con `better-sqlite3` — ver `DISENO.md`,
+  «Decisiones tomadas al construir la pieza 3».
 
 ## Restricciones
 
@@ -139,8 +197,10 @@ confidenciales), este proyecto tiene estas:
   de esta máquina puede quedar escrita en el código, y ninguna dependencia puede necesitar
   compilarse o instalarse aparte. Por eso el cifrado de contraseñas y el corredor de pruebas usan
   lo que Node ya trae (ver `DISENO.md`, «Decisiones tomadas al construir la pieza 1»).
-- **Node.js 20 o superior**, tal como lo promete el `README.md`. Nada del código puede pedir una
-  versión más nueva.
+- **Node.js 20 o superior**, tal como lo promete el `README.md`. Nada del código **ni ninguna
+  dependencia** puede pedir una versión más nueva. Desde la pieza 3 esto está **comprobado en cada
+  push**, no solo escrito: la integración continua corre las pruebas en Node 20 y en Node 24.
+  `better-sqlite3` queda fijado en la línea `^12.11.1` por esta razón — la 13 exige Node 22.
 - **Un solo servicio externo:** el correo (Resend), declarado como frontera técnica en
   `PROYECTO.md` sección 6. No se agregan más servicios de terceros.
 - **La lista de feriados de Costa Rica se precarga como dato fijo** (`PROYECTO.md` sección 6): no

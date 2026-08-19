@@ -422,3 +422,477 @@ dar por buena el agente.
   sino en la salida literal de los comandos**, copiada ahí para que se pueda contrastar. Es
   exactamente el control que la «Declaración de supervisión» de esta bitácora describe, aplicado
   por primera vez a un caso real.
+
+### 2026-08-18 — construcción de la pieza 2
+
+Segunda sesión de construcción: **la pieza 2 de `PLAN.md`, «Elegir servicio y proveedor, y ver el
+calendario»**, que es donde vive el cálculo de disponibilidad. Antes de escribir código se leyeron
+`ESPECIFICACION.md`, `DISENO.md`, la pieza 2 de `PLAN.md`, `VISUALS.md`, el `CLAUDE.md` de la
+carpeta, `PROXIMA-SESION.md` y el código de la pieza 1.
+
+**Cuatro datos faltaban y se preguntaron en vez de inventarlos.** Se buscaron en los siete
+documentos de la carpeta y ninguno los tenía. La estudiante decidió los cuatro:
+
+1. **Qué feriados de Costa Rica se cargan, y si se trasladan al lunes.** → Las fechas de ley **en
+   su día original, sin trasladarse**, para 2026 y 2027. Razón: la comprobación 9 del plan dice
+   literalmente «mirar el 15 de setiembre», y si el feriado se corriera al lunes ese día quedaría
+   libre y la comprobación dejaría de comprobar lo que dice. Se cargan dos años porque Jueves y
+   Viernes Santo cambian de fecha cada uno.
+2. **Si la configuración del negocio guarda nombre y teléfono.** → **Sí, los dos.** El plan solo
+   nombraba horario, feriados, ubicación, logo y colores, pero el pie de página decía «© 2026
+   Belleza y Bienestar» como texto de relleno inventado —justo lo que esa configuración existe para
+   evitar—, y el sistema le dice al cliente «llame al negocio» (RN-4, RN-5) sin tener dónde guardar
+   a qué número. **Esto obligó a corregir REG-4 de `ESPECIFICACION.md` y `DISENO.md` antes de
+   escribir una línea de código**, que es el orden que manda el `README.md`.
+3. **Si se construían ya el menú del pie y el botón «hamburguesa»**, pendientes de la pieza 1 «hasta
+   que existan secciones que enlazar». → **No: se posponen a la pieza 3.** Razón: la pieza 2 no
+   trae secciones distintas, trae un solo recorrido en pasos —elegir servicio, elegir proveedor,
+   ver el calendario— dentro de la misma pantalla. La primera sección de verdad, «Mis citas», llega
+   con la pieza 3. Anotado ahí en `DISENO.md`.
+4. **Cómo se ve el calendario.** → **Cuadrícula del mes, y los horarios se abren al tocar un día**,
+   en vez de una lista con todos los horarios de todos los días a la vista. Razón: un mes entero
+   son unas 200 fichas de horario.
+
+**Decisiones tomadas y su justificación** *(las nueve quedaron en `DISENO.md`, sección «Decisiones
+tomadas al construir la pieza 2», con sus alternativas)*:
+
+- **La hora que vale es la de Costa Rica (UTC−6), escrita en el código**, no la de la máquina donde
+  corra el servidor. Razón: si se usara la hora de la máquina, el mismo calendario mostraría días
+  distintos según dónde se levante la aplicación y la regla «no hay citas para hoy» (RN-4) se
+  rompería para quien lo corra desde otra zona horaria. Costa Rica no cambia de hora en verano, así
+  que alcanza con restar seis y **no hace falta ninguna librería nueva** — que es la restricción de
+  «cero dependencias que instalar» del `README.md`.
+- **La configuración del negocio se partió en tres tablas** (`configuracion_negocio`,
+  `horario_negocio` y `feriado`) en vez de la única que nombraba el plan. Razón: el horario semanal
+  son varias filas y los feriados muchas más; meterlos adentro de una sola fila los volvería un
+  texto apelmazado que nadie puede mirar ni corregir con un visor de SQLite — y la comprobación 12
+  pide justamente tocarlos a mano. El bloque *Produce* del plan se corrigió con esta razón.
+- **El horario del negocio se guarda como tramos de atención, y el almuerzo es el hueco entre
+  dos.** Entre semana hay dos tramos (9–12 y 13–18); el sábado uno (9–13); el domingo ninguno, y
+  por eso está cerrado sin ninguna regla especial. Razón: un almuerzo tratado como dato aparte
+  sería un lugar más donde equivocarse — exactamente el riesgo que `PROYECTO.md` §7.6 manda vigilar.
+- **La tabla `cita` se creó en esta pieza, vacía.** No estaba previsto —la crea la pieza 3—, pero la
+  comprobación 11 exige insertar a mano una cita activa y ver que su horario deja de aparecer libre,
+  y sin la tabla esa comprobación no se puede correr. **Las columnas no se inventaron:** se copiaron
+  del bloque *Produce* de la pieza 3, que es donde el plan las fija.
+- **Un momento se escribe siempre igual**, con el desfase adentro: `2026-09-02T10:00:00-06:00`. Es
+  el mismo texto que viaja al navegador, que el navegador devuelve y que queda guardado en la base:
+  un solo formato en todo el proyecto y ninguna conversión donde equivocarse.
+- **La aplicación recibe el reloj como dato**, en vez de averiguar la hora por su cuenta. Razón: sin
+  eso, una prueba del calendario diría cosas distintas según el día en que se corra —«mañana hay
+  horarios» falla los sábados— y una prueba así no comprueba nada. En `npm start` es el reloj de
+  verdad; en las pruebas está parado en el martes 1 de setiembre de 2026.
+- **El servidor dice *por qué* un día no ofrece horarios**, con un campo `estado` que vale
+  `cerrado`, `feriado`, `hoy_o_pasado`, `lleno` o `con_horarios`. Razón: el frontend no decide
+  reglas de negocio (`DISENO.md`), y dejarlo deducir el motivo de una lista vacía sería hacerlo
+  decidir.
+- **El logo y los colores del negocio se guardan pero no se aplican.** Razón: ya estaba resuelto en
+  `CLAUDE.md` — `VISUALS.md` es la apariencia de la aplicación, y el logo y los colores del negocio
+  son la marca de quien la usa. Aplicarlos pisaría el sistema visual aprobado.
+- **El catálogo y el calendario piden sesión abierta; los datos del negocio no.** Razón: no existe
+  la reserva como invitado (RN-9), así que un calendario que se pudiera mirar sin cuenta no llevaría
+  a ninguna parte. La excepción es el nombre y el teléfono del negocio, que el pie de página muestra
+  también en la pantalla de entrar.
+- **Ningún color del calendario se inventó.** `VISUALS.md` nombra «un verde de éxito y un ámbar de
+  alerta» para los estados pero **no dice cuáles son**, así que no se usaron: los cinco tonos con
+  los que se distinguen los días salen de la lista de colores del propio archivo, y en el `.scss`
+  cada uno tiene al lado con qué nombre aparece ahí.
+
+**Lo que la construcción obligó a corregir hacia atrás** (dentro de la carpeta, como manda el
+`CLAUDE.md` de la carpeta madre):
+
+- `ESPECIFICACION.md` — **REG-4** ahora incluye el nombre y el teléfono del negocio, con la razón
+  de cada uno.
+- `DISENO.md` — la entidad «Configuración del negocio» y el componente «Catálogo» incluyen nombre y
+  teléfono; se agregó la sección «Decisiones tomadas al construir la pieza 2» con las nueve
+  decisiones; y en «Pendientes del sistema visual» el menú y la hamburguesa pasaron a la pieza 3
+  mientras que el pendiente del nombre real del pie quedó **resuelto**.
+- `PLAN.md` — el bloque *Produce* de la pieza 2 se corrigió entero: las tres tablas de
+  configuración, la tabla `cita` creada acá, el endpoint `GET /api/negocio` que no existía, el
+  campo `estado` de cada día, los códigos de error de cada endpoint, el formato del `inicio` y la
+  decisión de la zona horaria. Cada corrección lleva escrita su razón.
+- `CLAUDE.md` de `proyectoFinal/` — la tabla de comandos (qué carga hoy `npm run datos`, y que
+  `npm test` son 40 pruebas), la estructura de carpetas con los dos archivos nuevos del servidor,
+  una sección nueva de **Fechas y horas** con las cuatro reglas estrictas, y la aclaración de que
+  el logo y los colores del negocio ya existen y **no se aplican**.
+- `README.md` — el estado actual, los datos que carga `npm run datos`, las 40 pruebas y la
+  estructura del código.
+
+**Estado en que quedó la pieza al terminar el 2026-08-18: CONSTRUIDA, no cerrada.** Las 40 pruebas
+pasaban —26 nuevas, escritas antes del código y vistas fallar primero: la corrida previa dio «pass
+14, fail 26»— y las 12 comprobaciones del plan se corrieron contra la aplicación escuchando en
+`http://localhost:3000`, con sus resultados copiados en el bloque `Evidencia`. Faltaba la revisión
+visual en el navegador, que es la parte que el agente no puede dar por buena: todo lo anterior se
+comprobó por HTTP y leyendo la base. Mismo criterio que se aplicó en la pieza 1.
+
+**La pieza quedó CERRADA el 2026-08-19**, después de la revisión visual de la estudiante y de los
+cuatro ajustes que salieron de ella (los dos pedidos y los dos hallazgos que están más abajo). Las
+pruebas quedaron en 41.
+
+**Encargos determinantes:** ninguno nuevo. Se construyó contra lo ya escrito, más las cuatro
+decisiones de arriba.
+
+**Entradas de gobernanza:** ninguna en esta sesión. No se detectó ninguna afirmación falsa del
+agente.
+
+**Ajuste del 2026-08-19, pedido por la estudiante con la pieza ya construida:** **un día entero
+bloqueado no dibuja sus fichas de horario, solo el mensaje que explica el motivo.** Aplica a **hoy**
+(RN-4) y a los **feriados** (RN-2). Razón: en los dos casos el día completo está fuera de juego, y
+ocho fichas tachadas que nadie puede tomar solo estorban — el mensaje ya dice por qué, y en el caso
+de hoy además dice a qué número llamar. **El API no se tocó:** sigue devolviendo los horarios con
+`disponible: false`, porque las piezas siguientes los van a necesitar; lo único que cambió es lo que
+la pantalla dibuja, con una condición en la vista. Los días donde solo *algunos* horarios están
+tomados **sí siguen mostrando cuáles**, que es lo que RF-6 pide distinguir. Se corrigieron las
+comprobaciones 7 y 9 del bloque `Evidencia` de `PLAN.md`, que describían el comportamiento anterior.
+
+**Segundo ajuste del 2026-08-19: se agregó una tercera proveedora, «Luisa», a la limpieza facial.**
+Pedido de la estudiante, con esta razón: la limpieza facial tenía una sola proveedora, así que el
+cliente no elegía nada — y elegir con quién lo atienden es justamente lo que RN-8 le da. Quedó:
+masaje relajante con Ana y Carlos, limpieza facial con Ana y Luisa.
+
+- **El agente avisó del choque antes de tocar nada.** La comprobación 2 de `PLAN.md` decía
+  literalmente «Elegir "Limpieza facial": aparece solo Ana», y había una prueba automática que lo
+  verificaba. Ese caso no era casualidad: existía para probar la segunda mitad de RN-8, que cuando
+  un servicio tiene **un solo** proveedor igual quede claro quién atiende. Se le presentó a la
+  estudiante con sus tres opciones y ella eligió agregar a Luisa en la limpieza facial.
+- **La cobertura de ese caso no se perdió: se mudó.** En vez de depender de que los datos de
+  demostración tengan un servicio de un proveedor único, hay ahora una **prueba automática que se
+  crea el suyo** —un servicio «Reflexología» con una sola proveedora— y comprueba que el sistema
+  igual dice quién es. La regla queda protegida aunque los datos de demostración vuelvan a cambiar.
+  Las pruebas pasaron de 40 a **41**.
+- **Se corrigieron hacia atrás** la comprobación 2 de `PLAN.md` —con la nota de qué cambió, cuándo y
+  por qué, en vez de reescribirla en silencio—, su fila en el bloque `Evidencia`, el conteo de
+  pruebas, y la sección «Datos de prueba» del `README.md`.
+
+**Hallazgo del 2026-08-19 — la cuadrícula del calendario se salía de su tarjeta.** Lo encontró la
+estudiante en la revisión visual, con una captura de pantalla: en pantalla angosta, la columna del
+domingo quedaba cortada por el borde derecho de la tarjeta. Vale la pena anotarlo porque **ninguna
+de las 41 pruebas automáticas lo habría detectado**: todas hablan con el API por HTTP y ninguna
+mira la página dibujada. Es exactamente la razón por la que una pieza no se cierra sin que alguien
+mire la pantalla.
+
+- **Qué pasaba, y por qué no era el padding.** Las 7 columnas del mes estaban escritas como `1fr`
+  («repartan el ancho en partes iguales»). `1fr` tiene una letra chica que casi nadie recuerda:
+  **promete además que una columna nunca se encoge más allá de lo que su contenido necesita**. Como
+  cada casilla era cuadrada (`aspect-ratio: 1`) y tenía `min-height: 44px` —el tamaño mínimo para
+  poder tocarla con el pulgar—, ese «lo que necesita» incluía 44px de **ancho**. Siete columnas de
+  44px más seis espacios de 4px son **332px que la cuadrícula exigía sí o sí**, más de lo que la
+  tarjeta tenía por dentro en una pantalla angosta. El padding de la tarjeta estaba funcionando
+  perfectamente: era la cuadrícula la que se pasaba por encima de él.
+- **El arreglo:** `minmax(0, 1fr)` en vez de `1fr`, que quita esa promesa y deja que el mínimo de
+  cada columna sea 0, más `min-width: 0` en la casilla. Con eso las 7 columnas entran siempre, por
+  angosta que sea la pantalla, encogiéndose todas por igual. Se quitó el `min-height: 44px` fijo,
+  que era lo que forzaba el ancho.
+- **Se corrigió además el problema opuesto, que todavía no se había visto:** en pantalla ancha las
+  casillas se estiraban hasta unos 150px de lado —al ser cuadradas, crecer a lo ancho las hacía
+  crecer a lo alto— y el mes quedaba enorme. El calendario ahora deja de crecer a las 40rem.
+- **Lo que queda anotado como aprendizaje:** una regla `1fr` en una cuadrícula cuyas casillas
+  tengan alto mínimo o proporción fija es un desborde esperando ocurrir. En este proyecto, **toda
+  cuadrícula de ancho repartido se escribe `minmax(0, 1fr)`**. Quedó como convención en `CLAUDE.md`.
+
+**Segundo hallazgo visual del 2026-08-19 — las fichas de horario no quedaban alineadas entre filas.**
+También lo encontró la estudiante mirando la pantalla, con otra captura. Las ocho fichas de un día
+—09:00, 10:00, 11:00, 13:00 arriba y 14:00 a 17:00 abajo— no formaban columnas parejas.
+
+- **La causa era el ancho de los dígitos.** Las fichas estaban acomodadas una al lado de la otra
+  (`flex`), así que cada una medía según su propio texto. Y en Manrope, como en casi toda
+  tipografía, **el `1` es más angosto que el `0`**: «11:00» ocupa menos que «09:00». Con anchos
+  distintos, la ficha de abajo nunca caía justo debajo de la de arriba. No era un problema de
+  espaciado ni de relleno: era que ninguna ficha medía lo mismo que otra.
+- **El arreglo, en dos partes.** Las fichas pasaron a **cuadrícula** —4 columnas en teléfono y 8
+  desde tableta, que es la cantidad de horarios de un día entre semana—, así que todas miden
+  exactamente lo mismo y las filas quedan alineadas siempre. Y se agregó
+  `font-variant-numeric: tabular-nums`, que hace que el 1 ocupe lo mismo que el 0, para que las
+  horas queden alineadas también **dentro** de cada ficha, no solo las cajas.
+- **De paso se emparejó el ancho de las dos tarjetas** del paso 3. El tope de 40rem que se le había
+  puesto al calendario esa misma mañana dejaba la tarjeta del calendario más angosta que la de los
+  horarios en pantalla grande; el tope se movió al paso completo, así las dos quedan iguales.
+- **Los dos hallazgos del día tienen la misma moraleja:** las 41 pruebas automáticas hablan con el
+  API y ninguna mira la página dibujada, así que ninguna de las dos cosas se podía detectar sin que
+  una persona abriera el navegador. La revisión visual no es un trámite al final: es la única
+  comprobación que cubre esta clase de errores.
+
+### 2026-08-19 — construcción de la pieza 3: reservar un horario
+
+*El encargo fue una sola frase: «La carpeta del día es `proyectoFinal`. Vamos a construir la pieza 3
+del plan». Sin explicaciones del proyecto, a propósito: si el agente no lo entendía leyendo los
+documentos, es que faltaba algo escrito.*
+
+**Cuatro preguntas que el agente hizo antes de escribir una línea**, porque los documentos no las
+resolvían:
+
+1. **Dónde va la configuración de integración continua.** GitHub solo ejecuta los archivos que están
+   en `.github/workflows/` **en la raíz del repositorio**, y la regla del `CLAUDE.md` de la carpeta
+   madre dice que todo el trabajo del día queda adentro de la carpeta del día. → **Autorizado crearlo
+   en la raíz**, como única excepción, con la razón escrita en el propio archivo y en `DISENO.md`.
+   Sin eso, la comprobación 7 de la pieza no se podía cumplir de ninguna manera.
+2. **Cómo se ve el momento de confirmar la reserva.** → **Una tarjeta abajo, en la misma página**, no
+   una ventana emergente. `VISUALS.md` permitía las dos, y se eligió la tarjeta porque el calendario
+   sigue a la vista mientras se confirma.
+3. **Cómo conviven «Reservar» y «Mis citas».** → **Dos vistas que se alternan**, no dos secciones
+   apiladas. Es lo que convierte el menú en un menú de verdad, y evita una página larguísima en
+   teléfono.
+4. **Dónde va el botón «hamburguesa».** `DISENO.md` decía que el menú va en el pie, pero no decía
+   dónde va la hamburguesa. → **En la barra azul del encabezado**, porque las tres rayitas en el pie
+   de la página son un lugar donde nadie las busca. Los mismos dos enlaces quedan en los dos lados.
+
+**Cómo se resolvió CA-1, que era el trabajo técnico de la pieza.** «Comprobar que el horario está
+libre» y «guardar la cita» son **dos movimientos**, y entre uno y otro cabe la reserva de otra
+persona: esa es la carrera. La solución tiene dos candados, uno adentro del otro:
+
+- **Un índice único parcial en la base de datos:** `(proveedor_id, inicio)` pero solo
+  `WHERE estado = 'activa'`. Es el candado de verdad — no hace la segunda inserción improbable, la
+  hace **imposible**. Es **parcial** a propósito: un índice único normal dejaría el horario de una
+  cita cancelada bloqueado para siempre, y RN-7 («cancelar libera el horario de inmediato») no se
+  podría cumplir nunca.
+- **Una transacción `immediate`**, que junta la comprobación y la inserción en un solo movimiento.
+
+La comprobación previa se conservó igual, y no por seguridad: es la única que sabe **por qué** se
+rechaza —feriado, domingo, hoy— y puede dar el mensaje correcto. El índice solo sabe decir «no». Se
+comprobó aparte, con un guion suelto, que el candado es de la base y no del código: insertando dos
+veces a mano la misma cita activa, la segunda se estrella contra `SQLITE_CONSTRAINT_UNIQUE`.
+
+**Tres huecos del plan que la construcción destapó**, corregidos en el bloque *Produce* de la pieza 3
+de `PLAN.md` **antes** de escribir el código, con la nota de qué cambió y por qué:
+
+1. **El plan no decía cómo se cumple CA-1**, solo que se tenía que cumplir. Se agregó el índice único
+   parcial al bloque.
+2. **El plan no decía qué pasa si reserva la cuenta de Personal.** Las dos cuentas de la pieza 1
+   tienen sesión, así que había que decidir algo. → **`403 solo_clientes`**. Sin ese rechazo, la cita
+   quedaría guardada con el id de Personal en la columna `cliente_id`, que es el id de **otra
+   persona** de la tabla `cliente`: una cita de alguien que nunca la pidió. Reservar en nombre de
+   quien llama por teléfono es la pieza 7, con su propio recorrido.
+3. **El plan definía dos rechazos y no decía qué contestar en los demás casos** —un horario de un
+   feriado, de un domingo, de la hora del almuerzo, de las 3 de la mañana—. → **El mismo
+   `409 horario_no_disponible`**, porque el nombre del error ya los describe con exactitud y no hacía
+   falta inventar un tercer código.
+
+**Hallazgo del 2026-08-19 — el atributo `hidden` no estaba escondiendo nada.** Este no lo encontró
+una captura de pantalla: lo encontró el agente leyendo el CSS antes de escribir las dos vistas
+nuevas, que dependen justamente de `hidden`.
+
+- **Qué pasaba.** El HTML tiene un atributo `hidden` que quiere decir «esto no se muestra», y el
+  navegador lo cumple con una regla propia: `[hidden] { display: none }`. Pero **cualquier regla que
+  escribamos nosotros le gana a la del navegador**, sin importar cuál sea más específica. `.paso` y
+  `.tarjeta` dicen `display: flex`, así que el paso 2 («Elegí quién te atiende») y la tarjeta del
+  detalle del día **se estaban viendo desde el arranque, vacíos**, aunque el HTML dijera `hidden`.
+- **El arreglo:** una sola regla, `[hidden] { display: none !important }`. Es el único `!important`
+  del archivo y tiene esa razón escrita al lado.
+- **Por qué importa como aprendizaje:** es el **tercer** defecto visual del proyecto y, como los dos
+  de la pieza 2, **ninguna de las 64 pruebas automáticas lo podía detectar** — todas hablan con el
+  API y ninguna mira la página dibujada. Quedó anotado en la sección «Pruebas» del `CLAUDE.md` de la
+  carpeta: una pieza no se cierra sin que una persona abra el navegador.
+
+**Hallazgo del 2026-08-19 — la promesa de «Node 20 o superior» era falsa.** Lo destapó montar la
+integración continua, que fue lo primero del proyecto en correr fuera de la máquina de la estudiante.
+
+- **Qué pasaba.** `better-sqlite3` estaba en la versión 13, que en su propio `package.json` exige
+  **Node 22 o superior**. El `README.md` y el `CLAUDE.md` prometen que el proyecto corre con Node 20,
+  y el `CLAUDE.md` lo tiene además como restricción dura. Nadie lo había notado porque en la máquina
+  de la estudiante corre Node 24, donde todo funciona.
+- **Por qué no era un detalle.** La restricción del proyecto no es solo la versión: es que **ninguna
+  dependencia necesite compilarse** en la máquina de quien clone el repositorio. En Node 20,
+  `better-sqlite3` 13 no encuentra un binario listo y trata de compilarse, lo que pide herramientas
+  que nadie prometió instalar.
+- **El arreglo, y de dónde salió el criterio.** Se bajó la dependencia a `^12.11.1`, que soporta Node
+  20 a 26. La alternativa era cambiar la promesa del README a «Node 22 o superior», y se descartó por
+  un precedente ya escrito en `DISENO.md`: al elegir `dotenv` en la pieza 1 se dijo que «cambiar el
+  README sería cambiar una promesa del curso para acomodar una comodidad del código». Las 64 pruebas
+  siguen pasando con la versión 12.
+- **El control que queda:** la integración continua corre las pruebas en **Node 20 y Node 24**. La
+  promesa del README pasó de ser una frase a ser algo comprobado en cada push.
+
+**Lo que quedó construido:** `POST /api/citas` y `GET /api/citas`; la regla de crear una cita en
+`servidor/reservas.js` (el componente Reservas, que las piezas 5, 7 y 8 van a seguir llenando); la
+pregunta «¿este horario se puede tomar?» agregada a `servidor/disponibilidad.js`, que es donde ya
+vivía esa regla, en vez de escribirla de nuevo; `servidor/catalogo.js`, nuevo, con las dos preguntas
+al catálogo que antes estaban adentro del archivo de rutas de la pieza 2; el índice único parcial; el
+menú de navegación con su hamburguesa; las dos vistas; la tarjeta de confirmar; la sección «Mis
+citas»; y la integración continua en la raíz del repositorio.
+
+**Dos cambios pedidos en la revisión visual, el mismo 2026-08-19**, los dos con la razón de la
+estudiante:
+
+1. **El botón «Cerrar sesión» se mudó adentro del menú y se llama «Salir».** Estaba al lado del
+   saludo desde la pieza 1, cuando no existía ningún menú y era el único lugar posible. Ahora que hay
+   menú, salir es una opción de navegación como las otras dos. Queda escrito en los dos menús pero
+   **se ve en uno solo a la vez**: en teléfono adentro de la hamburguesa, y desde tableta abajo en el
+   pie, tal como lo pidió. El saludo volvió a ser solo el saludo.
+2. **Un horario ya tomado pasó de gris apagado a azul marino con letra blanca**, el mismo par del
+   botón «Confirmar la reserva». Razón de la estudiante: en gris sobre gris **la hora no se alcanzaba
+   a leer**, y un dato que no se puede leer no informa nada. No se inventó ningún color: son el
+   `primary` y el `on-primary` de `VISUALS.md`, y ese archivo describe las fichas libres y las
+   elegidas pero **nunca dijo cómo se ve una tomada**, así que se llenó un hueco en vez de
+   contradecir algo. **El tachado se conservó**, porque es lo que dice «este no se puede tomar» sin
+   depender del color — lo necesita RF-6 y quien no distingue bien los tonos.
+
+**Estado al cerrar la sesión:** la pieza quedó **construida pero no cerrada**. Faltan dos cosas, y
+ninguna la puede hacer el agente solo: la **comprobación 7**, que necesita un push al repositorio, y
+la **revisión visual** en el navegador, que es la única que ve la mitad de pantalla de las
+comprobaciones 1, 2 y 4.
+
+### 2026-08-19 — construcción de la pieza 10: la información del cliente (sección «Usuario»)
+
+*Pedida por la estudiante el mismo día, después de la revisión visual de la pieza 3, y construida
+fuera de orden. **No estaba en el plan**: es un requisito nuevo, y por eso lo primero que se hizo fue
+escribirlo en `ESPECIFICACION.md` y `PLAN.md`, antes de tocar una línea de código.*
+
+**El encargo, tal como llegó:** una sección con nombre, edad, cuándo empezó los servicios y qué
+tratamientos tiene activos —los comprados, si hay paquetes—, y la pregunta: *«esto de los paquetes ya
+lo hablamos pero lo tenemos en algún slice? si no lo tenemos dime dónde lo agregamos»*.
+
+**La respuesta, buscada en los documentos en vez de contestada de memoria.** Los paquetes y los
+tratamientos **no están en ningún slice, ni ahora ni más adelante**, y no por olvido:
+
+- **PA-1** de `ESPECIFICACION.md` es el expediente del cliente —padecimientos, medicamentos,
+  contraindicaciones, tratamientos en curso, consumo de paquetes— y dice literalmente: *«Queda fuera
+  de alcance. El sistema solo guarda de cada cliente lo de REG-2 y su historial de citas.»*
+- **PA-2** es *«cómo se registra que un cliente "tiene" un paquete de sesiones, dado que el sistema no
+  maneja dinero»*, y **bloquea a PA-1**.
+- `PLAN.md`, «Fuera del plan», las lista a las dos con la misma razón.
+
+**Decisión de la estudiante:** dejarlos afuera por ahora, y construir solo la información básica.
+Razón anotada: lo que falta decidir **no es técnico** — es quién dice que alguien compró un paquete y
+cómo se descuenta una sesión. Eso quedó escrito en PA-1, para que la próxima vez que alguien pregunte
+lo mismo la respuesta esté en el documento.
+
+**Un hallazgo del encargo mismo:** de los cuatro datos que pidió, **dos no existían en el sistema**.
+REG-2 guardaba de cada cliente solo nombre, correo y contraseña: **no había edad ni teléfono**. Y uno
+de los cuatro salía gratis: «cuándo empezó los servicios» es la fecha de su primera cita, y las citas
+ya estaban guardadas desde la pieza 3.
+
+**Tres decisiones de la estudiante, todas del 2026-08-19:**
+
+1. **El teléfono y la fecha de nacimiento se completan y se corrigen en «Usuario»**, no se piden al
+   crear la cuenta. Razón: pedirlos en el registro obligaría a cambiar RF-1 y el contrato de la pieza
+   1 —que ya está cerrada con sus 14 pruebas— y alargaría el registro justo cuando la persona quiere
+   reservar. Y de todos modos hay que poder **corregir** un teléfono mal escrito, así que la pantalla
+   de edición tenía que existir igual. Los dos campos quedaron **opcionales**.
+2. **Se guarda la fecha de nacimiento, no la edad.** Razón: una edad guardada como número **queda
+   vieja en el próximo cumpleaños** y nadie la va a ir a corregir — el sistema estaría mostrando un
+   dato falso sin saberlo. Guardando la fecha, la edad se calcula cada vez y sale siempre correcta.
+3. **La sección se llama «Usuario»** y su enlace vive en los dos menús: adentro de la hamburguesa en
+   teléfono y en el menú del pie.
+
+**Dos decisiones que tomó la construcción, con su razón, porque el encargo no las cubría:**
+
+- **El correo no se puede cambiar** (RN-21, nueva). Cambiarlo arrastra dos cosas que esta entrega no
+  resuelve: comprobar que el correo nuevo no sea de otra cuenta, y **confirmar que la persona de
+  verdad tiene acceso a él** antes de que su forma de entrar dependa de eso. Sin lo segundo, un dedazo
+  dejaría a alguien afuera de su propia cuenta.
+- **El teléfono son exactamente 8 dígitos**, con guión o sin él, y se guarda normalizado como
+  `8888-7777`. El negocio es uno solo y está en Costa Rica. Aceptar cualquier texto dejaría entrar un
+  «llamame al celu», que no sirve para llamar a nadie.
+
+**El caso borde que se probó aparte: la edad.** Restar los años a secas le daría 36 a alguien nacido
+en octubre de 1990 cuando estamos en setiembre de 2026, y todavía tiene 35. Hay cuatro pruebas solo
+para eso: el día antes del cumpleaños, el día mismo, el día después, y quien nació un 29 de febrero.
+Todas paran el reloj, porque **una prueba que dice «tiene 36 años» empezaría a fallar sola el día del
+cumpleaños** si usara la hora de verdad.
+
+**Un problema que se resolvió antes de que apareciera: las columnas nuevas en una base que ya
+existe.** `CREATE TABLE IF NOT EXISTS` sirve para una tabla nueva, pero **no toca una que ya está**.
+En la base de trabajo de la estudiante la tabla `cliente` ya existía sin `telefono` ni
+`fecha_nacimiento`, así que la sección habría fallado sin decir por qué. Ahora `abrirBase` agrega las
+columnas que falten al abrir, sin borrar nada de lo guardado.
+
+**Lo que quedó construido:** dos columnas nuevas en `cliente`; `GET` y `PUT /api/mi-informacion`;
+`servidor/clientes.js`, nuevo, con las comprobaciones de los tres datos; `primeraCitaDelCliente` en
+`servidor/reservas.js`; el cálculo de la edad en `servidor/tiempo.js`, que es donde vive todo lo de
+fechas; la vista «Usuario» con su enlace en los dos menús; y 19 pruebas nuevas. **`npm test`: 83
+pruebas, 83 pasan.**
+
+**Además, el guardia de sesión se mudó a `servidor/sesion.js`.** Estaba escrito adentro de
+`rutas/citas.js` y esta pieza necesitaba el mismo —cliente sí, Personal no—. Se movió a un solo lugar
+en vez de copiarlo: es la regla del `CLAUDE.md`, y una regla escrita dos veces es una que se puede
+desincronizar.
+
+**Estado al cerrar la sesión:** falta **la revisión visual** de la sección, que es lo único que el
+agente no puede hacer.
+
+### 2026-08-19 — construcción de la pieza 11: categorías de servicio
+
+*Tercer pedido del mismo día, y tercera pieza fuera de orden. El encargo: **subtipos de servicio, por
+ejemplo tipos de masaje adentro de la categoría general «Masaje»**, y decidir en qué momento del
+recorrido el cliente elige el subtipo.*
+
+*Esta pieza **modifica el catálogo, que era de la pieza 2 y ya estaba cerrada**, así que lo primero
+que se corrigió fue RF-5 de `ESPECIFICACION.md` —con la nota de qué cambió y cuándo— y solo después el
+código.*
+
+**Tres decisiones de la estudiante, todas del 2026-08-19:**
+
+1. **Una tabla `categoria` aparte**, no un campo de texto ni un servicio «padre». Las tres opciones se
+   le presentaron con su costo. Razón de la elegida: con un campo de texto el nombre de la categoría
+   se repite en cada fila y **un dedazo crea una categoría fantasma** —«Masajes» en vez de «Masaje»—
+   con un servicio adentro y sin que nadie se dé cuenta; con un servicio «padre», la tabla de
+   servicios tendría filas **que no se pueden reservar** y cada consulta del sistema tendría que
+   acordarse de excluirlas. Con una tabla aparte, el nombre está escrito una sola vez y **la cita
+   sigue apuntando al servicio concreto**, así que ni la pieza 3 ni el cálculo de disponibilidad
+   cambiaron una línea.
+2. **Un paso nuevo, y solo si la categoría tiene más de un servicio** (RN-22). Un paso que ofrece una
+   sola opción no es una elección: es un toque de más.
+3. **Todos los servicios siguen durando una hora.** Se le mostró el costo de lo contrario: el cálculo
+   de disponibilidad, los horarios en punto, el candado que impide la doble reserva y las 44 horas por
+   semana **todos asumen una hora**, así que duraciones variables serían una pieza grande y riesgosa
+   por sí sola, no un agregado a esta. Sigue declarado fuera de alcance.
+
+**Una contradicción aparente que quedó explicada en el documento.** RN-22 dice que el paso del
+servicio **no se muestra** cuando hay uno solo, mientras RN-8 dice que el paso del proveedor **sí se
+muestra** aunque haya uno solo. Parecen dos reglas peleadas, y no lo son: saber **quién** te va a
+atender es información que el cliente quiere tener incluso cuando no hay nada que elegir; saber que la
+categoría «Facial» contiene un solo servicio no le aporta nada. La razón quedó escrita adentro de
+RN-22 para que nadie lo lea como una inconsistencia.
+
+**Quién decide si el paso se muestra: el servidor.** Cada categoría llega con un campo
+`pideElegirTipo`. No es la pantalla contando cuántos servicios recibió: es la convención del proyecto
+—el frontend no decide reglas de negocio y recibe el *por qué* junto con el *qué*—, la misma por la
+que un día del calendario llega con su campo `estado` en vez de dejar que la pantalla deduzca de una
+lista vacía. Si mañana RN-22 cambia, cambia en el servidor.
+
+**Los datos de demostración se eligieron para que la regla sea comprobable.** «Masaje» tiene tres
+servicios y «Facial» uno solo, a propósito: con tres se ve la mitad de RN-22 que muestra el paso, y con
+uno la mitad que lo salta. Y los tres masajes tienen proveedores distintos —relajante: Ana y Carlos;
+descontracturante: solo Carlos; piedras calientes: solo Ana— para que elegir el tipo cambie de verdad
+quién atiende, y el paso nuevo no sea decorativo.
+
+**Dos pruebas de la pieza 2 hubo que corregirlas, y las dos por razones legítimas.** Quedaron anotadas
+en el propio archivo de pruebas con qué cambió y por qué:
+
+1. *«ve los dos servicios del negocio»* comprobaba que la lista trajera **exactamente dos**, y ahora
+   son cuatro. Se le quitó la cuenta: comprueba que estén los que importan, con su duración y su
+   categoría. **Es la segunda vez que pasa lo mismo** —la primera fue al sumarse Luisa en la pieza
+   2—, así que quedó como convención en `CLAUDE.md`: *una prueba no se ata a cuántos datos de
+   demostración hay hoy.*
+2. *«un servicio con un solo proveedor igual dice quién lo atiende»* se crea sus propios datos, y
+   ahora crea también su propia categoría. Lo que comprueba no cambió.
+
+**Un error que ninguna prueba podía detectar.** `npm run datos` quedó roto: importaba la lista
+`SERVICIOS`, que esta pieza renombró a `CATEGORIAS`. Las 95 pruebas pasaban igual, y **no es un
+descuido de las pruebas**: ellas importan `datos-de-prueba.js` directo, no el comando. Se descubrió al
+correr el comando de verdad. Quedó como convención en `CLAUDE.md`: **los comandos también hay que
+correrlos**, `npm test` no los toca.
+
+**Un detalle de pantalla que la construcción destapó: los números de los pasos.** Estaban escritos a
+mano en el HTML («1», «2», «3»). Con un paso que se salta, la persona vería «1, 3, 4» y pensaría que se
+perdió algo. Ahora los escribe el JavaScript contando **solo los pasos visibles**, así que siempre son
+seguidos, y si mañana aparece otro paso sigue funcionando sin tocarlo.
+
+**Qué NO tocó esta pieza, y es el mejor resumen de por qué el modelo elegido era el correcto:** la
+tabla `cita`, el cálculo de disponibilidad, el candado de CA-1, el calendario y la sección «Mis
+citas». Ninguno cambió una línea, porque la cita nunca supo de categorías: sigue apuntando al
+servicio.
+
+**Estado al cerrar la sesión:** `npm test` → **95 pruebas, 95 pasan**.
+
+**Revisión visual — hecha por la estudiante el 2026-08-19, sobre las tres piezas del día.** Recorrió la
+lista de comprobaciones visuales de `PROXIMA-SESION.md` y **confirmó que las tres se ven y funcionan
+como corresponde: no salió ningún defecto nuevo**. Vale anotarlo porque es la primera revisión visual
+del proyecto que **no** encontró nada: las dos anteriores encontraron tres defectos entre las dos, y de
+ahí salieron dos convenciones del `CLAUDE.md` (el `minmax(0, 1fr)` y el `[hidden]`).
+
+**El push se hizo el 2026-08-19**, a pedido de la estudiante: las piezas 2, 3, 10 y 11 subieron juntas,
+más la configuración de integración continua en la raíz del repositorio. Es **la primera vez que este
+proyecto corre fuera de la máquina de la estudiante**. La **comprobación 7 de la pieza 3** se cierra
+cuando ella confirme lo que muestra la pestaña Actions de GitHub: el agente no tiene `gh` instalado ni
+ninguna otra forma de mirarla, así que no puede darla por buena por su cuenta.

@@ -10,8 +10,55 @@
   <body>
     <header class="encabezado">
       <div class="envoltura encabezado__interior">
-        <h1 class="encabezado__titulo">Reservas en línea</h1>
-        <p class="encabezado__bajada">Bienestar y salud</p>
+        <div class="encabezado__fila">
+          <div class="encabezado__marca">
+            <h1 class="encabezado__titulo">Reservas en línea</h1>
+            <p class="encabezado__bajada">Bienestar y salud</p>
+          </div>
+
+          <!--
+            El botón «hamburguesa». Va acá arriba, en la barra azul, y no en el pie: es donde una
+            persona busca las tres rayitas (decidido por la estudiante el 2026-08-19, anotado en
+            `DISENO.md`). Desde tableta desaparece y el menú se muestra como una fila.
+
+            Aparece solo con la sesión abierta, igual que el menú: las dos secciones que enlaza
+            —«Reservar» y «Mis citas»— viven adentro de la aplicación.
+          -->
+          <button
+            id="boton-menu"
+            class="hamburguesa"
+            type="button"
+            aria-controls="navegacion"
+            aria-expanded="false"
+            aria-label="Abrir el menú"
+            hidden
+          >
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <nav id="navegacion" class="navegacion" aria-label="Secciones" hidden>
+          <button class="navegacion__enlace" type="button" data-vista="reservar">Reservar</button>
+          <button class="navegacion__enlace" type="button" data-vista="citas">Mis citas</button>
+          <button class="navegacion__enlace" type="button" data-vista="usuario">Usuario</button>
+          <!--
+            «Salir» está en los dos menús, pero **se ve en uno solo a la vez**: acá adentro de la
+            hamburguesa en teléfono, y abajo en el pie desde tableta (pedido de la estudiante el
+            2026-08-19). Así nunca hay dos «Salir» en la misma pantalla.
+          -->
+          <button
+            class="navegacion__enlace navegacion__enlace--solo-telefono"
+            type="button"
+            data-accion="salir"
+          >
+            Salir
+          </button>
+        </nav>
       </div>
     </header>
 
@@ -92,39 +139,291 @@
           </div>
         </section>
 
-        <!-- Pantalla de quien ya entró. -->
+        <!-- Pantalla de quien ya entró: elegir servicio, elegir proveedor, ver el calendario. -->
         <section id="pantalla-dentro" class="pantalla" hidden>
-          <article class="tarjeta tarjeta--sola">
-            <h2 class="tarjeta__titulo">Hola, <span id="nombre-de-quien-entro"></span></h2>
-
-            <p>
+          <div class="saludo">
+            <div>
+              <h2 class="saludo__titulo">Hola, <span id="nombre-de-quien-entro"></span></h2>
               <span id="tipo-de-cuenta" class="etiqueta-estado"></span>
-            </p>
+            </div>
+          </div>
 
-            <p class="tarjeta__nota">
-              Elegir el servicio y ver el calendario llega con la pieza 2 del plan. Esta pieza cubre
-              solo entrar a la aplicación.
-            </p>
+          <!--
+            Las dos secciones de la aplicación son **vistas que se alternan**: se ve una o la otra,
+            nunca las dos a la vez, y el menú cambia de una a otra (decidido por la estudiante el
+            2026-08-19). El saludo de arriba queda afuera de las dos, porque acompaña siempre.
+          -->
 
-            <button id="boton-cerrar-sesion" class="boton boton--suave" type="button">
-              Cerrar sesión
-            </button>
-          </article>
+          <!-- ══ Vista «Reservar» ═══════════════════════════════════════════════════════════ -->
+          <div id="vista-reservar" class="vista">
+          <!--
+            El aviso de RN-14: cuando no queda ningún horario libre en los próximos 7 días. Quién
+            decide si aparece es el servidor, no esta pantalla: viene en el campo
+            `hayHorariosEnProximos7Dias` de la respuesta del calendario.
+          -->
+          <p id="aviso-sin-horarios" class="aviso aviso--informativo" role="status" hidden></p>
+
+          <!--
+            El aviso de cuando una reserva no se pudo hacer: el horario lo tomó otra persona (409) o
+            era de hoy (422). Va acá arriba y no adentro de la tarjeta de confirmar, porque al
+            fallar el calendario se vuelve a pedir y esa tarjeta se cierra: un mensaje escrito
+            adentro desaparecería justo cuando hay que leerlo.
+          -->
+          <p id="aviso-reserva" class="aviso" role="alert" hidden></p>
+
+          <!--
+            Los números de los pasos los escribe el JavaScript, no están fijos en el HTML: el paso
+            del tipo de servicio **se salta** cuando la categoría tiene uno solo (RN-22), y con un
+            número escrito a mano la persona vería «1, 3, 4» y pensaría que se perdió algo.
+          -->
+
+          <!-- Paso: la categoría ──────────────────────────────────────────────────────────── -->
+          <section class="paso">
+            <h3 class="paso__titulo"><span class="paso__numero"></span> Elegí qué buscás</h3>
+            <div id="lista-categorias" class="opciones"></div>
+          </section>
+
+          <!-- Paso: el tipo de servicio, solo si la categoría tiene más de uno ─────────────── -->
+          <section id="paso-servicio" class="paso" hidden>
+            <h3 class="paso__titulo">
+              <span class="paso__numero"></span> <span id="titulo-paso-servicio">Elegí el tipo</span>
+            </h3>
+            <div id="lista-servicios" class="opciones"></div>
+          </section>
+
+          <!-- Paso: el proveedor ──────────────────────────────────────────────────────────── -->
+          <section id="paso-proveedor" class="paso" hidden>
+            <h3 class="paso__titulo"><span class="paso__numero"></span> Elegí quién te atiende</h3>
+            <div id="lista-proveedores" class="opciones"></div>
+          </section>
+
+          <!-- Paso: el día ────────────────────────────────────────────────────────────────── -->
+          <section id="paso-calendario" class="paso paso--calendario" hidden>
+            <h3 class="paso__titulo"><span class="paso__numero"></span> Elegí el día</h3>
+
+            <article class="tarjeta calendario">
+              <div class="calendario__barra">
+                <button id="mes-anterior" class="calendario__flecha" type="button" aria-label="Mes anterior">
+                  ‹
+                </button>
+                <p id="mes-actual" class="calendario__mes" aria-live="polite"></p>
+                <button id="mes-siguiente" class="calendario__flecha" type="button" aria-label="Mes siguiente">
+                  ›
+                </button>
+              </div>
+
+              <!-- La semana arranca en lunes, como se lee un calendario en Costa Rica. -->
+              <div class="calendario__dias-semana" aria-hidden="true">
+                <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span>
+                <span>Sá</span><span>Do</span>
+              </div>
+
+              <div id="cuadricula" class="calendario__cuadricula"></div>
+
+              <ul class="leyenda">
+                <li><span class="leyenda__marca leyenda__marca--libre"></span> Con horarios libres</li>
+                <li><span class="leyenda__marca leyenda__marca--lleno"></span> Sin cupo</li>
+                <li><span class="leyenda__marca leyenda__marca--feriado"></span> Feriado</li>
+                <li><span class="leyenda__marca leyenda__marca--cerrado"></span> Cerrado o ya pasó</li>
+              </ul>
+            </article>
+
+            <article id="detalle-dia" class="tarjeta" hidden>
+              <h4 id="dia-titulo" class="tarjeta__titulo"></h4>
+              <p id="dia-motivo" class="tarjeta__nota" hidden></p>
+              <div id="lista-horarios" class="horarios"></div>
+              <p id="dia-ayuda" class="tarjeta__nota" hidden>
+                Tocá un horario libre para reservarlo.
+              </p>
+            </article>
+
+            <!--
+              Confirmar la reserva (RF-8). Es una tarjeta acá abajo y no una ventana emergente:
+              así el calendario sigue a la vista y, si el resumen no es el que se quería, se toca
+              otro horario sin cerrar nada. Decidido por la estudiante el 2026-08-19.
+            -->
+            <article id="confirmacion" class="tarjeta" hidden>
+              <h4 class="tarjeta__titulo">Confirmá tu reserva</h4>
+
+              <dl class="resumen">
+                <div class="resumen__fila">
+                  <dt class="resumen__que">Servicio</dt>
+                  <dd id="resumen-servicio" class="resumen__dato"></dd>
+                </div>
+                <div class="resumen__fila">
+                  <dt class="resumen__que">Te atiende</dt>
+                  <dd id="resumen-proveedor" class="resumen__dato"></dd>
+                </div>
+                <div class="resumen__fila">
+                  <dt class="resumen__que">Día</dt>
+                  <dd id="resumen-dia" class="resumen__dato"></dd>
+                </div>
+                <div class="resumen__fila">
+                  <dt class="resumen__que">Hora</dt>
+                  <dd id="resumen-hora" class="resumen__dato"></dd>
+                </div>
+              </dl>
+
+              <div class="confirmacion__botones">
+                <button id="boton-confirmar" class="boton" type="button">Confirmar la reserva</button>
+                <button id="boton-cancelar-eleccion" class="boton boton--suave" type="button">
+                  Elegir otro horario
+                </button>
+              </div>
+            </article>
+          </section>
+          </div>
+
+          <!-- ══ Vista «Mis citas» ═════════════════════════════════════════════════════════ -->
+          <div id="vista-citas" class="vista" hidden>
+            <section class="paso">
+              <h3 class="paso__titulo">Mis citas</h3>
+
+              <!-- Acá aterriza el aviso de que la reserva quedó hecha. -->
+              <p id="aviso-citas" class="aviso aviso--informativo" role="status" hidden></p>
+
+              <article class="tarjeta">
+                <p id="citas-vacio" class="tarjeta__nota" hidden>
+                  Todavía no tenés ninguna cita. Andá a «Reservar» y elegí un horario.
+                </p>
+
+                <!--
+                  Una lista de datos, con rayitas de 1px entre una cita y otra en vez de una caja
+                  por cita: es lo que `VISUALS.md` pide para las listas con muchos datos, para que
+                  se lean como un reporte y no como un montón de recuadros.
+                -->
+                <ul id="lista-citas" class="citas"></ul>
+              </article>
+            </section>
+          </div>
+
+          <!-- ══ Vista «Usuario» (pieza 10) ═════════════════════════════════════════════════ -->
+          <div id="vista-usuario" class="vista" hidden>
+            <section class="paso">
+              <h3 class="paso__titulo">Usuario</h3>
+
+              <p id="aviso-usuario" class="aviso" role="alert" hidden></p>
+
+              <article class="tarjeta">
+                <h4 class="tarjeta__titulo">Mi información</h4>
+
+                <!--
+                  Los datos se leen como un reporte, con una rayita de 1px entre filas: es lo que
+                  `VISUALS.md` pide para las listas de datos. Es la misma forma que el resumen de
+                  «Confirmá tu reserva», así que se reusa esa clase en vez de inventar otra.
+                -->
+                <dl class="resumen">
+                  <div class="resumen__fila">
+                    <dt class="resumen__que">Nombre</dt>
+                    <dd id="usuario-nombre" class="resumen__dato"></dd>
+                  </div>
+                  <div class="resumen__fila">
+                    <dt class="resumen__que">Correo</dt>
+                    <dd id="usuario-correo" class="resumen__dato"></dd>
+                  </div>
+                  <div class="resumen__fila">
+                    <dt class="resumen__que">Teléfono</dt>
+                    <dd id="usuario-telefono" class="resumen__dato"></dd>
+                  </div>
+                  <div class="resumen__fila">
+                    <dt class="resumen__que">Edad</dt>
+                    <dd id="usuario-edad" class="resumen__dato"></dd>
+                  </div>
+                  <div class="resumen__fila">
+                    <dt class="resumen__que">Cliente desde</dt>
+                    <dd id="usuario-desde" class="resumen__dato"></dd>
+                  </div>
+                </dl>
+
+                <button id="boton-editar-usuario" class="boton boton--suave" type="button">
+                  Completar o corregir mis datos
+                </button>
+              </article>
+
+              <article id="tarjeta-forma-usuario" class="tarjeta" hidden>
+                <h4 class="tarjeta__titulo">Mis datos</h4>
+
+                <form id="forma-usuario" class="forma" novalidate>
+                  <label class="campo">
+                    <span class="campo__etiqueta">Nombre</span>
+                    <input class="campo__control" type="text" name="nombre" autocomplete="name" required />
+                  </label>
+
+                  <label class="campo">
+                    <span class="campo__etiqueta">Teléfono</span>
+                    <input
+                      class="campo__control"
+                      type="tel"
+                      name="telefono"
+                      inputmode="tel"
+                      autocomplete="tel"
+                      placeholder="8888-7777"
+                    />
+                  </label>
+
+                  <label class="campo">
+                    <span class="campo__etiqueta">Fecha de nacimiento</span>
+                    <!--
+                      `type="date"` le pide al navegador su propio calendario, y lo devuelve escrito
+                      `1990-03-15` — justo el formato que usa todo el proyecto. Cero dependencias
+                      para elegir una fecha.
+                    -->
+                    <input class="campo__control" type="date" name="fechaNacimiento" autocomplete="bday" />
+                  </label>
+
+                  <p class="campo__ayuda">
+                    El teléfono y la fecha de nacimiento son opcionales; se pueden dejar vacíos. La
+                    edad no se escribe: sale de la fecha de nacimiento. Y el correo no se cambia desde
+                    acá — si lo necesitás cambiar, llamá al negocio.
+                  </p>
+
+                  <div class="confirmacion__botones">
+                    <button class="boton" type="submit">Guardar</button>
+                    <button id="boton-cancelar-usuario" class="boton boton--suave" type="button">
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </article>
+            </section>
+          </div>
         </section>
       </div>
     </main>
 
     <!--
-      El pie de página. Hoy solo lleva el texto de derechos, y es TEXTO DE RELLENO INVENTADO:
-      «Belleza y Bienestar» no es un negocio real, y el nombre verdadero va a llegar como
-      configuración del negocio (REG-4) más adelante.
+      El pie de página. Desde la pieza 2 el nombre, el teléfono y la ubicación **ya no están
+      escritos acá**: los pone el JavaScript con lo que devuelve `GET /api/negocio`, que es la
+      configuración del negocio (REG-4). Siguen siendo datos inventados, pero ahora son un dato
+      del sistema y no texto pegado en el HTML.
 
-      Acá arriba del texto va a ir un menú de navegación, cuando existan secciones que enlazar
-      (desde la pieza 2). Ver `DISENO.md`, «Pendientes del sistema visual».
+      El menú de navegación **ya existe**, construido en la pieza 3: son los mismos enlaces que
+      están detrás de la hamburguesa arriba, acá abajo como fila, arriba del texto de derechos, tal
+      como estaba decidido en `DISENO.md`. Aparece solo con la sesión abierta.
+
+      «Salir» está en los dos menús pero se ve en uno solo a la vez: en teléfono adentro de la
+      hamburguesa, y desde tableta acá abajo.
+
+      El «2026» sí sigue escrito a mano, como se pidió.
     -->
     <footer class="pie">
       <div class="envoltura pie__interior">
-        <p class="pie__texto">© 2026 Belleza y Bienestar. Todos los derechos reservados.</p>
+        <nav id="menu-pie" class="pie__menu" aria-label="Secciones" hidden>
+          <button class="pie__enlace" type="button" data-vista="reservar">Reservar</button>
+          <button class="pie__enlace" type="button" data-vista="citas">Mis citas</button>
+          <button class="pie__enlace" type="button" data-vista="usuario">Usuario</button>
+          <button class="pie__enlace pie__enlace--desde-tableta" type="button" data-accion="salir">
+            Salir
+          </button>
+        </nav>
+
+        <p class="pie__contacto">
+          <span id="pie-telefono"></span>
+          <span id="pie-ubicacion"></span>
+        </p>
+        <p class="pie__texto">
+          © 2026 <span id="pie-negocio"></span>. Todos los derechos reservados.
+        </p>
       </div>
     </footer>
 

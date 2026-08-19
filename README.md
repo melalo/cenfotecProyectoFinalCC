@@ -10,17 +10,21 @@ CENFOTEC).
 
 ---
 
-> ## ESTADO ACTUAL: la pieza 1 está cerrada (2026-08-17)
+> ## ESTADO ACTUAL: piezas 1 y 2 cerradas (2026-08-19)
 >
 > Los comandos de este README **ya funcionan**: el proyecto arranca, se puede crear una cuenta,
-> entrar, cerrar sesión, y los datos sobreviven al reinicio.
+> entrar, elegir un servicio y un proveedor, y ver el calendario del mes con los horarios libres.
 >
-> De las 9 piezas de `PLAN.md` está cerrada **la 1** (entrar a la aplicación): sus 14 pruebas
-> automáticas pasan, sus 8 comprobaciones se corrieron con el resultado anotado en su bloque
-> `Evidencia`, y la revisión visual en el navegador la hizo la estudiante.
+> De las 9 piezas de `PLAN.md`:
 >
-> Las otras 8 están pendientes, así que todavía **no** se puede elegir un servicio, ni ver el
-> calendario, ni reservar, ni llega ningún correo. **Si venís a construir, te toca la pieza 2.**
+> - **Pieza 1 — cerrada el 2026-08-17** (entrar a la aplicación). 14 pruebas y 8 comprobaciones.
+> - **Pieza 2 — cerrada el 2026-08-19** (elegir servicio y proveedor, y ver el calendario). 27
+>   pruebas nuevas —41 en total— y sus 12 comprobaciones, con el resultado de cada una anotado en su
+>   bloque `Evidencia`. La revisión visual encontró dos defectos que las pruebas no podían ver, y
+>   los dos quedaron corregidos.
+>
+> Las otras 7 están pendientes, así que todavía **no** se puede reservar, ni cancelar, ni llega
+> ningún correo. **Si venís a construir, te toca la pieza 3.**
 
 ---
 
@@ -111,6 +115,13 @@ negocio, y a este tamaño el costo de aprender y configurar React no se justific
 - Nada más. SQLite no se instala aparte: `better-sqlite3` lo trae adentro, y la base es un archivo
   dentro del proyecto.
 
+**Esa promesa de «Node 20 o superior» está comprobada, no solo escrita:** la integración continua
+corre las pruebas en Node 20 y en Node 24 en cada push. Se montó en la pieza 3 y lo primero que
+encontró fue que `better-sqlite3` había quedado en una versión que exige Node 22 — la promesa era
+falsa desde la pieza 1 y nadie se había dado cuenta, porque en la máquina de la estudiante corre
+Node 24. Se bajó la dependencia a la línea 12, que sí soporta Node 20. La razón, con sus
+alternativas, está en `DISENO.md`, «Decisiones tomadas al construir la pieza 3».
+
 ## Cómo se levanta
 
 ```bash
@@ -162,20 +173,36 @@ registrados como fallidos, pero las citas se siguen creando: así lo exige RF-19
 `npm run datos` crea la base desde cero y carga datos **inventados**. Se puede correr las veces que
 haga falta: borra lo anterior y vuelve a empezar.
 
-**Hoy, con la pieza 1 construida, carga solo la cuenta de Personal**, porque las demás tablas
-todavía no existen: las crea la pieza 2. El comando lo dice en pantalla cuando termina.
+> **Apagá la aplicación antes de correrlo.** El comando borra el archivo de la base, y Windows no
+> deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, `npm run
+> datos` falla — y te lo dice con esas palabras. Apagala con `Ctrl + C`, corré `npm run datos`, y
+> volvé a levantarla.
+>
+> **Y ojo:** borrar la base se lleva también las cuentas que hayas creado desde la pantalla. Después
+> de correrlo hay que volver a registrarse; la de Personal sí vuelve sola, porque es precargada.
 
-Lo que va a cargar cuando el plan esté completo:
+Lo que carga hoy, con las piezas 1 y 2 construidas. El comando lo lista en pantalla al terminar:
 
-- **Servicios:** «Masaje relajante» y «Limpieza facial».
-- **Proveedores:** «Ana» y «Carlos». Ana atiende los dos servicios; Carlos solo el masaje.
+- **El negocio:** «Belleza y Bienestar», tel. `2000-0000`, en «Avenida Central, San José — edificio
+  Girasol, local 3». **Todo inventado, el teléfono también:** no es el número de nadie. El logo y
+  los colores de la marca del negocio se guardan porque REG-4 pide registrarlos, pero **la
+  aplicación no los aplica**: su apariencia sale de `VISUALS.md`, que es otra cosa.
+- **Servicios:** «Masaje relajante» y «Limpieza facial», los dos de una hora.
+- **Proveedores:** «Ana», «Carlos» y «Luisa». Ana atiende los dos servicios; Carlos solo el masaje;
+  Luisa solo la limpieza facial. Así los dos servicios tienen más de un proveedor y el cliente
+  siempre puede elegir con quién (RN-8).
 - **Horario del negocio:** lunes a viernes de 9:00 a 18:00 con el almuerzo bloqueado de 12:00 a
-  13:00, y sábados de 9:00 a 13:00. Domingo cerrado. Cada cita dura una hora.
-- **Feriados de ley de Costa Rica**, precargados como dato fijo.
+  13:00, y sábados de 9:00 a 13:00. Domingo cerrado. Cada cita dura una hora, así que entre semana
+  los horarios son 9, 10, 11, 13, 14, 15, 16 y 17, y el sábado 9, 10, 11 y 12.
+- **Feriados de ley de Costa Rica:** 22 filas, los de **2026 y 2027**, precargados como dato fijo —
+  no se le pregunta a ningún servicio en línea. Van **en su fecha original, sin trasladarse al
+  lunes**; la razón, y los dos feriados que quedaron afuera a propósito, están explicados en
+  `guiones/datos-de-prueba.js`.
 - **Una cuenta de Personal** (la asistente, «Marta Jiménez»), precargada — no hay pantalla para
   registrarla. Entra con **`personal@ejemplo.com`** y la contraseña **`Personal123`**. Es una cuenta de prueba
   inventada, y como está escrita acá a la vista de todos, **no sirve para nada real**: si el
   proyecto algún día se usara de verdad, lo primero es cambiarla.
+- **Ninguna cita.** Las citas se crean desde la aplicación a partir de la pieza 3.
 
 ## Pruebas
 
@@ -183,22 +210,57 @@ Lo que va a cargar cuando el plan esté completo:
 npm test
 ```
 
-**Hoy corre 14 pruebas, las de la pieza 1:** registrarse, entrar, el mensaje idéntico cuando el
-correo no existe y cuando la contraseña está mal, la contraseña cifrada, el correo repetido, la
-cuenta de Personal precargada y la persistencia tras reiniciar. Están en `pruebas/`.
+**Hoy corre 95 pruebas**, todas en `pruebas/`:
+
+- **14 de la pieza 1** (`autenticacion.test.js`): registrarse, entrar, el mensaje idéntico cuando el
+  correo no existe y cuando la contraseña está mal, la contraseña cifrada, el correo repetido, la
+  cuenta de Personal precargada y la persistencia tras reiniciar.
+- **27 de la pieza 2** (`catalogo.test.js` y `disponibilidad.test.js`): los servicios y sus
+  proveedores, y el cálculo de disponibilidad con todos sus casos borde — el almuerzo, el sábado
+  corto, el domingo cerrado, los feriados, «hoy no», el cambio de mes, febrero bisiesto, una cita
+  activa que ocupa, una cancelada que no ocupa, y el aviso de que no quedan horarios en 7 días.
+- **23 de la pieza 3** (`reservas.test.js`): reservar y que la cita quede guardada con su canal y su
+  fecha de creación, que el horario deje de aparecer libre, que sobreviva un reinicio, que un cliente
+  pueda tener varias citas a la vez, **CA-1** (dos clientes reservan el mismo horario a la vez y
+  exactamente uno lo consigue), **CA-2** (ningún horario de hoy se puede reservar, a ninguna hora),
+  que un horario cancelado se pueda volver a tomar, y los rechazos de feriado, domingo, almuerzo,
+  fuera de horario, momento mal escrito, proveedor que no atiende ese servicio, y sesión de
+  Personal.
+- **19 de la pieza 10** (`usuario.test.js`): ver los datos propios, completar el teléfono y la fecha
+  de nacimiento, **la edad calculada** con su caso borde (el día antes del cumpleaños, el día mismo, y
+  quien nació un 29 de febrero), «desde cuándo es cliente» sacado de la primera cita, que el correo no
+  se pueda cambiar (RN-21), y los rechazos de teléfono, fecha y nombre mal escritos.
+- **12 de la pieza 11** (`categorias.test.js`): las categorías con sus servicios adentro, que el
+  servidor —y no la pantalla— diga si hay que elegir el tipo (RN-22), que la categoría de un solo
+  servicio lleve directo a los proveedores, que reservar un subtipo guarde el nombre del servicio, y
+  que ningún servicio pueda quedar sin categoría.
+
+Las del calendario **paran el reloj** en una fecha fija (martes 1 de setiembre de 2026, 8 de la
+mañana en Costa Rica). Sin eso dirían cosas distintas según el día en que se corran: «mañana hay
+horarios» fallaría los sábados.
 
 A medida que avance el plan, este mismo comando irá cubriendo además los tres criterios de
 aceptación de `ESPECIFICACION.md`, que son las tres reglas que el curso exige proteger:
 
 | | Qué comprueba | Desde qué pieza |
 |---|---|---|
-| **CA-1** | Dos intentos de reservar el mismo horario del mismo proveedor: exactamente uno lo consigue. | 3 |
-| **CA-2** | Un intento de reservar un horario de hoy se rechaza, a cualquier hora que se intente. | 3 |
+| **CA-1** | Dos intentos de reservar el mismo horario del mismo proveedor: exactamente uno lo consigue. | 3 — **ya cubierto** |
+| **CA-2** | Un intento de reservar un horario de hoy se rechaza, a cualquier hora que se intente. | 3 — **ya cubierto** |
 | **CA-3** | Cancelar o reagendar faltando menos de 4 horas: el cliente es rechazado, Personal es aceptado. | 5 y 7 |
 
-Que estas pruebas corran solas en cada `push` mediante GitHub Actions se monta en la **pieza 3**
-(así lo dice su bloque *Produce* en `PLAN.md`). Hoy todavía no corren solas: hay que escribir
-`npm test` a mano.
+### Corren solas en cada push
+
+Desde la pieza 3, **estas 95 pruebas se corren automáticamente en cada `push` y en cada pull
+request**, sin que nadie escriba `npm test`. Lo hace GitHub Actions, configurado en
+`.github/workflows/pruebas.yml`.
+
+Ese archivo está en la **raíz del repositorio**, no dentro de `proyectoFinal/`, y no es una
+distracción: GitHub solo ejecuta los archivos que están en `.github/workflows/` en la raíz. Es la
+única cosa de este proyecto que vive afuera de su carpeta, y está autorizada y explicada en
+`DISENO.md`.
+
+Para ver el resultado: en GitHub, pestaña **Actions**. Verde es que las 95 pasaron, en las dos
+versiones de Node.
 
 ## Qué no está en el repositorio
 
@@ -239,6 +301,11 @@ proyectoFinal/
 │   ├── base-de-datos.js     abre el archivo SQLite y crea las tablas
 │   ├── contrasenas.js       cifrar una contraseña y comprobar si coincide
 │   ├── sesion.js            la cookie firmada que sostiene la sesión
+│   ├── tiempo.js            fechas y horas, siempre en la hora del negocio (Costa Rica)
+│   ├── catalogo.js          preguntas al catálogo: si un servicio existe, quién lo atiende
+│   ├── clientes.js          los datos del cliente: leerlos, comprobarlos y guardarlos
+│   ├── disponibilidad.js    qué horarios están libres — la regla, escrita una sola vez
+│   ├── reservas.js          crear una cita — el único lugar que toca el estado de una cita
 │   └── rutas/               un archivo por grupo de endpoints del API
 ├── guiones/               comandos de mantenimiento (hoy: cargar los datos de prueba)
 ├── estilos/               los .scss que se escriben a mano, siguiendo VISUALS.md

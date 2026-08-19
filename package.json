@@ -15,7 +15,7 @@
     "test": "node --test \"pruebas/**/*.test.js\""
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "sass": "^1.102.0"
