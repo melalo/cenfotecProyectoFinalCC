@@ -702,8 +702,24 @@ confirmó en la pestaña Actions de GitHub: las **135 pruebas corren en verde en
 24**, los dos trabajos. Con eso las 14 pruebas de esta pieza quedan protegidas en cada push, que es
 lo que pide `PROYECTO.md` §7.
 
-**Revisión visual — PENDIENTE.** Esta pieza no tiene pantalla, así que lo que hay que mirar es que
-reservar siga funcionando igual de bien: la lista está en `PROXIMA-SESION.md`.
+**Revisión visual — HECHA por la estudiante el 2026-08-19.** Esta pieza no tiene pantalla propia, así
+que lo que había que mirar era que reservar siguiera funcionando. Lo recorrió entero:
+
+- Reservó una cita y la pantalla pasó a «Mis citas» **sin quedarse pensando**, con el correo saliendo
+  en el medio. El límite de espera de 5 segundos no se notó.
+- Reservó **sin clave de Resend** y la cita se creó igual, con su aviso en la consola: RF-19 visto en
+  la aplicación de verdad, no solo en una prueba.
+- Miró la fila que quedó en `correo_enviado`, con `tipo = confirmacion`, el id de su cita y
+  `exito = 0`.
+- Y después, **con la clave puesta, el correo llegó a su bandeja de entrada** con los cinco datos de
+  RF-11. Sus palabras: «test de resend: funciona perfecto».
+
+Preguntó además por qué no aparecían los botones de cancelar y reagendar en «Mis citas». **La
+respuesta correcta era que son de la pieza 5**, todavía sin construir — así que la pregunta también
+sirvió para comprobar que esa pantalla se ve como tiene que verse hoy.
+
+**Con esto la pieza 4 queda CERRADA**, con sus 4 comprobaciones cumplidas, la corrida de integración
+continua en verde y la revisión visual hecha.
 
 ---
 
@@ -1272,7 +1288,7 @@ Es el mejor ejemplo del proyecto de por qué `CLAUDE.md` exige que **una pieza n
 una persona abra el navegador y mire**: ninguna de las tres rondas la podía encontrar una prueba
 automática, porque las tres eran sobre qué *tenía que* decir la regla, no sobre si el código cumplía
 lo escrito.
-| 8 | **PENDIENTE:** es la parte visual, y la tiene que mirar una persona. Ninguna prueba de este proyecto ve la página dibujada. |
+| 8 | **CUMPLIDA.** La estudiante la recorrió en el navegador el 2026-08-19 y confirmó que se ve y funciona como corresponde. Y no fue una mirada de trámite: **de esa misma revisión salieron las tres correcciones a la regla** (5b, 5c y 5d) más seis cambios visuales que ella pidió sobre la marcha —los renglones a 12px, escondidos hasta tocar el campo, sin los íconos ✓/✗, el texto «No tildes», el logo en el encabezado con los textos invertidos, y el azul nuevo—. Volvió a mirar la pantalla con todos ellos puestos y la confirmó. |
 
 **Comprobado además que las reglas nuevas no pisaron las que ya existían:** un correo repetido sigue
 dando `409 correo_ya_registrado` (no `422`), y un registro sin nombre sigue dando
@@ -1281,7 +1297,17 @@ dando `409 correo_ya_registrado` (no `422`), y un registro sin nombre sigue dand
 **Integración continua — EN VERDE.** Push del 2026-08-19, commit `bf17952`, confirmado por la
 estudiante en la pestaña Actions: las 135 pruebas pasan en Node 20 y en Node 24.
 
-**Revisión visual — PENDIENTE.** Es la comprobación 8.
+**Revisión visual — HECHA por la estudiante el 2026-08-19**, y es la comprobación 8 de esta pieza.
+
+**Con esto la pieza 12 queda CERRADA**, con sus 8 comprobaciones cumplidas y la corrida de
+integración continua en verde.
+
+**Lo que esta pieza deja aprendido, y que vale más que la pieza en sí:** de una sola revisión visual
+salieron **tres correcciones a la regla de negocio** y **seis cambios visuales**. Ninguna de las nueve
+la podía encontrar una prueba automática. Las tres de la regla, porque eran sobre *qué tenía que
+decir* la regla y no sobre si el código cumplía lo escrito; las seis visuales, porque ninguna prueba
+de este proyecto mira la página dibujada. Es la evidencia más clara que tiene el plan de por qué
+`CLAUDE.md` exige que **una pieza no se cierre sin que una persona abra el navegador y mire**.
 
 ---
 

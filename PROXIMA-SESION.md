@@ -1,13 +1,17 @@
-# Próxima sesión — la revisión visual, y después la pieza 5
+# Próxima sesión — arrancar la pieza 5
 
 *Escrito el 2026-08-19, al final de una sesión larga. Esta es la hoja para retomar sin releer nada.*
 
 ---
 
-## Antes que nada: te queda UNA sola cosa pendiente
+## Antes que nada: no te queda nada pendiente
 
-**La revisión visual** en el navegador. La lista está más abajo, y es lo único que falta para cerrar
-las piezas 4 y 12. No hay nada de programar.
+**Las piezas 4 y 12 quedaron CERRADAS** el 2026-08-19: sus comprobaciones cumplidas, la integración
+continua en verde en Node 20 y Node 24 (confirmada por la estudiante en la pestaña Actions), y la
+revisión visual hecha. Todo subido a GitHub.
+
+El recorrido visual de más abajo **ya se pasó**. Se conserva porque es el que hay que volver a pasar
+cada vez que una pieza nueva toque estas pantallas — y la pieza 5 las toca.
 
 ## Qué se hizo el 2026-08-19 (fue un día largo)
 
@@ -15,17 +19,11 @@ las piezas 4 y 12. No hay nada de programar.
 |---|---|
 | **Pieza 4 — el correo de confirmación** | Construida. **La cuenta de Resend está creada y el correo llegó de verdad** a la bandeja de entrada, así que las comprobaciones 1 y 4 del plan quedaron cumplidas. |
 | **Pieza 12 — reglas de contraseña y correo** | Pedida y construida el mismo día. Resolvió el pendiente de la pieza 1 sobre el largo mínimo. **Se corrigió tres veces**, las tres mirando la pantalla. |
-| **Siete ajustes visuales** | Todos pedidos abriendo el navegador: el aviso de éxito en verde, el texto de guía a 12px, los requisitos escondidos hasta tocar el campo, sin íconos ✓/✗, el logo en el encabezado, el fondo de flores más tenue, y el azul oscuro cambiado en todo el proyecto. |
+| **Siete ajustes visuales** | Todos pedidos abriendo el navegador: el aviso de éxito en verde, el texto de guía a 12px, los requisitos escondidos hasta tocar el campo, sin íconos ✓/✗, el logo en el encabezado, el fondo de flores más tenue, y el azul oscuro cambiado en todo el proyecto. **Todos revisados y confirmados en pantalla.** |
 | **Pruebas** | `npm test` → **135 y todas pasan.** |
 | **Subido a GitHub** | **Todo**, al cierre de la sesión. |
 
 ## Lo primero: qué decir cuando abrás la conversación
-
-Si vas a **hacer la revisión visual y cerrar las piezas 4 y 12**:
-
-> La carpeta del día es `proyectoFinal`. Vamos a hacer la revisión visual para cerrar las piezas 4 y 12.
-
-Si eso ya está hecho y vas a **arrancar la pieza 5**:
 
 > La carpeta del día es `proyectoFinal`. Vamos a construir la pieza 5 del plan.
 
@@ -173,8 +171,8 @@ de este proyecto — que a esta altura son siete.
 | **Pieza 3** | **Cerrada** el 2026-08-19, con sus 7 comprobaciones y la revisión visual. |
 | **Pieza 10** | **Cerrada** el 2026-08-19, construida fuera de orden. |
 | **Pieza 11** | **Cerrada** el 2026-08-19, construida fuera de orden. Corrigió RF-5 de la pieza 2. |
-| **Pieza 4** | **Construida el 2026-08-19**, con sus 4 comprobaciones cumplidas —el correo llegó de verdad—. **Falta solo la revisión visual.** |
-| **Pieza 12** | **Construida el 2026-08-19**, fuera del plan original. Resolvió el pendiente de la pieza 1. Falta solo su comprobación 8, que es la visual. |
+| **Pieza 4** | **Cerrada** el 2026-08-19. Sus 4 comprobaciones cumplidas —el correo llegó de verdad a la bandeja de entrada— y la revisión visual hecha. |
+| **Pieza 12** | **Cerrada** el 2026-08-19, fuera del plan original. Resolvió el pendiente de la pieza 1 sobre el largo mínimo de la contraseña. Sus 8 comprobaciones cumplidas. |
 | **Pieza 5** | La que sigue: «Cancelar y reagendar». Trae **CA-3**. |
 | **Subido a GitHub** | **Todo**, incluidas las piezas 4 y 12 y los ajustes visuales. |
 | **Tiempo** | **9 horas por semana.** Hasta la entrega del 8 de setiembre quedan unas **22 horas**. |

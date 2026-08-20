@@ -1210,3 +1210,38 @@ Dos reglas nuevas, escritas por ella:
 Quedan anotadas acá porque son la primera vez que la estudiante corrige **cómo se trabaja**, no qué
 se construye.
 
+---
+
+### 2026-08-19 — las piezas 4 y 12 quedan cerradas, y una corrección de método
+
+**Las dos piezas quedaron CERRADAS.** La 4 con sus 4 comprobaciones y la 12 con sus 8, las dos con la
+integración continua en verde en Node 20 y Node 24 —confirmada por la estudiante en la pestaña
+Actions— y las dos con su revisión visual hecha.
+
+**La corrección de método, que es lo que vale anotar.** Al cerrar la sesión el agente seguía
+diciendo que la revisión visual de la pieza 4 estaba pendiente. La estudiante lo cortó: «la pieza 4
+ya la revisé, ¿qué más revisarla?». **Tenía razón, y el agente estaba arrastrando un "pendiente" sin
+mirar la evidencia que ya existía en la propia conversación:**
+
+- había reservado una cita y visto la pantalla pasar a «Mis citas» sin demora,
+- había reservado **sin clave de Resend** y visto que la cita se creaba igual (RF-19 en vivo),
+- había mirado la fila que quedó en `correo_enviado`,
+- y había confirmado que el correo llegó: «test de resend: funciona perfecto».
+
+La pieza 4 **no tiene pantalla propia**, así que eso era exactamente todo lo que había que mirar. El
+error no fue de código: fue **no leer la evidencia que ya estaba dada** y repetir por inercia un
+estado viejo. Es la segunda entrada de gobernanza del proyecto, después de la del 2026-08-17 sobre el
+proceso que seguía vivo en el puerto 3000, y las dos tienen la misma forma: **el agente afirmando un
+estado sin haberlo comprobado.**
+
+Lo que sí quedaba abierto de verdad era otra cosa, y ahí la pregunta valía: después de la revisión de
+la pieza 12 se habían pedido **seis cambios visuales más** —los renglones a 12px, escondidos hasta
+tocar el campo, sin los íconos ✓/✗, el texto «No tildes», el logo con los textos invertidos, y el
+azul nuevo— y ninguno estaba confirmado **ya puesto**. La estudiante confirmó que los había mirado.
+Con eso cerró la 12.
+
+**El balance de la revisión visual de la pieza 12, que conviene tener a mano para la defensa:** de
+**una sola** revisión salieron **tres correcciones a la regla de negocio** y **seis cambios
+visuales**. Ninguna de las nueve la podía encontrar una prueba automática — las tres de la regla
+porque eran sobre *qué tenía que decir* la regla y no sobre si el código cumplía lo escrito, y las
+seis visuales porque ninguna prueba de este proyecto mira la página dibujada.
