@@ -712,6 +712,19 @@ body {
       border-color: $indigo;
     }
   }
+
+  // El botón chico, para los que van adentro de una fila de la lista de citas (pieza 5).
+  //
+  // Un botón de ancho completo por cita —que es lo que hace `.boton` en teléfono— convertiría la
+  // lista en una escalera de botones gigantes y taparía las citas. Acá se encoge a su contenido en
+  // **todos** los tamaños de pantalla, y baja al `label-sm` de VISUALS.md, que es el mismo 12px de
+  // los avisos y los textos de guía: son botones de apoyo, no la acción principal de la pantalla.
+  &--chico {
+    width: auto;
+    padding: $stack-xs ($base * 3);
+    font-size: 12px;
+    line-height: 16px;
+  }
 }
 
 // El aviso de error. Está escondido con el atributo `hidden` del HTML y el JavaScript se lo quita
@@ -865,6 +878,20 @@ body {
     font-weight: 600;
     line-height: 32px;
     color: $navy-oscuro;
+  }
+
+  // Un título pegado a lo que viene abajo, en vez de la separación normal de la sección.
+  //
+  // Lo usa «Historial» de «Mis citas» (pieza 5). La separación de `@include columna` son 16px, que
+  // es la correcta cuando entre el título y la tarjeta hay un texto de explicación; sin ese texto,
+  // el título queda flotando lejos de la lista que nombra. 8px lo apoya sobre su tarjeta y se sigue
+  // leyendo como «este título es de esta caja». *Pedido de la estudiante el 2026-08-20.*
+  //
+  // Sigue siendo múltiplo de 4, la unidad base de `VISUALS.md`, y va en un modificador y no en
+  // `.paso` a secas para no acercar de golpe los cinco títulos de la pantalla de reservar, donde la
+  // separación de 16px es la que corresponde.
+  &--titulo-pegado {
+    gap: $stack-xs;
   }
 
   // El paso del calendario deja de crecer de tableta para arriba. Sin este tope, en una pantalla
@@ -1259,6 +1286,59 @@ body {
       background-color: $navy;
     }
   }
+
+  // El horario que la propia cita ya tiene, estando en modo reagendar (pieza 5).
+  //
+  // Está tomado —por su propia cita—, así que hereda el azul marino tachado de arriba. Lo único que
+  // se agrega es un contorno índigo por fuera, para que se distinga de los que ocupó otra persona:
+  // no es un horario perdido, es el suyo. Se usa `outline` y no `border` a propósito: el borde ya lo
+  // ocupa el estado «tomado», y cambiarlo movería la ficha un pixel respecto de sus vecinas.
+  &--el-de-siempre {
+    outline: 2px solid $indigo;
+    outline-offset: 2px;
+  }
+}
+
+// ══════════════════════════════════════════════════════ el cartel de reagendar (pieza 5)
+//
+// «Estás moviendo una cita». Aparece arriba de la pantalla de reservar cuando esa pantalla se está
+// usando para mover una cita en vez de crear una nueva.
+//
+// Va en lavanda (`aviso--informativo`, los mismos dos tonos) y no en verde ni en rojo: no es una
+// buena noticia ni un error, es una noticia que no es ninguna de las dos — que es exactamente para
+// lo que este proyecto reserva el lavanda.
+.reagendar {
+  @include columna($stack-xs);
+
+  padding: $gutter;
+  margin-bottom: $stack-md;
+  color: $indigo-texto;
+  background-color: $indigo-suave;
+  border-radius: $radio-tarjeta;
+
+  &__titulo {
+    // `title-md` de VISUALS.md, el mismo de los títulos de tarjeta.
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 24px;
+  }
+
+  // Qué cita se está moviendo. Va en 16px, no en 12: **no es un texto de guía, es el dato** —el que
+  // dice si se está moviendo la cita correcta— y tiene que leerse como contenido de verdad.
+  &__cual {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+  }
+
+  // La aclaración de RN-18. Sí es texto de guía, así que va en el 12px de siempre.
+  &__nota {
+    margin: 0;
+    font-size: 12px;
+    line-height: 16px;
+  }
 }
 
 // ══════════════════════════════════════════════════════ confirmar la reserva (pieza 3)
@@ -1385,5 +1465,37 @@ body {
   // La etiqueta de estado no se estira: se queda del tamaño de su texto, arrimada al inicio.
   .etiqueta-estado {
     justify-self: start;
+  }
+
+  // Los botones de cancelar y reagendar, y la nota de por qué no están (pieza 5).
+  //
+  // Van en **su propio renglón, de punta a punta**, no en una cuarta columna. Dos razones: en
+  // teléfono una cuarta columna no cabe, y este mismo espacio es el que después ocupa la pregunta
+  // «¿seguro que querés cancelar esta cita?», que es una frase entera y en una columna angosta
+  // saldría en seis renglones.
+  //
+  // `1 / -1` quiere decir «desde la primera raya hasta la última», o sea todo el ancho de la
+  // cuadrícula, sin tener que saber cuántas columnas hay.
+  &__acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $stack-xs;
+    align-items: center;
+    margin-top: $base;
+
+    @media (min-width: $tableta) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  // La nota de «faltan menos de 4 horas» y la pregunta antes de cancelar. Ocupa el renglón completo
+  // para que los botones caigan debajo de la frase y no a su lado.
+  &__nota {
+    flex-basis: 100%;
+    margin: 0;
+    // El mismo 12px de todo texto de guía en este proyecto (`label-sm` de VISUALS.md).
+    font-size: 12px;
+    line-height: 16px;
+    color: $texto-suave;
   }
 }

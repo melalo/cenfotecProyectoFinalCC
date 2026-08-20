@@ -23,6 +23,7 @@ const requisitosContrasena = document.getElementById("requisitos-contrasena")
 const botonesDeSalir = document.querySelectorAll('[data-accion="salir"]')
 
 // Los pedazos de la pantalla de reservar (piezas 2 y 11).
+const pasoCategoria = document.getElementById("paso-categoria")
 const listaCategorias = document.getElementById("lista-categorias")
 const pasoServicio = document.getElementById("paso-servicio")
 const tituloPasoServicio = document.getElementById("titulo-paso-servicio")
@@ -61,6 +62,19 @@ const avisoReserva = document.getElementById("aviso-reserva")
 const avisoCitas = document.getElementById("aviso-citas")
 const listaCitas = document.getElementById("lista-citas")
 const citasVacio = document.getElementById("citas-vacio")
+// El historial, que la pieza 5 separó de las citas próximas.
+const seccionHistorial = document.getElementById("seccion-historial")
+const listaHistorial = document.getElementById("lista-historial")
+
+// Los pedazos que agrega la pieza 5: el cartel de «estás moviendo una cita» y las partes de la
+// tarjeta de confirmar que cambian de texto cuando se está reagendando en vez de reservando.
+const cartelReagendar = document.getElementById("cartel-reagendar")
+const reagendarCual = document.getElementById("reagendar-cual")
+const botonDejarComoEsta = document.getElementById("boton-dejar-como-esta")
+const confirmacionTitulo = document.getElementById("confirmacion-titulo")
+const filaResumenAhora = document.getElementById("fila-resumen-ahora")
+const resumenAhora = document.getElementById("resumen-ahora")
+const resumenQueDia = document.getElementById("resumen-que-dia")
 
 // Los pedazos de la sección «Usuario» (pieza 10).
 const avisoUsuario = document.getElementById("aviso-usuario")
@@ -104,6 +118,13 @@ const MENSAJES = {
   correo_invalido:
     "Ese correo no parece un correo. Revisá que tenga una arroba y una terminación, " +
     "como ana@ejemplo.com.",
+  // Los dos de la pieza 5. El de la ventana de las 4 horas se arma aparte, en
+  // `mensajeDeLaCita`, porque lleva el teléfono del negocio adentro (RN-5).
+  cita_no_activa:
+    "Esa cita ya no está activa: puede ser que la hayas cancelado en otra pestaña o desde el " +
+    "teléfono. Acá abajo está la lista al día.",
+  cita_no_encontrada:
+    "No encontramos esa cita. Acá abajo está tu lista al día, por si cambió algo.",
   desconocido: "Algo falló y no se pudo completar. Volvé a intentar en un momento.",
 }
 
@@ -283,18 +304,31 @@ const eleccion = {
   // Los dos que agrega la pieza 3: el día que está abierto y el horario que se va a confirmar.
   dia: null,
   horario: null,
+  // El que agrega la pieza 5: la cita que se está moviendo, o `null` si se está reservando de cero.
+  // Es lo único que distingue los dos modos de esta pantalla.
+  reagendando: null,
 }
 
+/**
+ * Devuelve la pantalla de reservar a como está cuando se entra: sin nada elegido, con el paso de las
+ * categorías a la vista y **fuera del modo reagendar**.
+ *
+ * Es el único lugar que apaga el modo reagendar, a propósito: así no hay dos maneras de salir de él
+ * que puedan quedar desincronizadas.
+ */
 function olvidarLoElegido() {
   eleccion.categoria = null
   eleccion.servicio = null
   eleccion.proveedor = null
   eleccion.mes = null
   eleccion.calendario = null
+  eleccion.reagendando = null
 
   listaCategorias.replaceChildren()
   listaServicios.replaceChildren()
   listaProveedores.replaceChildren()
+  pasoCategoria.hidden = false
+  cartelReagendar.hidden = true
   pasoServicio.hidden = true
   pasoProveedor.hidden = true
   pasoCalendario.hidden = true
@@ -416,7 +450,7 @@ async function elegirServicio(servicio) {
   listaProveedores.replaceChildren()
   for (const proveedor of respuesta.cuerpo) {
     listaProveedores.appendChild(
-      botonDeOpcion(proveedor.nombre, "Te atiende", () => elegirProveedor(proveedor)),
+      botonDeOpcion(proveedor.nombre, "Terapista", () => elegirProveedor(proveedor)),
     )
   }
 
@@ -573,7 +607,14 @@ function fichaDeHorario(dia, horario) {
 
   if (!horario.disponible) {
     ficha.disabled = true
-    ficha.title = "No disponible"
+
+    // Estando en modo reagendar, **el horario que la cita ya tiene sale como ocupado** — y lo está,
+    // por su propia cita. Decirle «no disponible» ahí sería confuso: parecería que otra persona se
+    // lo llevó. Así que se lo nombra por lo que es (pieza 5).
+    const esElQueYaTiene = eleccion.reagendando?.inicio === horario.inicio
+    ficha.title = esElQueYaTiene ? "Es el horario que ya tenés" : "No disponible"
+    if (esElQueYaTiene) ficha.classList.add("horario--el-de-siempre")
+
     return ficha
   }
 
@@ -711,6 +752,12 @@ for (const enlace of document.querySelectorAll("[data-vista]")) {
     // sección: se limpia al navegar.
     esconderAviso(avisoCitas)
     esconderAviso(avisoUsuario)
+
+    // Usar el menú es empezar de nuevo: si se había quedado a medias moviendo una cita, ese modo se
+    // apaga (pieza 5). Sin esto, tocar «Reservar» en el menú mostraría la pantalla de reagendar sin
+    // los pasos del servicio y del proveedor, y no habría manera de reservar algo nuevo.
+    if (eleccion.reagendando) empezarAElegir()
+
     mostrarVista(enlace.dataset.vista)
   })
 }
@@ -736,6 +783,22 @@ function elegirHorario(dia, horario) {
   resumenDia.textContent = tituloDelDia(dia.fecha)
   resumenHora.textContent = horario.inicio.slice(11, 16)
 
+  // La misma tarjeta dice dos cosas distintas según el modo (pieza 5). Reservando muestra cuatro
+  // datos y dice «Confirmar la reserva»; reagendando muestra un quinto —cuándo es la cita **hoy**—
+  // y dice «Mover la cita». Sin ese quinto dato, quien está moviendo una cita no tiene contra qué
+  // comparar el horario nuevo que acaba de tocar.
+  const moviendo = eleccion.reagendando !== null
+
+  confirmacionTitulo.textContent = moviendo ? "Mové tu cita a este horario" : "Confirmá tu reserva"
+  botonConfirmar.textContent = moviendo ? "Mover la cita" : "Confirmar la reserva"
+  resumenQueDia.textContent = moviendo ? "Pasa a" : "Día"
+  filaResumenAhora.hidden = !moviendo
+
+  if (moviendo) {
+    const viejo = eleccion.reagendando.inicio
+    resumenAhora.textContent = `${tituloDelDia(viejo.slice(0, 10))}, ${viejo.slice(11, 16)}`
+  }
+
   confirmacion.hidden = false
 
   // En un teléfono la tarjeta de confirmar puede quedar más abajo de lo que se ve, y si no se la
@@ -748,6 +811,15 @@ function marcarHorarioElegido(inicio) {
   for (const ficha of listaHorarios.children) {
     ficha.classList.toggle("horario--elegido", ficha.dataset.inicio === inicio)
   }
+}
+
+/**
+ * Lo que hace el botón grande de la tarjeta de confirmar. Son dos cosas distintas según el modo, y
+ * el `if` está acá y no repartido por la pantalla: un solo botón, un solo lugar donde se decide.
+ */
+async function confirmarLoElegido() {
+  if (eleccion.reagendando) return confirmarElMovimiento()
+  return confirmarReserva()
 }
 
 async function confirmarReserva() {
@@ -798,8 +870,9 @@ function mensajeDeLaReserva(cuerpo) {
   return mensajeDelError(cuerpo)
 }
 
-botonConfirmar.addEventListener("click", confirmarReserva)
+botonConfirmar.addEventListener("click", confirmarLoElegido)
 botonCancelarEleccion.addEventListener("click", olvidarElHorario)
+botonDejarComoEsta.addEventListener("click", salirDelModoReagendar)
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // «Mis citas» (pieza 3)
@@ -809,20 +882,36 @@ async function cargarMisCitas() {
   const respuesta = await pedirAlApi("/api/citas")
 
   listaCitas.replaceChildren()
+  listaHistorial.replaceChildren()
 
   if (respuesta.estado !== 200) {
     // El caso normal acá es la cuenta de Personal, que no tiene citas propias: reservar en nombre de
     // quien llama es otra pantalla, de la pieza 7. El servidor lo dice y acá solo se muestra.
     citasVacio.hidden = true
+    seccionHistorial.hidden = true
     mostrarAviso(avisoCitas, mensajeDelError(respuesta.cuerpo))
     return
   }
 
-  for (const cita of respuesta.cuerpo) {
+  // En qué grupo va cada cita **lo decidió el servidor**, en su campo `grupo`. Acá no se mira ni la
+  // fecha ni el estado para clasificarlas: solo se lee la respuesta y se pone cada una en su lugar.
+  const proximas = respuesta.cuerpo.filter((cita) => cita.grupo === "proxima")
+  const historial = respuesta.cuerpo.filter((cita) => cita.grupo === "historial")
+
+  for (const cita of proximas) {
     listaCitas.appendChild(filaDeCita(cita))
   }
 
-  citasVacio.hidden = respuesta.cuerpo.length > 0
+  // El historial se lee al revés: **lo más reciente primero**. El servidor las manda de la más vieja
+  // a la más nueva, que es el orden correcto para las próximas —«la que tengo antes, arriba»— y el
+  // equivocado para lo que ya pasó, donde lo de la semana pasada importa más que lo del año pasado.
+  // Dar vuelta una lista no es una regla de negocio, es cómo se lee: por eso se hace acá.
+  for (const cita of [...historial].reverse()) {
+    listaHistorial.appendChild(filaDeCita(cita))
+  }
+
+  citasVacio.hidden = proximas.length > 0
+  seccionHistorial.hidden = historial.length === 0
 }
 
 function filaDeCita(cita) {
@@ -837,15 +926,284 @@ function filaDeCita(cita) {
   const que = document.createElement("div")
   que.className = "cita__que"
   que.appendChild(textoEn("span", "cita__servicio", cita.servicio))
-  que.appendChild(textoEn("span", "cita__proveedor", `Te atiende ${cita.proveedor}`))
+  que.appendChild(textoEn("span", "cita__proveedor", `Terapista ${cita.proveedor}`))
 
   fila.appendChild(cuando)
   fila.appendChild(que)
-  // El estado sale tal como lo manda el servidor. Hoy siempre dice «activa», porque nada las
-  // cancela ni las cierra todavía: eso llega con las piezas 5, 7 y 8.
-  fila.appendChild(textoEn("span", "etiqueta-estado", cita.estado))
+
+  // ── La etiqueta de estado, y cuándo NO se pone ────────────────────────────────────────────
+  //
+  // **La etiqueta aparece solo cuando algo le pasó a la cita** (decidido por la estudiante el
+  // 2026-08-20): cancelada, y completada o «no asistió» cuando llegue la pieza 8. Una cita del
+  // historial que sigue `activa` —o sea, que simplemente ocurrió y a la que nadie le hizo nada
+  // todavía— **no lleva ninguna**.
+  //
+  // El problema que esto resuelve: decía «ACTIVA» debajo de una cita del mes pasado, y «activa»
+  // suena a «esto está en pie», cuando ya no lo está.
+  //
+  // Y por qué no dice «COMPLETADA», que sería lo natural: **la aplicación no sabe si la persona
+  // fue**. Pasó la hora, sí, pero presentarse o no lo sabe solo la asistente, que estuvo ahí. Por
+  // eso RN-17 dice que «completada» **solo** lo marca Personal y **nunca se alcanza por el paso del
+  // tiempo**. Poner «COMPLETADA» sola le estaría afirmando a alguien que asistió sin que nadie lo
+  // confirme, y se daría vuelta el día que Personal marque «no asistió» (RN-19).
+  //
+  // Así, la etiqueta nunca se desdice: pasa de **no estar** a decir COMPLETADA o NO ASISTIÓ. Eso es
+  // un avance, no una contradicción. Y no hubo que inventar ninguna palabra que no esté en RN-17.
+  //
+  // La ausencia se entiende porque **el título de la sección ya dice lo que la etiqueta decía**:
+  // el título de su sección: **«Historial»**.
+  const yaPasoYNadieLaToco = cita.grupo === "historial" && cita.estado === "activa"
+  if (!yaPasoYNadieLaToco) {
+    fila.appendChild(textoEn("span", "etiqueta-estado", cita.estado))
+  }
+
+  // Los botones de la pieza 5. **Quién decide si aparecen es el servidor**, en el campo
+  // `sePuedeCambiar` de cada cita: esta pantalla no cuenta las 4 horas por su cuenta. Si las contara
+  // con el reloj de esta computadora, un navegador con la hora mal puesta mostraría un botón que el
+  // servidor va a rechazar — o le esconderá uno que sí podía usar, que es peor.
+  const acciones = accionesDeLaCita(cita, fila)
+  if (acciones) fila.appendChild(acciones)
 
   return fila
+}
+
+/**
+ * La parte de abajo de una cita: los botones de cancelar y reagendar, o la explicación de por qué no
+ * están. Devuelve `null` cuando no hay nada que mostrar.
+ *
+ * El **porqué** también viene del servidor, en el campo `porQueNo`. Esta pantalla solo lo traduce a
+ * una frase, igual que hace con el campo `estado` de cada día del calendario.
+ */
+function accionesDeLaCita(cita, fila) {
+  const acciones = document.createElement("div")
+  acciones.className = "cita__acciones"
+
+  if (cita.sePuedeCambiar) {
+    const reagendar = document.createElement("button")
+    reagendar.type = "button"
+    reagendar.className = "boton boton--suave boton--chico"
+    reagendar.textContent = "Reagendar"
+    reagendar.addEventListener("click", () => empezarAReagendar(cita))
+
+    const cancelar = document.createElement("button")
+    cancelar.type = "button"
+    cancelar.className = "boton boton--suave boton--chico"
+    cancelar.textContent = "Cancelar"
+    cancelar.addEventListener("click", () => preguntarSiCancela(cita, fila))
+
+    acciones.appendChild(reagendar)
+    acciones.appendChild(cancelar)
+    return acciones
+  }
+
+  // Una cita que ya no está activa no necesita explicación: la etiqueta de al lado ya dice
+  // «cancelada», y agregarle una frase sería repetir lo mismo con más palabras.
+  const nota = NOTA_DE_LA_CITA[cita.porQueNo]
+  if (!nota) return null
+
+  // Los dos mensajes llevan el teléfono adentro: un aviso que manda a llamar sin dar el número no
+  // resuelve nada (REG-4).
+  acciones.appendChild(textoEn("p", "cita__nota", nota()))
+
+  return acciones
+}
+
+/**
+ * Qué se le explica al cliente cuando una cita no se puede cambiar. **Los motivos que no están acá
+ * no llevan ninguna nota**, y eso es a propósito en los dos casos que faltan.
+ *
+ * Hay **una sola** nota, y la única que la lleva es la cita que está por venir dentro de las 4 horas
+ * — la que sí necesita que alguien le explique por qué no tiene botones, y a qué número llamar
+ * (RN-5, REG-4).
+ *
+ * Las otras dos no llevan nada, cada una por su razón:
+ *
+ *   - **`cita_no_activa`** (cancelada, o cerrada por Personal): su etiqueta ya lo dice. Agregar una
+ *     frase sería repetir lo mismo con más palabras.
+ *   - **`ya_paso`**: el título de su sección —**«Historial»**— ya lo dice, para todas las filas de
+ *     golpe. *Hasta el 2026-08-20 tenía su propia nota, y se sacó ese mismo día, cuando la lista se
+ *     partió en dos secciones y esa frase pasó a repetir lo que el título decía — en cada cita vieja,
+ *     una vez.*
+ *
+ * **`ya_paso` sigue haciendo falta aunque no muestre nada, y es lo delicado de este archivo:** es lo
+ * único que impide que una cita del mes pasado caiga en el renglón de abajo y diga «faltan menos de 4
+ * horas para esta cita». Si el servidor dejara de distinguirlo, esa frase falsa volvería sola.
+ *
+ * Quién decide qué nota va **no es esta pantalla**: viene en el campo `porQueNo` que manda el
+ * servidor. Acá solo se traduce a palabras, igual que con el campo `estado` de cada día del
+ * calendario. Es una función y no un texto suelto porque el teléfono se lee cuando la nota se
+ * dibuja, no cuando este archivo se carga.
+ */
+const NOTA_DE_LA_CITA = {
+  ventana_de_cancelacion: () =>
+    "Faltan menos de 4 horas para esta cita, así que no se puede cambiar desde acá. Si necesitás " +
+    `cancelarla o moverla, llamá al negocio al ${eleccion.negocio.telefono}.`,
+}
+
+/**
+ * Antes de cancelar, pregunta (decisión de la estudiante del 2026-08-20).
+ *
+ * Los botones se reemplazan por la pregunta **en la misma fila**, en vez de abrir una ventana
+ * emergente del navegador: una ventana del navegador no se puede vestir con el sistema visual del
+ * proyecto, y además tapa la cita justo cuando la persona quiere mirarla para estar segura de que es
+ * la correcta.
+ *
+ * Cancelar no se deshace. La cita no se borra (RN-15), pero para recuperar ese horario habría que
+ * reservarlo otra vez, y a esa altura puede que otra persona ya se lo haya llevado (RN-7).
+ */
+function preguntarSiCancela(cita, fila) {
+  const acciones = fila.querySelector(".cita__acciones")
+
+  acciones.replaceChildren()
+  acciones.appendChild(
+    textoEn(
+      "p",
+      "cita__nota",
+      "¿Seguro que querés cancelar esta cita? Ese horario queda libre para otra persona.",
+    ),
+  )
+
+  const siCancelo = document.createElement("button")
+  siCancelo.type = "button"
+  siCancelo.className = "boton boton--chico"
+  siCancelo.textContent = "Sí, cancelarla"
+  siCancelo.addEventListener("click", () => cancelarLaCita(cita, siCancelo))
+
+  const noCancelo = document.createElement("button")
+  noCancelo.type = "button"
+  noCancelo.className = "boton boton--suave boton--chico"
+  noCancelo.textContent = "No, dejarla"
+  // Volver a dibujar la lista es más simple y más seguro que deshacer a mano lo que se acaba de
+  // cambiar: lo que se ve vuelve a salir de lo que el servidor dice ahora.
+  noCancelo.addEventListener("click", cargarMisCitas)
+
+  acciones.appendChild(siCancelo)
+  acciones.appendChild(noCancelo)
+}
+
+/** Cancela la cita de verdad (RF-13). El horario queda libre en el mismo instante (RN-7). */
+async function cancelarLaCita(cita, boton) {
+  esconderAviso(avisoCitas)
+  // Se apaga el botón mientras el pedido viaja: dos toques seguidos mandarían dos cancelaciones.
+  boton.disabled = true
+
+  const respuesta = await pedirAlApi(`/api/citas/${cita.id}`, { method: "DELETE" })
+
+  if (respuesta.estado !== 204) {
+    // Se vuelve a cargar la lista **antes** de escribir el aviso: si el rechazo fue porque la cita ya
+    // estaba cancelada, lo primero que la persona tiene que ver es la lista al día.
+    await cargarMisCitas()
+    mostrarAviso(avisoCitas, mensajeDeLaCita(respuesta.cuerpo))
+    return
+  }
+
+  await cargarMisCitas()
+  mostrarAvisoDeExito(
+    avisoCitas,
+    "Tu cita quedó cancelada, y ese horario vuelve a estar libre. Acá abajo queda anotada.",
+  )
+}
+
+/**
+ * Arranca el modo reagendar: lleva a la pantalla de reservar, pero **con el servicio y el proveedor
+ * ya puestos y sin manera de cambiarlos** (RN-18).
+ *
+ * Reusa la pantalla de reservar entera —el calendario, las fichas de horario, la tarjeta de
+ * confirmar— en vez de tener su propio calendario (decidido por la estudiante el 2026-08-20). Los
+ * dos números que hacen esto posible, `servicioId` y `proveedorId`, los agregó la pieza 5 a la
+ * respuesta de `GET /api/citas` justamente para esto.
+ */
+async function empezarAReagendar(cita) {
+  esconderAviso(avisoCitas)
+  olvidarLoElegido()
+
+  eleccion.reagendando = cita
+  eleccion.servicio = { id: cita.servicioId, nombre: cita.servicio }
+  eleccion.proveedor = { id: cita.proveedorId, nombre: cita.proveedor }
+
+  // Los tres primeros pasos no se muestran: reagendar no los puede cambiar.
+  pasoCategoria.hidden = true
+  pasoServicio.hidden = true
+  pasoProveedor.hidden = true
+
+  reagendarCual.textContent =
+    `${cita.servicio}, terapista ${cita.proveedor}. ` +
+    `Hoy es el ${tituloDelDia(cita.inicio.slice(0, 10)).toLowerCase()} a las ${cita.inicio.slice(11, 16)}.`
+  cartelReagendar.hidden = false
+
+  mostrarVista("reservar")
+
+  eleccion.mes = eleccion.negocio.hoy.slice(0, 7)
+  pasoCalendario.hidden = false
+  renumerarPasos()
+  await cargarCalendario()
+}
+
+/** El botón «Dejarla como está»: sale del modo reagendar sin tocar nada y vuelve a «Mis citas». */
+function salirDelModoReagendar() {
+  empezarAElegir()
+  mostrarVista("citas")
+}
+
+/** Mueve la cita al horario elegido (RF-14). */
+async function confirmarElMovimiento() {
+  if (!eleccion.horario) return
+
+  esconderAviso(avisoReserva)
+  botonConfirmar.disabled = true
+
+  const respuesta = await pedirAlApi(`/api/citas/${eleccion.reagendando.id}`, {
+    method: "PATCH",
+    // Se manda **solo** el inicio, que es lo único que reagendar cambia (RN-18). El servidor
+    // tampoco leería nada más, pero mandarlo sugeriría que sí.
+    cuerpo: { inicio: eleccion.horario.inicio },
+  })
+
+  botonConfirmar.disabled = false
+
+  if (respuesta.estado !== 200) {
+    // El calendario que está en pantalla ya quedó viejo: si el horario lo tomó otra persona, hay que
+    // volver a pedirlo antes de escribir el mensaje. Al revés, el refresco borraría el aviso.
+    await cargarCalendario()
+    mostrarAviso(avisoReserva, mensajeDelMovimiento(respuesta.cuerpo))
+    return
+  }
+
+  // Se sale del modo reagendar y se vuelve a «Mis citas», donde la cita ya aparece en su día nuevo.
+  empezarAElegir()
+  mostrarVista("citas")
+  mostrarAvisoDeExito(
+    avisoCitas,
+    "Tu cita quedó movida. Te mandamos un correo con el día y la hora nuevos.",
+  )
+}
+
+/** El mensaje de un rechazo al mover una cita. Los dos que llevan el teléfono se arman acá. */
+function mensajeDelMovimiento(cuerpo) {
+  if (cuerpo?.error === "mismo_dia") {
+    return (
+      "No se puede mover la cita a hoy ni a un día que ya pasó. Si necesitás una cita hoy, " +
+      `llamá al negocio al ${eleccion.negocio.telefono}.`
+    )
+  }
+  if (cuerpo?.error === "horario_no_disponible") {
+    return (
+      "Ese horario ya no está disponible: alguien lo tomó antes. Elegí otro del calendario, que ya " +
+      "está actualizado. Tu cita sigue en su horario de siempre."
+    )
+  }
+  return mensajeDeLaCita(cuerpo)
+}
+
+/** El mensaje de un rechazo al cancelar o mover. El de RN-5 lleva el teléfono del negocio adentro. */
+function mensajeDeLaCita(cuerpo) {
+  if (cuerpo?.error === "ventana_de_cancelacion") {
+    return (
+      "Faltan menos de 4 horas para esa cita, así que no se puede cambiar desde acá. " +
+      `Llamá al negocio al ${eleccion.negocio.telefono} y ellos sí pueden hacerlo.`
+    )
+  }
+  return mensajeDelError(cuerpo)
 }
 
 /** Un elemento con su clase y su texto, que es lo que se repite en toda esta parte. */

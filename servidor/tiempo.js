@@ -111,6 +111,27 @@ export function esAnteriorOIgual(a, b) {
 }
 
 /**
+ * Cuántas horas faltan para un momento del proyecto, contando desde `ahora`. Devuelve un número con
+ * decimales: 3.98 son tres horas y 59 minutos. **Negativo si el momento ya pasó.**
+ *
+ * Existe desde la pieza 5, porque la ventana de cancelación (RN-5) es la primera regla del proyecto
+ * que mide una **distancia** entre dos momentos en vez de comparar dos fechas.
+ *
+ * Es el único lugar de todo el proyecto donde un momento se convierte con `new Date()`, y acá es
+ * seguro justamente por la regla de formato del proyecto: el texto trae su desfase escrito al final
+ * (`-06:00`), así que no hay nada que adivinar — `new Date` no puede interpretarlo como si fuera la
+ * hora de otro lugar. Es lo contrario de lo que pasaría con un `2026-09-02T10:00:00` a secas, que
+ * cada máquina leería en su propia hora.
+ *
+ * **No se redondea a horas enteras**, y eso importa: la regla dice «4 horas o más», y redondear
+ * dejaría cancelar una cita a la que le faltan 3 horas y 40 minutos.
+ */
+export function horasHasta(momentoDelProyecto, ahora) {
+  const cuando = new Date(momentoDelProyecto).getTime()
+  return (cuando - ahora.getTime()) / MILISEGUNDOS_POR_HORA
+}
+
+/**
  * Los nombres de los días y de los meses, para escribir una fecha en palabras.
  *
  * Sí, la misma lista existe también en `publico/aplicacion-cliente.js`, y eso es a propósito: ese

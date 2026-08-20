@@ -61,7 +61,7 @@ export function armarCorreoDeConfirmacion({
 
   const datos = [
     ["Servicio", servicio],
-    ["Te atiende", proveedor],
+    ["Terapista", proveedor],
     ["Día", fecha],
     ["Hora", hora],
     ["Dónde", negocioUbicacion],

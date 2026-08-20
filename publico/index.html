@@ -187,6 +187,31 @@
 
           <!-- ══ Vista «Reservar» ═══════════════════════════════════════════════════════════ -->
           <div id="vista-reservar" class="vista">
+
+          <!--
+            El cartel de «estás moviendo una cita» (pieza 5, RF-14).
+
+            Reagendar **reutiliza esta misma pantalla** en vez de tener su propio calendario
+            (decidido por la estudiante el 2026-08-20): un segundo calendario sería un segundo lugar
+            donde el mismo defecto puede aparecer. Lo que cambia en modo reagendar es que los tres
+            primeros pasos —categoría, tipo y quién atiende— **no se muestran**, porque reagendar no
+            los puede cambiar (RN-18), y que aparece este cartel diciendo qué cita se está moviendo.
+
+            Sin el cartel, esta pantalla se vería exactamente igual que reservar de cero, y quien la
+            mira no tendría manera de saber en cuál de las dos está.
+          -->
+          <article id="cartel-reagendar" class="reagendar" hidden>
+            <h3 class="reagendar__titulo">Estás moviendo una cita</h3>
+            <p id="reagendar-cual" class="reagendar__cual"></p>
+            <p class="reagendar__nota">
+              El servicio y tu terapista no cambian. Si querés otro servicio u otra persona,
+              cancelá esta cita y reservá de nuevo.
+            </p>
+            <button id="boton-dejar-como-esta" class="boton boton--suave" type="button">
+              Dejarla como está
+            </button>
+          </article>
+
           <!--
             El aviso de RN-14: cuando no queda ningún horario libre en los próximos 7 días. Quién
             decide si aparece es el servidor, no esta pantalla: viene en el campo
@@ -209,7 +234,9 @@
           -->
 
           <!-- Paso: la categoría ──────────────────────────────────────────────────────────── -->
-          <section class="paso">
+          <!-- Tiene `id` desde la pieza 5: en modo reagendar este paso se esconde, igual que los
+               dos siguientes, porque reagendar no cambia el servicio ni el proveedor (RN-18). -->
+          <section id="paso-categoria" class="paso">
             <h3 class="paso__titulo"><span class="paso__numero"></span> Elegí qué buscás</h3>
             <div id="lista-categorias" class="opciones"></div>
           </section>
@@ -224,7 +251,7 @@
 
           <!-- Paso: el proveedor ──────────────────────────────────────────────────────────── -->
           <section id="paso-proveedor" class="paso" hidden>
-            <h3 class="paso__titulo"><span class="paso__numero"></span> Elegí quién te atiende</h3>
+            <h3 class="paso__titulo"><span class="paso__numero"></span> Elegí tu terapista</h3>
             <div id="lista-proveedores" class="opciones"></div>
           </section>
 
@@ -273,8 +300,15 @@
               así el calendario sigue a la vista y, si el resumen no es el que se quería, se toca
               otro horario sin cerrar nada. Decidido por la estudiante el 2026-08-19.
             -->
+            <!--
+              Desde la pieza 5 esta misma tarjeta sirve para las dos cosas: confirmar una reserva
+              nueva y confirmar que una cita se mueve. Lo único que cambia es el título, el texto del
+              botón y una fila más que dice cuándo es la cita **ahora** — el JavaScript los cambia. Es
+              la misma tarjeta a propósito: dos tarjetas casi iguales serían dos lugares para
+              arreglar el mismo defecto visual.
+            -->
             <article id="confirmacion" class="tarjeta" hidden>
-              <h4 class="tarjeta__titulo">Confirmá tu reserva</h4>
+              <h4 id="confirmacion-titulo" class="tarjeta__titulo">Confirmá tu reserva</h4>
 
               <dl class="resumen">
                 <div class="resumen__fila">
@@ -282,11 +316,16 @@
                   <dd id="resumen-servicio" class="resumen__dato"></dd>
                 </div>
                 <div class="resumen__fila">
-                  <dt class="resumen__que">Te atiende</dt>
+                  <dt class="resumen__que">Terapista</dt>
                   <dd id="resumen-proveedor" class="resumen__dato"></dd>
                 </div>
+                <!-- Solo en modo reagendar: de qué día y hora se está moviendo. -->
+                <div id="fila-resumen-ahora" class="resumen__fila" hidden>
+                  <dt class="resumen__que">Ahora es</dt>
+                  <dd id="resumen-ahora" class="resumen__dato"></dd>
+                </div>
                 <div class="resumen__fila">
-                  <dt class="resumen__que">Día</dt>
+                  <dt id="resumen-que-dia" class="resumen__que">Día</dt>
                   <dd id="resumen-dia" class="resumen__dato"></dd>
                 </div>
                 <div class="resumen__fila">
@@ -306,16 +345,29 @@
           </div>
 
           <!-- ══ Vista «Mis citas» ═════════════════════════════════════════════════════════ -->
+          <!--
+            Son **dos secciones**, no una lista sola (decidido por la estudiante el 2026-08-20):
+            arriba lo que la persona tiene por delante, abajo lo que ya pasó y lo que canceló.
+
+            El motivo: `PLAN.md` y `ESPECIFICACION.md` dicen en tres lugares que «el cliente ve sus
+            **citas activas**», y hasta ese día la pantalla mostraba todo mezclado en una lista que
+            además crecía para siempre — con la próxima cita, que es lo único urgente, quedando cada
+            vez más enterrada. RN-15 («nada se borra») habla de los **datos**, no de lo que la
+            pantalla muestra: la cita cancelada sigue guardada, solo se mudó de sección.
+
+            **En cuál va cada cita lo dice el servidor**, en el campo `grupo` de cada una. Esta
+            pantalla no lo calcula: depende de qué hora es, y el frontend no decide reglas de negocio.
+          -->
           <div id="vista-citas" class="vista" hidden>
             <section class="paso">
-              <h3 class="paso__titulo">Mis citas</h3>
+              <h3 class="paso__titulo">Tus próximas citas</h3>
 
-              <!-- Acá aterriza el aviso de que la reserva quedó hecha. -->
+              <!-- Acá aterriza el aviso de que la reserva quedó hecha, o la cita cancelada. -->
               <p id="aviso-citas" class="aviso aviso--informativo" role="status" hidden></p>
 
               <article class="tarjeta">
                 <p id="citas-vacio" class="tarjeta__nota" hidden>
-                  Todavía no tenés ninguna cita. Andá a «Reservar» y elegí un horario.
+                  No tenés ninguna cita próxima. Andá a «Reservar» y elegí un horario.
                 </p>
 
                 <!--
@@ -324,6 +376,25 @@
                   se lean como un reporte y no como un montón de recuadros.
                 -->
                 <ul id="lista-citas" class="citas"></ul>
+              </article>
+            </section>
+
+            <!--
+              El historial. Está escondido mientras no haya nada que poner adentro: un título
+              «Historial» sobre una tarjeta vacía no informa nada y ocupa media pantalla.
+            -->
+            <!--
+              El título va **pegado a su tarjeta** (`paso--titulo-pegado`), más cerca que en las
+              demás secciones, y sin ningún texto de explicación debajo. Pedido de la estudiante el
+              2026-08-20: la palabra «Historial» se explica sola, y la frase que estaba acá —«lo que
+              ya pasó y lo que cancelaste, ordenado de lo más reciente a lo más viejo»— describía lo
+              que la lista de abajo ya muestra.
+            -->
+            <section id="seccion-historial" class="paso paso--titulo-pegado" hidden>
+              <h3 class="paso__titulo">Historial</h3>
+
+              <article class="tarjeta">
+                <ul id="lista-historial" class="citas"></ul>
               </article>
             </section>
           </div>

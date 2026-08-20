@@ -25,7 +25,7 @@
 | `npm install` | Instala las dependencias. |
 | `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita ni ningún correo registrado: esos se crean desde la aplicación, a partir de las piezas 3 y 4. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
-| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **135**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4 y 26 de la pieza 12. **Los criterios de aceptación CA-1 y CA-2 ya están cubiertos** (pieza 3); CA-3 se agrega en las piezas 5 y 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
+| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **174**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4, 26 de la pieza 12 y 39 de la pieza 5. **Los tres criterios de aceptación están cubiertos**: CA-1 y CA-2 desde la pieza 3, y **CA-3 (parte cliente) desde la pieza 5** — la parte de Personal es de la pieza 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
@@ -53,7 +53,8 @@ proyectoFinal/
 │   ├── catalogo.js        preguntas al catálogo: si un servicio existe, quién lo atiende
 │   ├── clientes.js        los datos del cliente: leerlos, comprobarlos y guardarlos
 │   ├── disponibilidad.js  qué horarios están libres — la regla, en un solo lugar
-│   ├── reservas.js        crear una cita — el único que toca el estado de una cita
+│   ├── reservas.js        crear, cancelar y mover una cita — el único que toca su estado,
+│   │                      y donde vive la regla de la ventana de 4 horas (RN-5)
 │   ├── correo.js          los correos: armarlos, entregarlos y dejar constancia
 │   ├── plantillas-de-correo.js  qué dice cada correo — solo arma texto, no manda nada
 │   ├── enviador-resend.js el único archivo que habla con un servicio de afuera
@@ -104,7 +105,11 @@ cada pieza en `PLAN.md`, y se copian de ahí tal cual.
 - El frontend **no decide reglas de negocio** (`DISENO.md`, límite del componente Interfaz). Si
   una pantalla necesita saber si algo se permite, se lo pregunta al API. Y no solo *si*: también
   **por qué**. Un día del calendario no llega con una lista vacía para que la pantalla adivine si
-  está cerrado, es feriado o ya pasó — llega con un campo `estado` que lo dice.
+  está cerrado, es feriado o ya pasó — llega con un campo `estado` que lo dice. Lo mismo con los
+  botones de cancelar y reagendar desde la pieza 5: cada cita llega con `sePuedeCambiar` y
+  `porQueNo`, y la pantalla **no cuenta las 4 horas**. Si las contara con el reloj de la computadora
+  de quien mira, un navegador con la hora mal puesta le mostraría un botón que el servidor va a
+  rechazar — o le esconderá uno que sí podía usar, que es peor.
 
 ### Fechas y horas
 
@@ -125,6 +130,12 @@ todos los errores posibles de este proyecto, así que las reglas son estrictas:
   devuelve el momento actual— y lo va pasando hacia adentro. En `npm start` es el reloj de verdad;
   en las pruebas es un reloj parado en una fecha fija. Sin eso, una prueba del calendario diría
   cosas distintas según el día en que se corra, y una prueba así no comprueba nada.
+- **Un momento se convierte con `new Date()` en un solo lugar de todo el proyecto**: la función
+  `horasHasta` de `servidor/tiempo.js`, que es la que mide cuántas horas faltan para una cita (la
+  ventana de 4 horas de RN-5, desde la pieza 5). Ahí es seguro **por** la regla del formato: el
+  texto trae su desfase escrito al final, así que no hay nada que adivinar. En cualquier otro lado
+  sería la puerta de entrada de un error de una hora. Y **no se redondea a horas enteras**: la regla
+  dice «4 horas o más», y redondear dejaría cancelar una cita a la que le faltan 3 horas y 40.
 
 ### El correo
 
@@ -158,6 +169,19 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
 
 ### Lo visual
 
+- **Al cliente se le dice «terapista», no «proveedor».** En pantalla y en los correos: «Terapista
+  Ana», «Elegí tu terapista». En la base, en el API y en el código **sigue llamándose `proveedor`** y
+  no se renombra — los nombres técnicos los fija el bloque *Produce* de `PLAN.md`. Son dos
+  vocabularios a propósito, el técnico y el del negocio, y **no es una inconsistencia que haya que
+  arreglar**. *Decidido por la estudiante el 2026-08-20.* Va **sin artículo con género** —«tu
+  terapista», «Terapista Ana»— porque hay proveedores mujeres y hombres: «la terapista» dejaría a
+  Carlos mal nombrado.
+- **Una etiqueta de estado aparece solo cuando algo le pasó a la cita**: cancelada, completada o «no
+  asistió». Una cita que ya pasó y que nadie cerró todavía **no lleva etiqueta**, porque decir
+  «ACTIVA» de algo que ya ocurrió es falso, y decir «COMPLETADA» sería peor: la aplicación **no sabe
+  si la persona asistió**, y RN-17 dice que ese estado solo lo marca Personal y nunca se alcanza por
+  el paso del tiempo. Así la etiqueta **nunca se desdice**: pasa de no estar a decir COMPLETADA o NO
+  ASISTIÓ. *Decidido por la estudiante el 2026-08-20, en la revisión visual de la pieza 5.*
 - **La apariencia sale de `VISUALS.md`, no del criterio de quien escribe el código.** Ese archivo
   es el sistema visual «Clinical Excellence»: colores, tipografía, tamaños de letra, redondeos y
   espaciado. Si un valor no está ahí, **no se inventa en el `.scss`**: se pregunta.
@@ -246,14 +270,21 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   toque una fecha. Una prueba que busca «algún día del mes en curso con horarios libres» pasa hoy y
   falla el 30 de un mes. Si una prueba necesita una fecha, para el reloj con `relojDetenidoEn` y escribe
   la fecha fija. Rompió la integración continua la primera vez que corrió.
+- **Lo que el API no deja crear se inserta a mano en la base, y eso está bien.** La ventana de 4
+  horas (pieza 5) hay que probarla con una cita que empiece hoy, y el API prohíbe crearla porque no
+  hay citas para hoy (RN-4). No es hacer trampa: es la única manera de llegar a ese estado, y es
+  literalmente lo que la comprobación 6 del plan pide. Lo que **sí** sería trampa es insertar a mano
+  algo que el API sí puede crear, porque entonces la prueba dejaría de probar el camino de verdad.
 - **Ninguna prueba mira la página dibujada.** Todas hablan con el API, así que un defecto visual
-  —una cuadrícula desbordada, un `hidden` que no esconde— no lo detecta ninguna. Por eso **una pieza
-  no se cierra sin que una persona abra el navegador y mire.** Los tres defectos visuales
-  encontrados hasta hoy (dos en la pieza 2, uno en la pieza 3) salieron todos de ahí.
+  —una cuadrícula desbordada, un `hidden` que no esconde— no lo detecta ninguna. **Ni tampoco si una
+  frase dice algo falso**: en la pieza 5 el texto «faltan menos de 4 horas» salía debajo de una cita
+  que ya había ocurrido, y las pruebas estaban todas en verde, porque comprobaban la regla y la regla
+  estaba bien. Por eso **una pieza no se cierra sin que una persona abra el navegador y mire.** Los
+  **ocho** defectos visuales encontrados hasta hoy salieron todos de ahí, ninguno de una prueba.
 
 ### Integración continua
 
-Existe desde la pieza 3. Las 135 pruebas corren solas en **cada push y cada pull request**, en
+Existe desde la pieza 3. Las 174 pruebas corren solas en **cada push y cada pull request**, en
 **Node 20 y Node 24**, configuradas en `.github/workflows/pruebas.yml`.
 
 - **Ese archivo vive en la raíz del repositorio, no en esta carpeta.** Es la única excepción a la
@@ -290,4 +321,7 @@ confidenciales), este proyecto tiene estas:
 - **Sin panel de administración.** Servicios, proveedores, horarios, feriados, ubicación, logo y
   colores se cargan como configuración, no por pantalla.
 - **Las tres reglas de CA-1, CA-2 y CA-3 tienen que estar cubiertas por pruebas que corran en cada
-  push** (`PROYECTO.md` sección 7, punto 4). Se construyen en las piezas 3, 5 y 7.
+  push** (`PROYECTO.md` sección 7, punto 4). **Cumplido:** CA-1 y CA-2 en la pieza 3, y CA-3 (parte
+  cliente) en la pieza 5. La parte de Personal de CA-3 —que la asistente **sí** puede cancelar dentro
+  de las 4 horas (RN-6)— es de la pieza 7, y la función que la hace posible ya está escrita:
+  `revisarSiSePuedeCambiar` de `servidor/reservas.js`, llamada con `QUIEN_PERSONAL`.

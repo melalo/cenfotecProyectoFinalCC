@@ -1245,3 +1245,317 @@ Con eso cerró la 12.
 visuales**. Ninguna de las nueve la podía encontrar una prueba automática — las tres de la regla
 porque eran sobre *qué tenía que decir* la regla y no sobre si el código cumplía lo escrito, y las
 seis visuales porque ninguna prueba de este proyecto mira la página dibujada.
+
+### 2026-08-20 — construcción de la pieza 5: cancelar y reagendar
+
+**La pieza que cierra el núcleo.** Con ella el prototipo hace el recorrido completo que
+`FICHA-APROBACION.md` comprometió: entrar → elegir → ver el calendario → reservar → recibir el correo
+→ cancelar o reagendar. Y trae **CA-3**, el último de los tres criterios de aceptación que
+`PROYECTO.md` §7 punto 4 exige proteger con pruebas que corran en cada push.
+
+**Lo que se encontró ya resuelto, y por qué vale contarlo.** Cinco cosas que esta pieza necesitaba
+estaban hechas de antes, sin que nadie las hubiera pensado para ella:
+
+1. Las columnas `cancelada_en` y `cancelada_por` ya existían en la tabla `cita`, vacías desde la
+   pieza 3.
+2. El índice único de la base es **parcial**: solo vigila las citas `activa`. Eso significa que
+   **cancelar libera el horario sin una sola línea de código que libere nada** — dejar de estar
+   activa *es* dejar de ocupar. RN-7 salió gratis.
+3. `GET /api/citas` ya no filtraba por estado, a propósito, para que las canceladas también salieran.
+4. El correo ya estaba resuelto entero, con su plantilla, su registro y su reintento.
+5. `servidor/tiempo.js` ya tenía casi todas las cuentas de fechas.
+
+Eso es lo que hace un plan que declara qué **Produce** cada pieza para las siguientes: la pieza 3 dejó
+puesto el terreno de la 5 sin saber cómo iba a construirse. **No nació ningún archivo nuevo y no se
+instaló ninguna dependencia.**
+
+**Tres preguntas antes de tocar código.** Ninguna estaba contestada en los documentos, y la regla de
+la carpeta dice preguntar en vez de elegir en silencio. Las tres las decidió la estudiante:
+
+| Pregunta | Decisión | Lo que cambió |
+|---|---|---|
+| ¿Dónde aparece el calendario para reagendar? | **Reusar la pantalla «Reservar»** en modo reagendar, con los tres primeros pasos escondidos | Un segundo calendario habría sido un segundo lugar donde el mismo defecto puede aparecer — y el calendario ya dio dos de los siete defectos visuales del proyecto |
+| ¿Al reagendar le llega un correo? | **Sí, el de confirmación con la fecha nueva** | **Corrigió RF-11 de `ESPECIFICACION.md`**, que solo hablaba de reservar. Sin esto, el aviso más reciente en la bandeja del cliente anunciaba un día que ya no era el suyo |
+| ¿Cancelar pregunta antes? | **Sí, en la misma fila de la cita** | Cancelar no se deshace: la cita no se borra (RN-15), pero el horario puede llevárselo otra persona (RN-7). Un toque por equivocación en un teléfono no puede costar una cita |
+
+**Lo que la construcción reveló que faltaba en el plan.** El bloque *Produce* de la pieza 5 nombraba
+dos endpoints y tres rechazos, y al escribir el código aparecieron tres rechazos más que el sistema
+igual tenía que contestar con algo: la cita que no existe, la cita que ya no está activa, y el horario
+nuevo que cae en el día de hoy. Además hicieron falta cuatro campos nuevos en `GET /api/citas`. Todo
+eso **se escribió primero en `PLAN.md`** —con su razón— y después en el código, que es el orden que
+manda la carpeta.
+
+**La decisión de diseño que más conviene poder defender:** cómo se mueve una cita a otro horario.
+Suena a dos movimientos —liberar el viejo, tomar el nuevo— y en realidad es **uno**: es la misma fila
+de la misma cita, y lo que cambia es su columna `inicio`. Escribirlo así hace **imposible** el estado
+intermedio que daría miedo (la cita sin horario, o con los dos) sin ningún cuidado especial. La
+alternativa —cancelar la vieja y crear una nueva— habría dejado dos filas donde el negocio tiene una
+sola cita, y le habría cambiado el número de cita al cliente por debajo.
+
+**El `404` que parece un error y es una decisión.** Cuando alguien intenta cancelar la cita de otra
+persona, el sistema contesta «no existe», no «no es tuya». Un `403` le **confirmaría** a quien
+pregunta que ese número de cita existe, y con eso se pueden ir contando las citas del negocio de una
+en una. La forma de garantizarlo no es un `if` que alguien pueda olvidar: la búsqueda lleva el número
+del cliente adentro, así que la cita de otra persona simplemente no se encuentra.
+
+**El borde exacto de la regla, probado a los dos lados.** RF-13 dice «si faltan 4 horas **o más**».
+Hay dos pruebas para eso: a 4 horas justas se permite, y con el reloj un minuto más adelante —3 horas
+y 59 minutos— se rechaza. Es el tipo de detalle donde una regla escrita con un «mayor que» donde iba
+un «mayor o igual» pasa desapercibida para siempre.
+
+**Un caso borde que se resolvió no escribiéndolo.** Una cita que ya pasó tampoco se puede cancelar
+desde la aplicación, y no hay ninguna línea de código que lo diga: si faltan −22 horas, faltan menos
+de 4, y la misma regla la cubre. Un caso borde menos donde equivocarse.
+
+**Las pruebas.** 33 nuevas, escritas antes del código y **vistas fallar primero** (67 fallas, 0
+éxitos en la primera corrida). `npm test` da **168 de 168**. Tres llevan `CA-3` en el título para
+poderlas encontrar de un vistazo. La que más vale de todas es la de la comprobación 5: le manda al
+API el proveedor de otra persona **salteando la pantalla**, y es la que demuestra que la regla de
+RN-18 vive en el servidor y no en un botón que no está.
+
+**Lo que las pruebas no pueden ver, y se comprobó a mano:** que la aplicación levanta con el código
+nuevo, que el JavaScript del navegador no tiene errores de sintaxis, y que **los 64 elementos que ese
+JavaScript busca por `id` existen todos en el HTML**. Un `id` mal escrito no lo detecta `npm test` y
+rompe la pantalla entera.
+
+**Sigue faltando la revisión visual**, que es la única capaz de encontrar los defectos de pantalla.
+Los siete defectos visuales de este proyecto salieron todos de ahí, ninguno de una prueba automática.
+
+### 2026-08-20 — la revisión visual de la pieza 5 encuentra una frase falsa
+
+**El octavo defecto visual del proyecto, y el primero de su tipo.** La estudiante abrió «Mis citas» a
+mediodía y mandó una captura: dos citas de ese mismo día, una de las 9:00 y otra de las 10:00, decían
+debajo *«Faltan menos de 4 horas para esta cita, así que no se puede cambiar desde acá. Si necesitás
+moverla, llamá al negocio al 2000-0000.»*
+
+Su observación fue: «solo está saliendo en la reserva nueva» — o sea, los botones de cancelar y
+reagendar solo aparecían en una de las tres citas.
+
+**Lo primero que se comprobó fue si el comportamiento estaba mal, y no lo estaba.** Con la hora del
+negocio a las 11:16 de ese día:
+
+| Cita | Cuánto faltaba |
+|---|---|
+| Jueves 20, 09:00 | **−2 h 17 min** → ya había pasado |
+| Jueves 20, 10:00 | **−1 h 17 min** → ya había pasado |
+| Jueves 27, 09:00 | +165 h → se podía cambiar |
+
+Que esas dos citas no tuvieran botones era **correcto**: una cita que ya ocurrió no se cancela ni se
+mueve, y la regla las cubre sola sin ningún caso especial —si faltan −2 horas, faltan menos de 4—.
+Esa economía estaba anotada como decisión el mismo día, con la razón de que es «un caso borde menos
+donde equivocarse».
+
+**Lo que estaba mal era la frase.** «Faltan menos de 4 horas para esta cita» **es falso** si la cita
+ya ocurrió. Y encima mandaba a llamar al negocio «para moverla», cuando ya no había nada que mover.
+
+**Por qué esta entrada importa más que los siete defectos visuales anteriores:** los siete anteriores
+eran de apariencia —un color equivocado, una cuadrícula desbordada, un tamaño de letra—. Este es
+distinto: **las pruebas estaban todas en verde y tenían razón.** Comprobaban que la regla rechazara el
+intento, y la regla lo rechazaba. Lo que estaba mal era **lo que la pantalla decía sobre esa regla**, y
+eso ninguna prueba de este proyecto puede leer: una prueba puede comprobar que el texto *aparece*, no
+que sea *verdad*. Es el argumento más fuerte que el proyecto tiene a favor de la regla de que **una
+pieza no se cierra sin que una persona abra el navegador y mire**.
+
+**Cómo se corrigió, y qué NO se tocó.** La estudiante decidió el texto: la cita pasada dice *«Esta
+cita ya pasó. Para modificarla o cancelarla, llamá al negocio al…»*. La que está dentro de las 4 horas
+pero todavía no ocurrió conserva su mensaje, que ahí sí es cierto.
+
+Lo delicado era hacerlo **sin romper CA-3**, y para eso se separaron dos cosas que estaban juntas:
+
+- **`revisarSiSePuedeCambiar` decide.** Su respuesta es la que viaja como motivo del rechazo de los
+  endpoints, y ahí `ventana_de_cancelacion` **sigue siendo** `ventana_de_cancelacion`: es lo que fija
+  el bloque *Produce* del plan y lo que comprueba CA-3. Una cita pasada se rechaza por RN-5, no por
+  una regla nueva. **Los dos endpoints no cambiaron en una sola línea.**
+- **`porQueNoSePuedeCambiar` explica.** Solo la usa `GET /api/citas`, y agrega un valor más al campo
+  informativo `porQueNo`: `"ya_paso"`.
+
+O sea: se agregó precisión al mensaje **sin tocar la regla ni el contrato**. Y la distinción la hace
+el servidor, no la pantalla, porque el frontend no decide reglas de negocio — la pantalla solo elige
+cuál de dos frases escribir según lo que el servidor le diga.
+
+**2 pruebas nuevas** (una cita pasada dice `ya_paso`; una cita de hoy que todavía no pasó sigue
+diciendo `ventana_de_cancelacion`), escritas antes del arreglo y vista fallar la primera. `npm test`
+pasó de 168 a **170 de 170**. Y se comprobó el resultado **contra las citas de verdad de la base**, no
+solo contra las de prueba.
+
+**Un detalle de método que vale anotar:** al reiniciar la aplicación para que el arreglo se viera, el
+envoltorio de `npm` se cerró pero **el proceso de node siguió vivo ocupando el puerto 3000** — que es
+exactamente lo que había pasado el 2026-08-17 y quedó anotado como la primera entrada de gobernanza.
+Esta vez no se afirmó que estuviera cerrado: **se comprobó el puerto, se vio que seguía ocupado, y se
+cerró el proceso de verdad antes de arrancar.** El control que esa entrada estableció funcionó.
+
+### 2026-08-20 — la misma revisión encuentra que el código no cumplía el plan
+
+**Entrada de gobernanza, y de un tipo nuevo.** Las dos anteriores fueron afirmaciones falsas del
+agente sobre el estado de algo (el proceso que seguía vivo, la pieza que ya estaba confirmada). Esta
+es distinta: **el agente construyó algo que contradecía lo que el plan dice, y lo documentó con
+seguridad como si fuera lo correcto.**
+
+**Cómo salió.** Después de corregir la frase de las 4 horas, la estudiante volvió a mirar y observó
+que la cita que había cancelado seguía en la lista aunque tocara el menú, fuera y volviera, y recargara
+la página. Preguntó por qué.
+
+**Qué se encontró al buscar en los documentos.** Tres lugares, y los tres dicen lo mismo:
+
+| Dónde | Qué dice |
+|---|---|
+| `PLAN.md`, pieza 5 | «El cliente ve sus **citas activas** y puede cancelarlas si faltan 4 horas o más» |
+| `PLAN.md`, pieza 3 | «El cliente ve sus **citas activas** en pantalla» |
+| `ESPECIFICACION.md`, recorrido de cancelación | «El cliente entra a la aplicación y **ve su cita activa**» |
+
+La pantalla mostraba **todas** las citas mezcladas: activas, canceladas y pasadas, en una sola lista
+ordenada por fecha, que además iba a crecer para siempre.
+
+**Cuál fue el error de razonamiento, que es lo que vale anotar.** La pieza 3 había decidido, con buena
+razón, que `GET /api/citas` **no filtrara por estado**, para que las piezas 5 y 8 pudieran ver las
+canceladas y las cerradas. Esa decisión es del **API**, y sigue siendo correcta. El agente la leyó y
+sacó de ahí que **la pantalla** también tenía que mostrarlas todas — y encima apoyó ese salto en RN-15,
+«nada se borra», que habla de **los datos**, no de lo que la pantalla muestra. Dos cosas distintas
+tratadas como una: *qué se conserva* y *qué se enseña*.
+
+Lo peor no fue el salto: fue que quedó **escrito como si fuera deliberado**, en un comentario del
+código que decía que las canceladas «también salen» y en la propia respuesta al usuario. Un supuesto
+mal fundado documentado con seguridad es más difícil de detectar que uno sin documentar, porque quien
+lo lee después asume que alguien lo pensó.
+
+**Por qué ninguna prueba podía encontrarlo.** Las 170 pruebas estaban en verde y tenían razón:
+comprobaban que el API devolviera las canceladas —que es lo que la pieza 3 pidió— y lo devolvía.
+**Ninguna prueba de este proyecto compara el código contra lo que el plan dice en prosa.** Ese trabajo
+lo hace una persona leyendo, o mirando la pantalla y preguntando «¿por qué esto sigue acá?».
+
+**Cómo se corrigió.** La estudiante eligió entre tres opciones y decidió **dos secciones**: «Tus
+próximas citas» arriba y «Historial» abajo, de lo más reciente a lo más viejo. Se agregó el campo
+`grupo` a cada cita, que vale `"proxima"` o `"historial"`, y **lo decide el servidor**: depende de qué
+hora es, y con el reloj del navegador una máquina mal configurada mandaría al historial la cita de
+mañana. La cita cancelada **sigue guardada en la base**: solo se mudó de sección, así que RN-15 no se
+toca.
+
+Y quedó separada de `sePuedeCambiar`, que es una pregunta distinta: **una cita de hoy en dos horas no
+se puede cambiar pero sí es una cita próxima** — es la más urgente que esa persona tiene, y mandarla al
+historial sería esconderle justamente lo que necesita ver. Hay una prueba dedicada a ese caso.
+
+**4 pruebas nuevas**, escritas antes del arreglo y vistas fallar las cuatro. `npm test` pasó de 170 a
+**174 de 174**.
+
+**El control que queda establecido:** cuando una pieza decide algo sobre **el API**, eso no decide nada
+sobre **la pantalla**. Son dos preguntas y se contestan por separado, cada una contra lo que el plan
+dice de ella. Y al cerrar una pieza, **releer en voz alta el bloque «Qué tiene que ser cierto» del plan
+y comprobarlo contra la pantalla, frase por frase** — no solo contra las pruebas, que comprueban lo que
+alguien pensó comprobar.
+
+### 2026-08-20 — la etiqueta de una cita pasada, y una salida mejor propuesta por la estudiante
+
+**El tercer hallazgo de la misma revisión visual, y el que mejor muestra cómo debería funcionar esto.**
+
+La estudiante pidió un cambio concreto: que una cita que ya pasó y que nadie canceló **no dijera
+ACTIVA**, sino **COMPLETADA**. Su observación de fondo era correcta: «activa» suena a «esto está en
+pie», y una cita del mes pasado no lo está.
+
+**El agente no lo construyó: buscó primero, y encontró que choca con tres cosas escritas.**
+
+| Dónde | Qué dice |
+|---|---|
+| `ESPECIFICACION.md`, RN-17 | «Una cita pasa al estado **completada** solo cuando Personal la marca así, después de que el cliente asistió. **No se marca sola al pasar la hora.**» |
+| `ESPECIFICACION.md`, RN-19 | Si el cliente no se presenta, Personal la marca **«no asistió»** |
+| `PLAN.md`, pieza 8 | «**Ningún estado se alcanza solo por el paso del tiempo**» |
+
+La razón de fondo, que es la que importa: **la aplicación no sabe si la persona asistió.** Pasó la
+hora, eso es todo lo que sabe. Presentarse o no lo sabe únicamente la asistente, que estuvo ahí. Si la
+pantalla dijera «COMPLETADA» sola, le estaría afirmando a alguien que fue sin que nadie lo confirme —
+y **se daría vuelta** el día que Personal marcara «no asistió»: la misma cita pasaría de COMPLETADA a
+NO ASISTIÓ, que para quien mira se ve como un error del sistema.
+
+**Y acá está lo que vale anotar: la salida la propuso ella, y era mejor que las tres del agente.** El
+agente ofreció tres opciones —«PASADA» en pantalla, «COMPLETADA» en pantalla, o cambiar el dato— y la
+estudiante contestó con una cuarta que ninguna era: **sacarle la etiqueta**.
+
+Es mejor que las tres por cuatro razones:
+
+1. **No hay que inventar ninguna palabra** que no esté ya en RN-17. «PASADA» habría sido un estado
+   nuevo en la cabeza de quien lo lee, sin existir en ninguna regla.
+2. **No afirma nada** sobre si la persona asistió.
+3. **La etiqueta nunca se desdice.** Pasa de *no estar* a decir COMPLETADA o NO ASISTIÓ cuando
+   Personal la cierre (pieza 8). Eso es un avance, no una contradicción.
+4. **La regla se dice en una frase:** *la etiqueta aparece solo cuando algo le pasó a la cita.* Y su
+   ausencia se entiende porque el título de la sección ya lo dice — «Historial: lo que ya pasó y lo
+   que cancelaste».
+
+Se sacó también la nota que iba debajo de esas filas, por lo mismo: repetía lo que el título ya decía,
+una vez por cada cita vieja.
+
+**Un detalle técnico que conviene no perder de vista.** El valor `"ya_paso"` del campo `porQueNo`
+—agregado un rato antes ese mismo día— **ya no muestra nada, y sigue haciendo falta**: es lo único que
+impide que una cita del mes pasado caiga en el renglón que dice «faltan menos de 4 horas para esta
+cita». Si el servidor dejara de distinguirlo, esa frase falsa volvería sola. Un campo que no se ve pero
+que sostiene algo es justo el tipo de cosa que alguien borra en seis meses por «no usarse», así que
+quedó escrito en el propio archivo y en `DISENO.md`. Y hay una prueba que lo cubre.
+
+**Este cambio no tiene ninguna prueba automática, y no puede tenerla:** es puramente qué se dibuja y
+qué no. El servidor no cambió en una sola línea, y `npm test` siguió dando 174 de 174 sin que se
+tocara ni una prueba. Es el ejemplo más limpio del proyecto de un cambio que **solo** la revisión
+visual puede validar.
+
+### 2026-08-20 — el vocabulario: al cliente se le dice «terapista»
+
+La estudiante pidió cambiar «Te atiende» por **«Terapista»**. Es un cambio de texto, y se hizo como
+tal: **siete lugares** —tres en el HTML, tres en el JavaScript del navegador y la etiqueta del correo
+de confirmación—, sin tocar ninguna función.
+
+**Lo que no se cambió, y es lo importante:** la tabla, las columnas y los campos del API **siguen
+llamándose `proveedor`**. Los nombres técnicos los fija el bloque *Produce* de `PLAN.md`, y no se
+renombran porque cambie un rótulo de pantalla. Quedan **dos vocabularios a propósito**: el técnico
+(`proveedor`, `proveedor_id`, `proveedorId`) y el del negocio (*terapista*). Eso quedó escrito en el
+glosario de `ESPECIFICACION.md`, en `CLAUDE.md` y en el `README.md` **precisamente para que una sesión
+futura no lo vea como una inconsistencia y lo «arregle»**, renombrando media base de datos por un
+cambio de palabra.
+
+**Un cuidado de redacción que valió la pena mirar antes de escribir:** los proveedores de prueba son
+**Ana, Luisa y Carlos**. Escribir «la terapista» habría dejado a Carlos mal nombrado en cada pantalla.
+Por eso la palabra va **sin artículo con género**: «tu terapista», «Terapista Ana». Funciona para los
+tres, como «artista». Se comprobó qué nombres hay en la base antes de elegir la forma, en vez de
+suponerlo.
+
+Ninguna prueba dependía del texto viejo —se comprobó buscándolo en `pruebas/` antes de tocar nada—,
+así que `npm test` siguió en **174 de 174** sin modificar ni una.
+
+### 2026-08-20 — el último ajuste, y el balance de la revisión visual de la pieza 5
+
+**El ajuste.** La estudiante pidió sacarle al «Historial» el texto que tenía debajo del título —«lo
+que ya pasó y lo que cancelaste. Se conserva siempre, ordenado de lo más reciente a lo más viejo»— y
+**pegar el título a su tarjeta**. Su razón: la palabra «Historial» se explica sola, y esa frase
+describía lo que la lista de abajo ya muestra.
+
+Se hizo con un modificador nuevo, `paso--titulo-pegado`, que baja la separación de 16px a 8px, y **no
+tocando `.paso` a secas**. La diferencia importa: `.paso` la usan también los cinco pasos de la
+pantalla de reservar, donde los 16px son los correctos porque entre el título y la tarjeta hay
+contenido. Un cambio en la clase base habría acercado de golpe cinco títulos que nadie pidió acercar.
+Los 8px siguen siendo múltiplo de 4, la unidad base de `VISUALS.md`.
+
+Un detalle de método: al sacar esa frase quedaron **tres lugares citándola** como justificación —dos
+comentarios del código y una fila de `DISENO.md` decían «el título de la sección ya lo dice, "Historial:
+lo que ya pasó y lo que cancelaste"»—. Se corrigieron los tres. Una justificación que cita un texto que
+ya no existe es peor que no tener justificación, porque manda a buscar algo que no está.
+
+---
+
+**El balance de la revisión visual de la pieza 5, que conviene tener a mano para la defensa.**
+
+De **una sola** revisión salieron **cinco cambios**, y ninguno lo podía encontrar una prueba
+automática:
+
+| # | Qué se encontró | De qué tipo |
+|---|---|---|
+| 1 | «Faltan menos de 4 horas para esta cita» debajo de una cita que ya había ocurrido | **Una frase falsa.** Las pruebas estaban en verde y tenían razón: comprobaban la regla, y la regla estaba bien |
+| 2 | «Mis citas» mostraba todo mezclado, cuando el plan dice en tres lugares «el cliente ve sus **citas activas**» | **El código no cumplía el plan.** Ninguna prueba compara el código contra lo que el plan dice en prosa |
+| 3 | La etiqueta decía «ACTIVA» en una cita del mes pasado | **Una etiqueta que afirmaba algo que ya no era cierto.** La salida —sacarla— la propuso la estudiante, y era mejor que las tres opciones del agente |
+| 4 | «Te atiende» en vez de «Terapista» | **Vocabulario.** La palabra del modelo de datos se había filtrado a la pantalla |
+| 5 | El «Historial» con un texto de más y el título flotando lejos de su tarjeta | **Espaciado y ruido.** Lo único puramente estético de los cinco |
+
+Y hay un patrón que vale nombrar: **tres de los cinco no eran defectos de apariencia, eran defectos de
+lo que la aplicación *decía*.** Una prueba automática puede comprobar que un texto aparezca; no puede
+comprobar que sea verdad, ni que corresponda a lo que el plan pidió. Ese trabajo lo hace una persona
+mirando la pantalla y preguntando «¿por qué esto dice esto?».
+
+Es la mejor evidencia que el proyecto tiene a favor de su propia regla: **una pieza no se cierra sin que
+una persona abra el navegador y mire.** Con la pieza 5, los defectos visuales del proyecto llegan a
+**doce**, y **ninguno** de los doce salió de una prueba.

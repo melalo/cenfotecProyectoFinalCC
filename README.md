@@ -12,19 +12,29 @@ CENFOTEC).
 
 > ## ESTADO ACTUAL: piezas 1 y 2 cerradas (2026-08-19)
 >
-> Los comandos de este README **ya funcionan**: el proyecto arranca, se puede crear una cuenta,
-> entrar, elegir un servicio y un proveedor, y ver el calendario del mes con los horarios libres.
+> Los comandos de este README **ya funcionan**, y el prototipo hace el recorrido **completo**: se
+> crea una cuenta, se entra, se elige categoría, servicio y proveedor, se ve el calendario del mes,
+> se reserva un horario, **llega el correo de confirmación**, y la cita se puede **cancelar o mover a
+> otro horario**.
 >
-> De las 9 piezas de `PLAN.md`:
+> Estado de las piezas de `PLAN.md` al 2026-08-20:
 >
-> - **Pieza 1 — cerrada el 2026-08-17** (entrar a la aplicación). 14 pruebas y 8 comprobaciones.
-> - **Pieza 2 — cerrada el 2026-08-19** (elegir servicio y proveedor, y ver el calendario). 27
->   pruebas nuevas —41 en total— y sus 12 comprobaciones, con el resultado de cada una anotado en su
->   bloque `Evidencia`. La revisión visual encontró dos defectos que las pruebas no podían ver, y
->   los dos quedaron corregidos.
+> | Pieza | Estado |
+> |---|---|
+> | 1 — Entrar a la aplicación | **cerrada** el 2026-08-17 |
+> | 2 — Elegir servicio y proveedor, y ver el calendario | **cerrada** el 2026-08-19 |
+> | 3 — Reservar un horario | **cerrada** el 2026-08-19 |
+> | 4 — Correo de confirmación | **cerrada** el 2026-08-19 |
+> | 5 — Cancelar y reagendar | **construida** el 2026-08-20, falta la revisión visual |
+> | 10 — La información del cliente | **cerrada** el 2026-08-19, fuera de orden |
+> | 11 — Categorías de servicio | **cerrada** el 2026-08-19, fuera de orden |
+> | 12 — Reglas de contraseña y correo | **cerrada** el 2026-08-19, pedida fuera del plan |
+> | 6, 7, 8, 9 | pendientes |
 >
-> Las otras 7 están pendientes, así que todavía **no** se puede reservar, ni cancelar, ni llega
-> ningún correo. **Si venís a construir, te toca la pieza 3.**
+> Con la pieza 5 **el núcleo comprometido en `FICHA-APROBACION.md` está completo**, y **los tres
+> criterios de aceptación (CA-1, CA-2 y CA-3) están cubiertos por pruebas que corren en cada push**.
+> Lo que falta es lo de Personal (piezas 7 y 8), restablecer la contraseña (9) y el recordatorio de
+> 24 horas (6). **Si venís a construir, te toca la pieza 7.**
 
 ---
 
@@ -38,7 +48,7 @@ Leé esto antes de tocar nada.
 |---|---|---|
 | 1.º | `ESPECIFICACION.md` | **Qué tiene que hacer el sistema.** Reglas de negocio (RN), requisitos funcionales (RF), recorridos y preguntas abiertas. Es la autoridad sobre el comportamiento. |
 | 2.º | `DISENO.md` | **Qué forma tiene la solución.** Componentes, modelo de datos, manejo de errores y las decisiones de tecnología con su razón. Es la autoridad sobre la arquitectura. |
-| 3.º | `PLAN.md` | **Qué se construye y en qué orden.** Nueve vertical slices, cada una con lo que tiene que ser cierto, con qué se comprueba, y qué consume y produce. Es tu hoja de ruta. |
+| 3.º | `PLAN.md` | **Qué se construye y en qué orden.** Doce vertical slices —nueve del plan original, más la 10, la 11 y la 12 que se agregaron después—, cada una con lo que tiene que ser cierto, con qué se comprueba, y qué consume y produce. Es tu hoja de ruta. |
 | 4.º | `VISUALS.md` | **Cómo se ve.** El sistema visual «Clinical Excellence»: colores, tipografía, tamaños, redondeos y espaciado. Es la autoridad sobre la apariencia, igual que `ESPECIFICACION.md` lo es sobre el comportamiento. Si un valor no está ahí, **no se inventa en el `.scss`**. |
 | 5.º | `CLAUDE.md` | Stack, comandos, convenciones y restricciones del proyecto. Las convenciones no son sugerencias: fijan la estructura de carpetas, cómo se nombra cada cosa y las reglas de lo visual. |
 | Si hace falta | `PROYECTO.md`, `NEGOCIO.md`, `BITACORA.md` | El enunciado original, el caso de negocio y el registro fechado de decisiones. |
@@ -77,6 +87,11 @@ Estas te van a hacer construir lo incorrecto si no las sabés:
 - **No hagas commit ni push por tu cuenta**, salvo que la estudiante lo pida.
 - El vocabulario del proyecto está en el glosario de `ESPECIFICACION.md`. Usalo: se dice
   **horario** (no "slot") y **reagendar** (no "reprogramar").
+- **Ojo con «proveedor»:** así se llama en la base, en el API y en el código, y **así se sigue
+  llamando**. Pero **lo que el cliente lee en pantalla y en los correos es «terapista»** (decidido el
+  2026-08-20). No es una inconsistencia que haya que «arreglar»: son dos vocabularios a propósito, el
+  técnico y el del negocio. Y va sin artículo con género —«tu terapista», «Terapista Ana»— porque hay
+  proveedores mujeres y hombres.
 - **Los estilos son mobile-first**, y eso es verificable: todos los `@media` son `min-width` y
   ninguno es `max-width`. Los cortes son 48rem y 64rem.
 - **Todo campo de contraseña lleva el «ojito»** para mostrarla y ocultarla, en cualquier pantalla.
@@ -239,7 +254,7 @@ Lo que carga hoy, con las piezas 1 y 2 construidas. El comando lo lista en panta
 npm test
 ```
 
-**Hoy corre 95 pruebas**, todas en `pruebas/`:
+**Hoy corre 174 pruebas**, todas en `pruebas/`:
 
 - **14 de la pieza 1** (`autenticacion.test.js`): registrarse, entrar, el mensaje idéntico cuando el
   correo no existe y cuando la contraseña está mal, la contraseña cifrada, el correo repetido, la
@@ -263,23 +278,37 @@ npm test
   servidor —y no la pantalla— diga si hay que elegir el tipo (RN-22), que la categoría de un solo
   servicio lleve directo a los proveedores, que reservar un subtipo guarde el nombre del servicio, y
   que ningún servicio pueda quedar sin categoría.
+- **14 de la pieza 4** (`correo.test.js`): que el correo de confirmación lleve los cinco datos de
+  RF-11 en sus dos versiones (HTML y texto plano), que cada envío deje su fila en `correo_enviado`
+  salga bien o mal, que se reintente **una** vez y solo si la falla puede ser pasajera, y que **una
+  cita se cree igual aunque el correo no salga** (RF-19).
+- **26 de la pieza 12** (`contrasenas-y-correos.test.js`): las cuatro condiciones de la contraseña
+  (RN-23) y la forma del correo (RN-24), comprobadas **mandándole el pedido al API sin pasar por la
+  pantalla**, que es lo que demuestra que la regla vive en el servidor.
+- **39 de la pieza 5** (`cancelar-y-reagendar.test.js`): cancelar y que la cita deje de estar activa
+  sin borrarse (RN-15), que el horario se libere **para cualquier otra persona** (RN-7), que quede
+  anotado cuándo y quién canceló (REG-1), mover una cita a otro horario en un solo movimiento, que
+  reagendar **no** cambie el servicio ni el proveedor aunque se los manden salteando la pantalla
+  (RN-18), que el correo del reagendamiento diga la fecha **nueva**, **CA-3 (parte cliente)** —una
+  cita a menos de 4 horas se rechaza al cancelar y al mover—, el borde exacto de la ventana a los dos
+  lados (a 4 horas justas sí, a 3 h 59 min no), y que nadie pueda tocar la cita de otra persona.
 
 Las del calendario **paran el reloj** en una fecha fija (martes 1 de setiembre de 2026, 8 de la
 mañana en Costa Rica). Sin eso dirían cosas distintas según el día en que se corran: «mañana hay
 horarios» fallaría los sábados.
 
-A medida que avance el plan, este mismo comando irá cubriendo además los tres criterios de
-aceptación de `ESPECIFICACION.md`, que son las tres reglas que el curso exige proteger:
+Este mismo comando cubre además los tres criterios de aceptación de `ESPECIFICACION.md`, que son las
+tres reglas que el curso exige proteger:
 
 | | Qué comprueba | Desde qué pieza |
 |---|---|---|
 | **CA-1** | Dos intentos de reservar el mismo horario del mismo proveedor: exactamente uno lo consigue. | 3 — **ya cubierto** |
 | **CA-2** | Un intento de reservar un horario de hoy se rechaza, a cualquier hora que se intente. | 3 — **ya cubierto** |
-| **CA-3** | Cancelar o reagendar faltando menos de 4 horas: el cliente es rechazado, Personal es aceptado. | 5 y 7 |
+| **CA-3** | Cancelar o reagendar faltando menos de 4 horas: el cliente es rechazado, Personal es aceptado. | 5 — **la parte del cliente ya cubierta**; la de Personal es de la pieza 7 |
 
 ### Corren solas en cada push
 
-Desde la pieza 3, **estas 95 pruebas se corren automáticamente en cada `push` y en cada pull
+Desde la pieza 3, **estas 174 pruebas se corren automáticamente en cada `push` y en cada pull
 request**, sin que nadie escriba `npm test`. Lo hace GitHub Actions, configurado en
 `.github/workflows/pruebas.yml`.
 
@@ -309,7 +338,7 @@ proyectoFinal/
 ├── README.md              ← estás acá
 ├── ESPECIFICACION.md      ← qué tiene que hacer el sistema  (la autoridad)
 ├── DISENO.md              ← qué forma tiene la solución     (la autoridad)
-├── PLAN.md                ← las 9 piezas, sus comprobaciones y su evidencia
+├── PLAN.md                ← las 12 piezas, sus comprobaciones y su evidencia
 ├── CLAUDE.md              ← stack, comandos, convenciones y restricciones
 ├── VISUALS.md             ← el sistema visual: colores, tipografía, medidas (la autoridad)
 ├── PROXIMA-SESION.md      ← cómo retomar: qué pieza toca y qué hay que saber antes de empezar

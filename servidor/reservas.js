@@ -1,9 +1,9 @@
-// Las citas: crearlas, y leer las de un cliente.
+// Las citas: crearlas, cancelarlas, moverlas de horario, y leer las de un cliente.
 //
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Es el componente **Reservas** de `DISENO.md`, y su límite dice que es **el único que modifica el
-// estado de una cita**. Hoy solo sabe crearlas; cancelar y reagendar (pieza 5), reservar en nombre
-// de quien llama (pieza 7) y cerrar las pasadas (pieza 8) se escriben acá adentro cuando toque.
+// estado de una cita**. Hoy sabe crearlas, cancelarlas y reagendarlas; reservar en nombre de quien
+// llama (pieza 7) y cerrar las pasadas (pieza 8) se escriben acá adentro cuando toque.
 //
 // Lo que este archivo NO hace: decidir si un horario está libre. Esa regla vive en
 // `disponibilidad.js`, que es el mismo lugar del que sale el calendario que la persona vio antes de
@@ -27,13 +27,28 @@
 
 import { enviarConfirmacionDeCita } from "./correo.js"
 import { revisarHorario } from "./disponibilidad.js"
-import { escribirMomento } from "./tiempo.js"
+import { escribirMomento, horasHasta } from "./tiempo.js"
 
-/** Los estados de una cita (bloque *Produce* de la pieza 3). Esta pieza solo crea el primero. */
+/** Los estados de una cita (bloque *Produce* de la pieza 3). Los otros dos son de la pieza 8. */
 export const ESTADO_ACTIVA = "activa"
+export const ESTADO_CANCELADA = "cancelada"
 
 /** Los canales de una cita (RN-12). Esta pieza solo crea el primero; el otro es de la pieza 7. */
 export const CANAL_EN_LINEA = "en_linea"
+
+/**
+ * Quién está pidiendo cancelar o mover una cita. Son los dos valores que puede tomar la columna
+ * `cancelada_por` (REG-1), y también lo que decide si la ventana de 4 horas se aplica o no (RN-6).
+ */
+export const QUIEN_CLIENTE = "cliente"
+export const QUIEN_PERSONAL = "personal"
+
+/**
+ * La ventana de cancelación: cuántas horas antes de la cita se deja de poder cancelar o mover
+ * (RN-5). Es fija en 4 para todo el prototipo — «política de cancelación configurable por negocio»
+ * está en la hoja de ruta de `NEGOCIO.md`, fuera de esta entrega.
+ */
+export const HORAS_DE_LA_VENTANA = 4
 
 /** El error que SQLite devuelve cuando el índice único rechaza una inserción repetida. */
 const RECHAZO_DEL_INDICE_UNICO = "SQLITE_CONSTRAINT_UNIQUE"
@@ -134,6 +149,248 @@ export async function crearCitaYConfirmar({
   return resultado
 }
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// LA VENTANA DE CANCELACIÓN (pieza 5)
+//
+// La regla de RN-5, escrita **una sola vez** en todo el proyecto: el cliente no puede cancelar ni
+// mover una cita si faltan menos de 4 horas. Cancelar y reagendar la comparten porque es literalmente
+// la misma regla, y la pieza 7 va a llamar a esta misma función pasando `QUIEN_PERSONAL` para
+// saltársela (RN-6). Si estuviera copiada en los dos endpoints, el día que la ventana cambie de 4 a 2
+// horas habría que acordarse de los dos lugares — y el que se olvide sería el que deja pasar lo que
+// no debía.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * ¿Se puede cancelar o mover esta cita? Devuelve **por qué no**, no solo sí o no, porque quien
+ * pregunta tiene que dar mensajes distintos: «llamá al negocio» no sirve para una cita que ya está
+ * cancelada.
+ *
+ *   - `"se_puede"`               → adelante
+ *   - `"cita_no_activa"`         → ya está cancelada, completada o marcada como no asistió
+ *   - `"ventana_de_cancelacion"` → faltan menos de 4 horas y quien pide es un cliente (RN-5)
+ *
+ * Las citas que **ya pasaron** caen solas en el último caso: si faltan −22 horas, faltan menos de 4.
+ * No hace falta ningún caso aparte para ellas, y no tenerlo es un caso borde menos donde equivocarse.
+ *
+ * Personal no tiene ventana (RN-6): es lo que hace útil el mensaje «llame al negocio» que recibe el
+ * cliente. Sin eso, la asistente atendería la llamada y descubriría que ella tampoco puede.
+ */
+export function revisarSiSePuedeCambiar({ cita, quien, ahora }) {
+  if (cita.estado !== ESTADO_ACTIVA) return "cita_no_activa"
+
+  if (quien === QUIEN_PERSONAL) return "se_puede"
+
+  // «4 horas **o más**» (RF-13): el borde exacto se permite. Por eso es `<` y no `<=`.
+  if (horasHasta(cita.inicio, ahora) < HORAS_DE_LA_VENTANA) return "ventana_de_cancelacion"
+
+  return "se_puede"
+}
+
+/**
+ * Lo mismo que `revisarSiSePuedeCambiar`, pero **con el detalle que la pantalla necesita para
+ * escribir una frase que sea verdad**. Devuelve `null` cuando sí se puede.
+ *
+ * Existe por una razón concreta, encontrada mirando la pantalla el 2026-08-20: la regla no distingue
+ * una cita **que ya pasó** de una que empieza en dos horas —las dos «faltan menos de 4 horas», una
+ * con número negativo—, y eso es correcto **como regla**. Pero en pantalla salía «Faltan menos de 4
+ * horas para esta cita» debajo de una cita de la mañana, a mediodía. La frase era falsa.
+ *
+ * Por qué son dos funciones y no una:
+ *
+ *   - **`revisarSiSePuedeCambiar` decide**, y su respuesta es la que viaja como motivo del rechazo de
+ *     los endpoints. Ahí `ventana_de_cancelacion` tiene que seguir siendo `ventana_de_cancelacion`:
+ *     es lo que fija el bloque *Produce* del plan y lo que comprueba **CA-3**. Una cita pasada se
+ *     rechaza por RN-5, no por una regla nueva.
+ *   - **Esta explica**, y solo la usa `GET /api/citas` para que la pantalla tenga qué escribir.
+ *
+ * O sea: se agrega precisión al mensaje **sin tocar la regla ni el contrato de los endpoints**. Y la
+ * distinción la hace el servidor, no la pantalla, porque el frontend no decide reglas de negocio.
+ *
+ * Valores posibles: `"cita_no_activa"`, `"ya_paso"`, `"ventana_de_cancelacion"` y `null`.
+ */
+export function porQueNoSePuedeCambiar({ cita, quien, ahora }) {
+  const revision = revisarSiSePuedeCambiar({ cita, quien, ahora })
+
+  if (revision === "se_puede") return null
+
+  if (revision === "ventana_de_cancelacion" && horasHasta(cita.inicio, ahora) < 0) {
+    return "ya_paso"
+  }
+
+  return revision
+}
+
+/**
+ * En qué grupo de la pantalla va una cita: `"proxima"` o `"historial"`.
+ *
+ * La pantalla muestra **«Tus próximas citas»** arriba y **«Historial»** abajo (decidido por la
+ * estudiante el 2026-08-20). El motivo del cambio: `PLAN.md` y `ESPECIFICACION.md` dicen en tres
+ * lugares que «el cliente ve sus **citas activas**», y la pantalla estaba mostrando **todo** mezclado
+ * en una lista que además crecía para siempre. RN-15 —«nada se borra»— habla de **los datos**, no de
+ * lo que la pantalla muestra: la cita cancelada sigue guardada, solo se mudó de lugar.
+ *
+ * Es el servidor el que decide, y no la pantalla, porque la respuesta depende de **qué hora es** y
+ * del estado de la cita. Si la pantalla lo calculara con el reloj de la computadora de quien mira,
+ * una máquina con la hora mal puesta le pondría su cita de mañana en el historial.
+ *
+ * **Es una pregunta distinta de `sePuedeCambiar`, y por eso son dos campos.** Una cita de hoy en dos
+ * horas **no se puede cambiar** (RN-5) pero **sí es una cita próxima**: es justamente la más urgente
+ * que tiene esa persona, y enterrarla en el historial sería esconderle lo que más necesita ver.
+ *
+ * Al historial van dos cosas:
+ *   - las que **ya no están activas**: canceladas, y las completadas o «no asistió» de la pieza 8;
+ *   - las que **ya pasaron**, aunque sigan activas — cerrarlas es de la pieza 8 y lo hace Personal,
+ *     porque ninguna cita cambia de estado por el solo paso del tiempo (RN-17).
+ */
+export function grupoDeLaCita({ cita, ahora }) {
+  if (cita.estado !== ESTADO_ACTIVA) return "historial"
+  if (horasHasta(cita.inicio, ahora) < 0) return "historial"
+  return "proxima"
+}
+
+/**
+ * Cancela una cita (RF-13). **No la borra**: le cambia el estado y anota cuándo y quién la canceló
+ * (RN-15, REG-1). El horario queda libre en el mismo instante, sin que nadie tenga que hacer nada
+ * más: el índice único de la base solo vigila las citas **activas**, así que dejar de estar activa
+ * es dejar de ocupar (RN-7).
+ *
+ * Devuelve `{ ok: true }` o `{ ok: false, motivo }`, y no sabe nada de HTTP. Los motivos posibles:
+ * `"cita_no_encontrada"`, `"cita_no_activa"` y `"ventana_de_cancelacion"`.
+ *
+ * No manda ningún correo, a propósito: `ESPECIFICACION.md` no pide ninguno al cancelar, y quien
+ * canceló acaba de verlo en pantalla.
+ */
+export function cancelarCita({ base, citaId, clienteId, quien, ahora }) {
+  const cancelar = base.transaction(() => {
+    const cita = buscarCitaParaCambiar({ base, citaId, clienteId, quien })
+    if (!cita) return { ok: false, motivo: "cita_no_encontrada" }
+
+    const revision = revisarSiSePuedeCambiar({ cita, quien, ahora })
+    if (revision !== "se_puede") return { ok: false, motivo: revision }
+
+    // El `AND estado = 'activa'` del final no es de más: es lo que hace que dos cancelaciones que
+    // lleguen al mismo tiempo no puedan escribir las dos: la segunda no encuentra fila que cambiar.
+    base
+      .prepare(
+        `UPDATE cita
+            SET estado = ?, cancelada_en = ?, cancelada_por = ?
+          WHERE id = ? AND estado = ?`,
+      )
+      .run(ESTADO_CANCELADA, escribirMomento(ahora), quien, citaId, ESTADO_ACTIVA)
+
+    return { ok: true }
+  })
+
+  return cancelar.immediate()
+}
+
+/**
+ * Mueve una cita a otro horario (RF-14). **Lo único que cambia es la fecha y la hora**: el servicio
+ * y el proveedor se quedan como estaban (RN-18), y por eso esta función no los recibe siquiera —
+ * mandarlos no sería posible ni por error.
+ *
+ * Liberar el horario viejo y tomar el nuevo es **un solo movimiento**, no dos: es la misma fila de la
+ * misma cita, y lo que cambia es su columna `inicio`. Eso hace imposible el estado intermedio que
+ * daría miedo —la cita sin horario, o con los dos— sin ningún cuidado especial.
+ *
+ * Y comprueba el horario nuevo con **la misma** función que usa reservar (`revisarHorario`), así que
+ * reagendar no puede aterrizar en un feriado, un domingo, el almuerzo ni el día de hoy. Volver a
+ * escribir esa regla acá sería la manera de que un día una diga «libre» y la otra «ocupado».
+ *
+ * Motivos posibles: `"cita_no_encontrada"`, `"cita_no_activa"`, `"ventana_de_cancelacion"`,
+ * `"mismo_dia"` y `"horario_no_disponible"`.
+ */
+export function reagendarCita({ base, citaId, clienteId, quien, inicio, ahora }) {
+  const comprobarYMover = base.transaction(() => {
+    const cita = buscarCitaParaCambiar({ base, citaId, clienteId, quien })
+    if (!cita) return { ok: false, motivo: "cita_no_encontrada" }
+
+    const revision = revisarSiSePuedeCambiar({ cita, quien, ahora })
+    if (revision !== "se_puede") return { ok: false, motivo: revision }
+
+    const horario = revisarHorario({ base, proveedorId: cita.proveedor_id, inicio, ahora })
+    if (horario === "hoy_o_pasado") return { ok: false, motivo: "mismo_dia" }
+    if (horario !== "disponible") return { ok: false, motivo: "horario_no_disponible" }
+
+    base.prepare("UPDATE cita SET inicio = ? WHERE id = ?").run(inicio, citaId)
+
+    return {
+      ok: true,
+      cita: {
+        id: cita.id,
+        servicioId: cita.servicio_id,
+        proveedorId: cita.proveedor_id,
+        inicio,
+        estado: cita.estado,
+        canal: cita.canal,
+      },
+    }
+  })
+
+  try {
+    return comprobarYMover.immediate()
+  } catch (falla) {
+    // La misma carrera de CA-1, del otro lado: alguien tomó el horario nuevo entre la comprobación y
+    // el cambio. El índice único la para, igual que para una reserva.
+    if (falla.code === RECHAZO_DEL_INDICE_UNICO) {
+      return { ok: false, motivo: "horario_no_disponible" }
+    }
+    throw falla
+  }
+}
+
+/**
+ * Mueve la cita **y le manda al cliente la confirmación con la fecha nueva** (RF-11, RF-14).
+ *
+ * Es el hermano de `crearCitaYConfirmar`, y existe por la misma razón: que «cuando una cita queda
+ * agendada se manda la confirmación» esté escrito en un solo lugar. El correo se arma leyendo la cita
+ * de la base **después** del cambio, así que dice la fecha nueva sin que nadie tenga que pasársela.
+ *
+ * El orden es el mismo de siempre: primero se mueve la cita, después se manda el correo. Si el envío
+ * falla, la cita ya está movida y queda válida (RF-19).
+ */
+export async function reagendarCitaYConfirmar({
+  base,
+  enviador,
+  citaId,
+  clienteId,
+  quien,
+  inicio,
+  ahora,
+}) {
+  const resultado = reagendarCita({ base, citaId, clienteId, quien, inicio, ahora })
+
+  if (resultado.ok) {
+    await enviarConfirmacionDeCita({ base, enviador, citaId, ahora })
+  }
+
+  return resultado
+}
+
+/**
+ * Busca la cita que se quiere cambiar, **y se asegura de que sea de quien la pide**.
+ *
+ * Cuando quien pide es un cliente, la búsqueda lleva su número adentro: la cita de otra persona
+ * simplemente **no se encuentra**. Eso es a propósito y es lo que hace que el endpoint conteste `404`
+ * y no `403` — un `403` le confirmaría a quien pregunta que ese número de cita existe, y con eso se
+ * puede ir contando las citas del negocio de uno en uno.
+ *
+ * Cuando quien pide es Personal (pieza 7) no hay filtro, porque atiende las citas de cualquiera.
+ * `clienteId` es obligatorio para un cliente, y si falta esto se corta en seco en vez de buscar sin
+ * filtro: un descuido así dejaría que cualquiera cancele la cita de cualquiera.
+ */
+function buscarCitaParaCambiar({ base, citaId, clienteId, quien }) {
+  if (quien === QUIEN_CLIENTE && !clienteId) {
+    throw new Error("Falta el clienteId: un cliente solo puede cambiar sus propias citas")
+  }
+
+  if (quien === QUIEN_CLIENTE) {
+    return base.prepare("SELECT * FROM cita WHERE id = ? AND cliente_id = ?").get(citaId, clienteId)
+  }
+
+  return base.prepare("SELECT * FROM cita WHERE id = ?").get(citaId)
+}
+
 /**
  * La fecha de la **primera** cita de un cliente, escrita `2026-09-03`, o `null` si todavía no tuvo
  * ninguna. Es de donde sale el «desde cuándo es cliente» de la sección «Usuario» (pieza 10).
@@ -155,17 +412,27 @@ export function primeraCitaDelCliente({ base, clienteId }) {
 /**
  * Las citas de un cliente, ordenadas por su fecha de inicio.
  *
- * Devuelve los **nombres** del servicio y del proveedor, no sus números: la pantalla muestra «Masaje
- * relajante con Ana», y quien la dibuja no tiene por qué volver a preguntar quién es el proveedor 2.
+ * Devuelve los **nombres** del servicio y del proveedor, para que la pantalla pueda mostrar «Masaje
+ * relajante con Ana» sin volver a preguntar quién es el proveedor 2, **y también sus números**, que
+ * la pieza 5 necesita: para reagendar hay que pedir el calendario de ese servicio con ese proveedor,
+ * y el calendario se pide por número.
  *
- * No filtra por estado. En esta pieza da igual —todas son activas, porque nada las cancela ni las
- * cierra todavía—, pero las piezas 5 y 8 necesitan que las canceladas y las cerradas también
- * salgan. La razón completa está en `DISENO.md`, «Decisiones tomadas al construir la pieza 3».
+ * No filtra por estado, a propósito: nada se borra (RN-15), así que una cita cancelada sigue siendo
+ * parte de lo que el cliente tiene derecho a ver. La razón completa está en `DISENO.md`, «Decisiones
+ * tomadas al construir la pieza 3».
+ *
+ * Y cada cita viene con **`sePuedeCambiar` y `porQueNo`**, que son la respuesta del servidor a «¿le
+ * muestro los botones de cancelar y reagendar?». La pantalla no lo calcula: `CLAUDE.md` dice que el
+ * frontend no decide reglas de negocio, y esta es la misma decisión que ya se tomó en la pieza 2 con
+ * el campo `estado` de cada día del calendario. Si la pantalla contara las horas por su cuenta, un
+ * navegador con la hora mal puesta le mostraría un botón que el servidor va a rechazar — o peor, le
+ * esconderá uno que sí podía usar.
  */
-export function citasDelCliente({ base, clienteId }) {
-  return base
+export function citasDelCliente({ base, clienteId, ahora }) {
+  const filas = base
     .prepare(
-      `SELECT cita.id, servicio.nombre AS servicio, proveedor.nombre AS proveedor,
+      `SELECT cita.id, cita.servicio_id AS servicioId, cita.proveedor_id AS proveedorId,
+              servicio.nombre AS servicio, proveedor.nombre AS proveedor,
               cita.inicio, cita.estado
          FROM cita
          JOIN servicio  ON servicio.id  = cita.servicio_id
@@ -174,4 +441,18 @@ export function citasDelCliente({ base, clienteId }) {
         ORDER BY cita.inicio`,
     )
     .all(clienteId)
+
+  return filas.map((cita) => {
+    // Se pregunta como cliente, porque estas son las citas que el cliente ve en su pantalla. La
+    // pantalla de Personal (pieza 7) va a preguntar lo mismo con `QUIEN_PERSONAL` y va a recibir
+    // otras respuestas, que es exactamente la mitad de CA-3 que le toca a ella.
+    const porQueNo = porQueNoSePuedeCambiar({ cita, quien: QUIEN_CLIENTE, ahora })
+
+    return {
+      ...cita,
+      sePuedeCambiar: porQueNo === null,
+      porQueNo,
+      grupo: grupoDeLaCita({ cita, ahora }),
+    }
+  })
 }

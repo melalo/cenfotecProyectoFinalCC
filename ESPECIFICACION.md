@@ -16,7 +16,8 @@ solo calendario y no dos agendas que se puedan desincronizar.
 | Personal | La asistente del negocio. Su cuenta viene precargada y no se autorregistra. Reserva, cancela y reagenda en nombre de clientes que llaman por teléfono. |
 | Categoría | El grupo al que pertenece un servicio: «Masaje», «Facial». **No se contrata una categoría**: se contrata un servicio de adentro. Existe para que el cliente no tenga que mirar una lista plana de todo lo que el negocio ofrece. *(Agregada el 2026-08-19, pedida por la estudiante.)* |
 | Servicio | Lo que el negocio ofrece y el cliente contrata: un masaje relajante, una limpieza facial. **Cada servicio pertenece a una categoría**, y es el servicio —no la categoría— lo que queda guardado en la cita. Dura una hora fija en este prototipo, y eso vale para todos por igual. |
-| Proveedor | La persona que atiende el servicio. Un servicio puede tener uno o varios proveedores, y un proveedor puede atender varios servicios. |
+| Proveedor | La persona que atiende el servicio. Un servicio puede tener uno o varios proveedores, y un proveedor puede atender varios servicios. **En pantalla y en los correos no se le dice «proveedor»: se le dice «terapista»** *(decidido por la estudiante el 2026-08-20)*, porque «proveedor» es la palabra del modelo de datos y no la que un cliente usaría. Adentro del código, la tabla, las columnas y los campos del API **siguen llamándose `proveedor`**: los nombres técnicos los fija el bloque *Produce* de `PLAN.md` y no se renombran por un cambio de texto. |
+| Terapista | **La palabra que el cliente lee** para nombrar al proveedor: «Terapista Ana», «Elegí tu terapista». Se usa así, sin artículo con género, porque los proveedores son mujeres y hombres —«tu terapista» sirve para Ana, para Luisa y para Carlos— y «la terapista» dejaría a Carlos mal nombrado. Se descartan «proveedor» y «profesional» **en lo que el usuario ve**. |
 | Horario | Un espacio de una hora en la agenda de un proveedor, en una fecha y hora determinadas. Es la unidad que el cliente elige en el calendario. Se descarta "slot" como sinónimo, aunque `PROYECTO.md` lo use: el documento se escribe en español. |
 | Cita | El compromiso de que un cliente sea atendido por un proveedor, para un servicio, en un horario. Tiene un estado: **activa**, **cancelada**, **completada** o **no asistió**. |
 | No asistió | El estado de una cita que llegó a su hora sin haber sido cancelada y a la que el cliente no se presentó. El cliente pierde esa cita: no se le repone ni se le devuelve nada. |
@@ -370,7 +371,11 @@ igual a las cuentas de Personal.
 10. **RF-10:** El sistema avisa al cliente cuando no hay ningún horario disponible en los próximos
     7 días (RN-14).
 11. **RF-11:** El sistema envía al cliente un correo de confirmación al reservar, con fecha, hora,
-    servicio, proveedor y ubicación del negocio.
+    servicio, proveedor y ubicación del negocio. **También lo envía cuando la cita se reagenda, con
+    la fecha y la hora nuevas.** *(Lo del reagendamiento se decidió el 2026-08-20, al construir la
+    pieza 5. Hasta entonces esta regla solo hablaba de reservar, y eso dejaba al cliente con un
+    correo en su bandeja anunciando un día que ya no era el suyo: el aviso más reciente que tenía
+    decía la fecha vieja. Es el mismo correo, con la misma plantilla, no uno nuevo.)*
 12. **RF-12:** El sistema envía al cliente un correo recordatorio 24 horas antes de su cita, con un
     enlace para cancelar o reagendar. Las citas reservadas con menos de 24 horas de anticipación no
     reciben ninguno (RN-20).
@@ -378,7 +383,7 @@ igual a las cuentas de Personal.
     horario de inmediato (RN-5, RN-7).
 14. **RF-14:** El sistema permite al cliente reagendar su cita a otro horario disponible del mismo
     servicio y el mismo proveedor si faltan 4 horas o más, liberando el horario anterior (RN-5,
-    RN-7, RN-18).
+    RN-7, RN-18), y le envía el correo de confirmación con la fecha y la hora nuevas (RF-11).
 15. **RF-15:** El sistema rechaza la cancelación y el reagendamiento del cliente dentro de la
     ventana de cancelación, con un mensaje que le indica llamar al negocio (RN-5).
 16. **RF-16:** El sistema permite que Personal, con su cuenta, cree una cita en nombre de un

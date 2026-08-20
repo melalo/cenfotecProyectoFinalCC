@@ -55,14 +55,19 @@ todas las piezas)*:
 | 1 | Entrar a la aplicación | — | **cerrada el 2026-08-17** |
 | 2 | Elegir servicio y proveedor, y ver el calendario | 1 | **cerrada el 2026-08-19** |
 | 3 | Reservar un horario | 2 | **cerrada el 2026-08-19** |
-| 4 | Correo de confirmación | 3 | pendiente |
-| 5 | Cancelar y reagendar | 3 | pendiente |
+| 4 | Correo de confirmación | 3 | **cerrada el 2026-08-19** |
+| 5 | Cancelar y reagendar | 3 | **cerrada el 2026-08-20** |
 | 6 | Recordatorio de 24 horas | 4 y 5 | pendiente |
 | 7 | Personal atiende el teléfono | 5 | pendiente |
 | 8 | Personal cierra las citas pasadas | 7 | pendiente |
 | 9 | Restablecer la contraseña olvidada | 4 | pendiente |
 | 10 | La información del cliente | 1 y 3 | **cerrada el 2026-08-19**, construida fuera de orden |
 | 11 | Categorías de servicio | 2 | **cerrada el 2026-08-19**, construida fuera de orden |
+| 12 | Reglas para la contraseña y el correo | 1 | **cerrada el 2026-08-19**, pedida fuera del plan |
+
+*(Las filas de la 4 y la 12 se corrigieron el 2026-08-20: la tabla decía que la 4 estaba pendiente
+cuando se había cerrado el día anterior, y la 12 no tenía fila aunque su detalle sí estaba escrito
+más abajo.)*
 
 Las piezas **1 a 5** son «El núcleo» comprometido en `FICHA-APROBACION.md`: prototipo de extremo a
 extremo, persistencia real, y las pruebas de reglas de negocio con integración continua. La pieza
@@ -738,6 +743,10 @@ continua en verde y la revisión visual hecha.
   le dice al cliente que llame al negocio (RF-15, RN-5, CA-3 parte cliente).
 - Si al reagendar el proveedor no tiene ningún horario libre en los próximos 7 días, aparece el
   aviso de RN-14.
+- Al reagendar, al cliente le llega **el correo de confirmación con la fecha y la hora nuevas**
+  (RF-11, RF-14). *(Agregado el 2026-08-20, al construir la pieza. La razón está en la corrección de
+  RF-11 en `ESPECIFICACION.md`: sin esto, el aviso más reciente en la bandeja del cliente anunciaría
+  un día que ya no es el suyo. Es la misma plantilla de la pieza 4, no una nueva.)*
 
 **Con qué se comprueba**
 1. Reservar una cita para dentro de varios días, cancelarla, y ver que desaparece de las citas
@@ -754,6 +763,12 @@ continua en verde y la revisión visual hecha.
 7. Intentar reagendar esa misma cita: se rechaza igual.
 8. Correr la prueba automática de CA-3 (parte cliente): una cita a menos de 4 horas, cancelada por
    el cliente, devuelve `422`. Pasa en verde en el push.
+9. Reagendar una cita y **abrir la bandeja de entrada**: llega el correo de confirmación con la
+   fecha y la hora **nuevas**, y en `correo_enviado` queda una fila más. *(Agregada el 2026-08-20,
+   con la regla de arriba.)*
+10. Tocar «Cancelar» y comprobar que **primero pregunta** —«¿Seguro que querés cancelar esta
+    cita?»— en vez de cancelar de una. Tocar «No, dejarla» y ver que la cita sigue activa.
+    *(Agregada el 2026-08-20: decisión de la estudiante, cancelar no se deshace.)*
 
 **Toca:** Reservas, Calendario y disponibilidad, Interfaz.
 
@@ -771,7 +786,123 @@ continua en verde y la revisión visual hecha.
   - La regla de la ventana de 4 horas, escrita en un solo lugar, que la pieza 7 reutiliza para
     saltársela cuando quien pide es Personal.
 
+  *Lo que se agregó al bloque el 2026-08-20, al construir la pieza. Los tres primeros son rechazos
+  que el plan no había previsto y que el código igual tiene que contestar con algo; los dos últimos
+  son campos que la pantalla necesita para no decidir reglas por su cuenta:*
+
+  - Los dos endpoints devuelven además `404` con `{error: "cita_no_encontrada"}` —**también cuando
+    la cita existe pero es de otro cliente**, a propósito: contestar `403` ahí sería confirmarle a
+    quien pregunta que ese número de cita existe— y `409` con `{error: "cita_no_activa"}` cuando la
+    cita ya está cancelada, completada o marcada como no asistió.
+  - `PATCH` devuelve además `422` con `{error: "mismo_dia"}` cuando el horario nuevo es de hoy o de
+    un día que ya pasó (RN-4): reagendar aplica **la misma** regla de disponibilidad que reservar,
+    así que tiene los mismos rechazos.
+  - `GET /api/citas` agrega a cada cita `sePuedeCambiar` (sí o no) y `porQueNo`
+    (`"ventana_de_cancelacion"`, `"ya_paso"`, `"cita_no_activa"` o vacío). **Quien decide si los
+    botones de cancelar y reagendar aparecen es el servidor, no la pantalla** — es la regla de
+    `CLAUDE.md` de que el frontend no decide reglas de negocio, y el mismo camino que ya se usó con
+    el campo `estado` de cada día del calendario en la pieza 2.
+    *`"ya_paso"` se agregó el 2026-08-20, después de la revisión visual: la **regla** no distingue una
+    cita que ya ocurrió de una que empieza en dos horas —las dos «faltan menos de 4 horas»— y eso está
+    bien como regla, pero en pantalla decía «faltan menos de 4 horas» debajo de una cita de la mañana,
+    a mediodía. **El rechazo de los endpoints no cambió**: sigue siendo `422` con
+    `ventana_de_cancelacion`, y CA-3 quedó intacto. Lo único que se volvió más preciso es la
+    explicación.*
+  - `GET /api/citas` agrega también `servicioId` y `proveedorId`. Hasta hoy devolvía solo los
+    **nombres**, y para reagendar hay que pedir el calendario de ese servicio con ese proveedor, que
+    se pide por número.
+  - `GET /api/citas` agrega además `grupo`, que vale `"proxima"` o `"historial"`. La pantalla muestra
+    **«Tus próximas citas»** arriba y **«Historial»** abajo, y **en cuál va cada cita lo decide el
+    servidor**. *Agregado el 2026-08-20, después de la revisión visual: esta misma pieza y la 3 dicen
+    «el cliente ve sus **citas activas**», y la pantalla estaba mostrando todo mezclado en una lista
+    que además crecía para siempre. RN-15 —«nada se borra»— habla de **los datos**, no de lo que la
+    pantalla muestra.* Ojo: **es una pregunta distinta de `sePuedeCambiar`**. Una cita de hoy en dos
+    horas no se puede cambiar (RN-5) pero **sí es una cita próxima** — es la más urgente que esa
+    persona tiene, y mandarla al historial sería esconderle justo lo que necesita ver.
+
 **Evidencia**
+
+*2026-08-20 — construida.* **39 pruebas nuevas; `npm test` da 174 de 174.** Las 8 comprobaciones del
+plan más las 2 agregadas ese día están cubiertas por pruebas automáticas que hablan con el API de
+verdad, por HTTP:
+
+| Comprobación | Cómo quedó cubierta |
+|---|---|
+| 1 — cancelar y desaparecer de las activas | `comprobación 1: el cliente cancela su cita y deja de estar activa` |
+| 2 — el horario vuelve a estar libre | `comprobación 2` y `comprobación 2 bis` (esta última comprueba que **otra persona** lo puede tomar, que es lo que RN-7 dice de verdad) |
+| 3 — la fila sigue existiendo, con estado, fecha y quién canceló | `comprobación 3`, mirando la tabla `cita` por dentro |
+| 4 — reagendar mueve la cita | `comprobación 4`, más una que comprueba que **no** se creó una cita nueva |
+| 5 — reagendar no cambia servicio ni proveedor | `comprobación 5`, mandándole al API el proveedor de otra persona **salteando la pantalla**: es la que demuestra que la regla vive en el servidor |
+| 6 — cancelar dentro de las 4 horas se rechaza | `CA-3 (cliente)`, con la cita insertada a mano en la base — el API no la deja crear porque empieza hoy (RN-4) |
+| 7 — reagendar esa misma cita se rechaza igual | `CA-3 (cliente): reagendar esa misma cita se rechaza igual` |
+| 8 — **CA-3** corriendo en cada push | Las tres pruebas marcadas `CA-3` en el título, más las dos del borde exacto de la ventana (a 4 horas justas se permite, a 3 h 59 min no) |
+| 9 — el correo del reagendamiento dice la fecha nueva | `comprobación 9` y `comprobación 9 bis` |
+| 10 — cancelar pregunta antes | **No la cubre ninguna prueba automática**: es de pantalla, y ninguna prueba de este proyecto mira la página dibujada. Va en la revisión visual. |
+
+*2026-08-20 — primera pasada de la revisión visual, y **encontró dos cosas**.*
+
+**1. Una frase falsa.** Una cita de las 9 de la mañana decía, a mediodía, «Faltan menos de 4 horas para
+esta cita». La cita ya había ocurrido. Se corrigió agregando el valor `"ya_paso"` al campo `porQueNo`
+—ver el bloque *Produce* de arriba— con **2 pruebas nuevas** (`npm test` pasó de 168 a **170**). Es el
+octavo defecto visual del proyecto, y como los siete anteriores lo encontró una persona mirando la
+pantalla: ninguna prueba automática lee si una frase tiene sentido.
+
+**2. La pantalla no hacía lo que este plan dice.** La estudiante notó que la cita cancelada se quedaba
+en la lista para siempre, y al revisarlo apareció que **el código no cumplía el plan**: acá arriba, y
+en la pieza 3, está escrito «el cliente ve sus **citas activas**», y la pantalla mostraba todo mezclado
+—canceladas y pasadas incluidas— en una lista que crecía sin fin. El error de lectura fue confundir
+RN-15 («nada se borra», que habla de **los datos**) con lo que la pantalla tiene que mostrar. Corregido
+con el campo `grupo` y **dos secciones**: «Tus próximas citas» arriba, «Historial» abajo, ordenado de lo
+más reciente a lo más viejo. **4 pruebas nuevas** (`npm test` pasó de 170 a **174**). La cita cancelada
+sigue guardada en la base: solo se mudó de sección.
+
+**3. La etiqueta decía «ACTIVA» en una cita del mes pasado.** La estudiante pidió que no dijera eso, y
+propuso ella la solución que se adoptó: **sacarle la etiqueta**. Ahora la etiqueta aparece **solo
+cuando algo le pasó a la cita** —cancelada, y completada o «no asistió» cuando llegue la pieza 8—; una
+cita del historial que sigue `activa` no lleva ninguna, porque el título de la sección ya dice lo que
+la etiqueta decía. La nota que iba debajo de esas filas también se sacó, por lo mismo.
+
+*No dice «COMPLETADA», que era la primera idea, porque **la aplicación no sabe si la persona
+asistió**: RN-17 dice que ese estado **solo** lo marca Personal y **nunca se alcanza por el paso del
+tiempo**. Poner «COMPLETADA» sola le afirmaría a alguien que fue sin que nadie lo confirme, y se
+daría vuelta el día que Personal marcara «no asistió» (RN-19). Así la etiqueta nunca se desdice: pasa
+de **no estar** a decir COMPLETADA o NO ASISTIÓ, que es un avance. **Las tres reglas quedaron
+intactas** y la pieza 8 no perdió nada.*
+
+**Este tercer cambio no tiene ninguna prueba automática, y no puede tenerla:** es puramente de
+pantalla —qué se dibuja y qué no—, el servidor no cambió en una sola línea, y ninguna prueba de este
+proyecto mira la página dibujada. Queda cubierto solo por la revisión visual. *Lo que sí está
+protegido por una prueba es la pieza que lo sostiene: la que comprueba que el servidor manda
+`porQueNo = "ya_paso"` en una cita pasada. **Ese campo sigue haciendo falta aunque ya no muestre
+nada**, porque es lo único que impide que una cita vieja caiga en el renglón que dice «faltan menos de
+4 horas»: si el servidor dejara de distinguirlo, esa frase falsa volvería sola.*
+
+**4. El «Historial» tenía un texto de más y el título flotando lejos de su tarjeta.** Se sacó la frase
+de explicación —describía lo que la lista de abajo ya muestra— y el título quedó a 8px de su tarjeta en
+vez de 16, con un modificador nuevo (`paso--titulo-pegado`) para no acercar de golpe los cinco títulos
+de la pantalla de reservar. Sin prueba automática, por lo mismo que el punto 3.
+
+**Y un cambio de vocabulario, aparte de los cuatro hallazgos:** al cliente se le dice **«terapista»**,
+no «te atiende» ni «proveedor». Siete lugares de texto —tres en el HTML, tres en el JavaScript del
+navegador y la etiqueta del correo—. **La tabla, las columnas y los campos del API siguen llamándose
+`proveedor`** y no se renombraron: los nombres técnicos los fija este plan. Quedó en el glosario de
+`ESPECIFICACION.md` para que no se lo confunda con una inconsistencia.
+
+*Total: **39 pruebas** de esta pieza, `npm test` da **174 de 174**.*
+
+**PIEZA CERRADA el 2026-08-20.** La estudiante corrió la revisión visual completa en el navegador y la
+dio por terminada. De ella salieron **cinco cambios**, y **ninguno lo podía encontrar una prueba
+automática**: tres eran defectos de *lo que la aplicación decía* —una frase falsa, el código no
+cumpliendo lo que este plan pide, y una etiqueta que afirmaba algo que ya no era cierto—, uno de
+vocabulario y uno de espaciado. El detalle de los cinco, con su razón, está en la entrada del
+2026-08-20 de `BITACORA.md`.
+
+*Comprobado además que la aplicación levanta con el código nuevo, que `publico/aplicacion-cliente.js`
+no tiene errores de sintaxis, y que los 64 elementos que el JavaScript busca por `id` existen todos
+en el HTML — un `id` mal escrito no lo detecta `npm test` y rompe la pantalla entera.*
+
+*Falta para cerrarla: **la revisión visual en el navegador**, que es la única que puede encontrar los
+defectos de pantalla. Los siete defectos visuales de este proyecto salieron todos de ahí.*
 
 ---
 
