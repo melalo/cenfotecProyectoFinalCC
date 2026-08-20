@@ -10,7 +10,7 @@
 import { Router } from "express"
 
 import { eseProveedorAtiendeEseServicio } from "../catalogo.js"
-import { citasDelCliente, crearCita } from "../reservas.js"
+import { citasDelCliente, crearCitaYConfirmar } from "../reservas.js"
 import { crearGuardiaDeCliente } from "../sesion.js"
 import { inicioEstaBienEscrito } from "../tiempo.js"
 
@@ -22,7 +22,7 @@ const NUMERO_DE_CADA_RECHAZO = {
   mismo_dia: 422,
 }
 
-export function crearRutasDeCitas({ base, sesiones, reloj }) {
+export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
   const rutas = Router()
 
   // El guardia vive en `servidor/sesion.js`: desde la pieza 10 lo usan dos grupos de endpoints, y
@@ -30,7 +30,7 @@ export function crearRutasDeCitas({ base, sesiones, reloj }) {
   const exigirCliente = crearGuardiaDeCliente(sesiones)
 
   // RF-8 y RF-9: reservar un horario disponible.
-  rutas.post("/citas", exigirCliente, (pedido, respuesta) => {
+  rutas.post("/citas", exigirCliente, async (pedido, respuesta) => {
     const servicioId = Number(pedido.body?.servicioId)
     const proveedorId = Number(pedido.body?.proveedorId)
     const inicio = pedido.body?.inicio
@@ -46,8 +46,14 @@ export function crearRutasDeCitas({ base, sesiones, reloj }) {
       return respuesta.status(404).json({ error: "servicio_o_proveedor_no_encontrado" })
     }
 
-    const resultado = crearCita({
+    // Se espera a que el correo salga antes de contestar (decisión de la estudiante el
+    // 2026-08-19). La cita ya está guardada para cuando el envío empieza, así que RF-19 se cumple
+    // igual: si el correo falla, queda registrado como fallido y la cita sigue siendo válida. Lo
+    // que se gana esperando es que el resultado del envío se pueda comprobar; contestando primero,
+    // toda prueba del correo tendría que adivinar cuánto esperar, y una prueba así falla sola.
+    const resultado = await crearCitaYConfirmar({
       base,
+      enviador,
       clienteId: pedido.clienteId,
       servicioId,
       proveedorId,

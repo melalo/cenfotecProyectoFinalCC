@@ -8,7 +8,8 @@
 - **Base de datos:** SQLite, accedida con `better-sqlite3`.
 - **Autenticación:** contraseña (no enlace mágico).
 - **Correo (confirmaciones y recordatorio de 24h):** Resend — más simple de configurar que
-  SendGrid para un proyecto de este tamaño.
+  SendGrid para un proyecto de este tamaño. **No se instala su paquete de npm:** se le manda el
+  pedido con `fetch`, que Node 20 ya trae (decidido al construir la pieza 4).
 - **Disparador del recordatorio de 24h:** tarea programada en GitHub Actions, que le avisa al
   backend cada cierto tiempo para que revise si hay recordatorios pendientes de mandar.
   *(Nota para el futuro: si esto se convierte en una aplicación real en producción, migrar este
@@ -22,9 +23,9 @@
 | Comando | Qué hace |
 |---|---|
 | `npm install` | Instala las dependencias. |
-| `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita: esas se crean desde la aplicación a partir de la pieza 3. |
+| `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita ni ningún correo registrado: esos se crean desde la aplicación, a partir de las piezas 3 y 4. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
-| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **95**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10 y 12 de la pieza 11. **Los criterios de aceptación CA-1 y CA-2 ya están cubiertos** (pieza 3); CA-3 se agrega en las piezas 5 y 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
+| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **135**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4 y 26 de la pieza 12. **Los criterios de aceptación CA-1 y CA-2 ya están cubiertos** (pieza 3); CA-3 se agrega en las piezas 5 y 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
@@ -46,12 +47,16 @@ proyectoFinal/
 │   ├── aplicacion.js      arma la aplicación de Express, pero no la pone a escuchar
 │   ├── base-de-datos.js   abre el archivo SQLite y crea las tablas si no existen
 │   ├── contrasenas.js     cifrar una contraseña y comprobar si una coincide
+│   ├── credenciales.js    qué contraseña y qué correo se aceptan (RN-23, RN-24)
 │   ├── sesion.js          escribir, leer y borrar la cookie firmada de la sesión
 │   ├── tiempo.js          fechas y horas, siempre en la hora del negocio (Costa Rica)
 │   ├── catalogo.js        preguntas al catálogo: si un servicio existe, quién lo atiende
 │   ├── clientes.js        los datos del cliente: leerlos, comprobarlos y guardarlos
 │   ├── disponibilidad.js  qué horarios están libres — la regla, en un solo lugar
 │   ├── reservas.js        crear una cita — el único que toca el estado de una cita
+│   ├── correo.js          los correos: armarlos, entregarlos y dejar constancia
+│   ├── plantillas-de-correo.js  qué dice cada correo — solo arma texto, no manda nada
+│   ├── enviador-resend.js el único archivo que habla con un servicio de afuera
 │   └── rutas/             un archivo por grupo de endpoints del API
 ├── guiones/             comandos de mantenimiento (hoy: cargar los datos de prueba)
 ├── estilos/             los archivos .scss que se escriben a mano
@@ -90,6 +95,12 @@ cada pieza en `PLAN.md`, y se copian de ahí tal cual.
 - Los comentarios explican **por qué**, no qué. Lo que hace el código ya lo dice el código.
 - Una regla de negocio se escribe **en un solo lugar** del servidor, y quien la necesite la llama.
   Nunca copiada en dos archivos: si cambia, cambia en uno.
+- **Una regla que la pantalla también necesita mostrar se escribe igual en los dos lados, y el
+  servidor manda.** Pasó en la pieza 12: los requisitos de la contraseña se pintan de verde en el
+  navegador *y* se comprueban en `servidor/credenciales.js`. No es una excepción a la regla de «un
+  solo lugar»: el navegador **no puede** leer los archivos de `servidor/`, y los dos no pesan igual
+  — el servidor **decide**, la pantalla **avisa**. Si se desincronizaran, lo peor que pasa es que la
+  pantalla diga «verde» y el servidor rechace igual. Nunca al revés, que sería el problema de verdad.
 - El frontend **no decide reglas de negocio** (`DISENO.md`, límite del componente Interfaz). Si
   una pantalla necesita saber si algo se permite, se lo pregunta al API. Y no solo *si*: también
   **por qué**. Un día del calendario no llega con una lista vacía para que la pantalla adivine si
@@ -115,6 +126,36 @@ todos los errores posibles de este proyecto, así que las reglas son estrictas:
   en las pruebas es un reloj parado en una fecha fija. Sin eso, una prueba del calendario diría
   cosas distintas según el día en que se corra, y una prueba así no comprueba nada.
 
+### El correo
+
+Quedaron fijadas al construir la pieza 4, que es la primera que habla con un servicio de afuera.
+
+- **El enviador entra como dato, igual que el reloj.** La aplicación no sabe cómo se manda un
+  correo: recibe una función `enviador` y la llama. En `npm start` es la que habla con Resend
+  (`servidor/enviador-resend.js`); en las pruebas es una de mentira que los guarda en una lista.
+  **Ninguna prueba automática le manda un correo a nadie**, y no hace falta ninguna clave secreta
+  para que la integración continua pase.
+- **Un correo que falla nunca invalida una cita** (RF-19). Ninguna función de `servidor/correo.js`
+  lanza errores hacia afuera: si el envío se cae, se anota la falla y se sigue. Por eso el correo se
+  manda **después** de que la cita ya está guardada, nunca antes ni dentro de la misma transacción.
+- **Se reintenta una sola vez, y solo si la falla puede ser pasajera.** El error lleva un campo
+  `pasajera`: `true` para la red caída o un error 5xx de Resend (se reintenta), `false` para la
+  clave que no sirve o el remitente sin verificar (no se reintenta, porque daría lo mismo).
+- **Todo envío deja su fila en `correo_enviado`, haya salido bien o mal**, y es **una fila por
+  correo, no por intento**.
+- **Al crear una cita se manda la confirmación, y eso está escrito en un solo lugar:**
+  `crearCitaYConfirmar` de `servidor/reservas.js`. Una pieza nueva que reserve —la 7— llama a esa,
+  no arma el correo por su cuenta.
+- **El correo viaja en dos versiones, HTML y texto plano, diciendo lo mismo.** Un correo que solo
+  viaja en HTML lo marcan como sospechoso varios servicios.
+- **El HTML del correo se escribe con `<table>` y estilos pegados en cada etiqueta.** Los programas
+  de correo no son navegadores: borran las hojas de estilo y entienden mal las cuadrículas
+  modernas. Es la única parte del proyecto donde no se escribe CSS moderno, y tiene su razón escrita
+  en `servidor/plantillas-de-correo.js`.
+- **La tipografía del correo no es Manrope, y es la única excepción a `VISUALS.md` del proyecto.**
+  Manrope vive en `publico/fuentes/` y los programas de correo no cargan tipografías de afuera. Los
+  colores, los tamaños y el espaciado sí salen de `VISUALS.md`.
+
 ### Lo visual
 
 - **La apariencia sale de `VISUALS.md`, no del criterio de quien escribe el código.** Ese archivo
@@ -128,6 +169,16 @@ todos los errores posibles de este proyecto, así que las reglas son estrictas:
   necesita, y eso desborda el contenedor en pantalla angosta apenas las casillas tengan alto mínimo
   o proporción fija. Pasó de verdad con el calendario de la pieza 2 — el detalle está en la entrada
   del 2026-08-19 de `BITACORA.md`.
+- **Un aviso de «salió bien» va en verde, no en rojo ni en lavanda.** Se usa la clase
+  `aviso--exito` (verde `#d6e9db`, texto negro), y desde el JavaScript la función
+  `mostrarAvisoDeExito`. `VISUALS.md` nombra un «success green» sin decir cuál es; el valor lo
+  eligió la estudiante el 2026-08-19, al ver que «Tu cita quedó reservada» salía con los colores de
+  error. El lavanda (`aviso--informativo`) queda para las noticias que no son ni buenas ni malas.
+- **Todo texto de guía o de mensaje de error va en 12px**, con interlineado de 16 — el `label-sm`
+  de `VISUALS.md`. Son los avisos (`.aviso`), los textos de ayuda debajo de un grupo de campos
+  (`.forma__ayuda`) y los requisitos de la contraseña (`.requisito`). *Decisión de la estudiante del
+  2026-08-19: ese tipo de texto tiene que distinguirse de un vistazo del contenido de verdad, sin
+  tener que leerlo.* Si una pantalla nueva agrega otro texto de guía, va con este mismo tamaño.
 - Todas las medidas son múltiplos de **4px**, la unidad base del sistema.
 - **Las etiquetas de los campos siempre visibles**, nunca flotando dentro del campo: lo pide el
   sistema por accesibilidad.
@@ -143,10 +194,24 @@ todos los errores posibles de este proyecto, así que las reglas son estrictas:
   ningún servicio de terceros — ver la razón en `DISENO.md`, «El sistema visual».
 - **Las imágenes van en `publico/img/`.** Es la única carpeta de imágenes que el navegador puede
   ver: `publico/` es lo que el servidor entrega. Una imagen guardada en otro lado no carga, aunque
-  la ruta parezca correcta.
+  la ruta parezca correcta. Hoy hay dos: `bg-img.jpg` (el fondo) y `logo-app.png` (el logo del
+  encabezado, agregado por la estudiante el 2026-08-19).
+- **Toda imagen lleva su `width` y su `height` en la etiqueta**, con los números del archivo, aunque
+  el tamaño que se vea lo decida el CSS. No es para dimensionarla: es para que el navegador sepa
+  cuánto espacio reservar antes de que cargue. Sin eso, la página da un salto cuando la imagen
+  aparece.
+- **Una imagen que solo repite algo que ya está escrito al lado lleva `alt=""`** (vacío). Es el caso
+  del logo: el nombre del negocio está escrito a su derecha, y un lector de pantalla que además
+  leyera el logo diría dos veces lo mismo. Un `alt` vacío es la forma correcta de decir «esto es
+  decoración, ya está dicho con palabras» — no es lo mismo que no poner `alt`, que sí es un error.
 - **Detrás de una imagen de fondo va siempre el color del sistema como respaldo**, con el color
   escrito primero y la imagen encima. Si la imagen tarda o falta, la página se ve igual y nunca en
   blanco.
+- **Para atenuar una imagen de fondo no se usa `opacity`:** se le pone encima una capa del color del
+  lienzo con la transparencia que haga falta (`linear-gradient(rgba($canvas, 0.25), …)`). `opacity`
+  sobre un contenedor vuelve translúcido **todo lo que tiene adentro** —textos, tarjetas, botones—,
+  no solo su fondo. El resultado en pantalla es idéntico y no toca el contenido. *Aplicado el
+  2026-08-19, cuando la estudiante pidió bajarle un 25% a las flores del fondo.*
 - Los colores y el logo del **negocio** (los que se cargan como configuración, REG-4) **existen
   desde la pieza 2, y la aplicación no los aplica**: se guardan en `configuracion_negocio` y se
   devuelven en `GET /api/negocio`, pero ninguna pantalla los usa para pintarse. Son otra cosa:
@@ -169,6 +234,14 @@ todos los errores posibles de este proyecto, así que las reglas son estrictas:
 - **Los comandos también hay que correrlos.** `npm test` no ejecuta `npm run datos` ni `npm start`, así
   que un error en esos guiones no lo detecta ninguna prueba. Pasó en la pieza 11: `npm run datos` quedó
   roto por un nombre que había cambiado, y solo se vio al correrlo.
+- **Una tabla nueva que apunte a otra hay que agregarla al borrado de `guiones/datos-de-prueba.js`,
+  y primero de todo.** La base tiene las llaves foráneas encendidas: SQLite se niega a borrar una
+  fila que alguien todavía señala. Pasó en la pieza 4 con `correo_enviado`, que apunta a `cita` y a
+  `cliente`. Se descubrió leyendo el guion, no corriéndolo, y desde entonces hay una prueba que lo
+  cubre.
+- **Un aviso por consola que sale en cada corrida es un aviso que nadie va a leer.** Las pruebas que
+  crean citas pero no son del correo le pasan un enviador de mentira que funciona, para que la
+  salida de `npm test` solo muestre los avisos de los envíos que **a propósito** se hacen fallar.
 - **Ninguna prueba se cuelga del día en que se corre.** No solo las del calendario: **cualquiera** que
   toque una fecha. Una prueba que busca «algún día del mes en curso con horarios libres» pasa hoy y
   falla el 30 de un mes. Si una prueba necesita una fecha, para el reloj con `relojDetenidoEn` y escribe
@@ -180,7 +253,7 @@ todos los errores posibles de este proyecto, así que las reglas son estrictas:
 
 ### Integración continua
 
-Existe desde la pieza 3. Las 95 pruebas corren solas en **cada push y cada pull request**, en
+Existe desde la pieza 3. Las 135 pruebas corren solas en **cada push y cada pull request**, en
 **Node 20 y Node 24**, configuradas en `.github/workflows/pruebas.yml`.
 
 - **Ese archivo vive en la raíz del repositorio, no en esta carpeta.** Es la única excepción a la

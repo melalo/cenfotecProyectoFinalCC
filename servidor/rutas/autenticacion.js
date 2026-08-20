@@ -5,6 +5,7 @@
 import { Router } from "express"
 
 import { cifrarContrasena, contrasenaCoincide } from "../contrasenas.js"
+import { correoTieneForma, queLeFaltaALaContrasena } from "../credenciales.js"
 
 // Una huella de relleno, de una contraseña que nadie tiene. Sirve para que entrar con un correo
 // que no existe tarde lo mismo que entrar con la contraseña equivocada: si el caso «no existe»
@@ -23,6 +24,27 @@ export function crearRutasDeAutenticacion({ base, sesiones }) {
 
     if (nombre === "" || correo === "" || contrasena === "") {
       return respuesta.status(422).json({ error: "datos_incompletos" })
+    }
+
+    // RN-24: el correo tiene que tener forma de correo. Se comprueba **antes** que la contraseña
+    // porque también se comprueba antes en la pantalla, y porque un correo mal escrito hace que el
+    // correo de confirmación de la pieza 4 no le llegue a nadie.
+    if (!correoTieneForma(correo)) {
+      return respuesta.status(422).json({ error: "correo_invalido" })
+    }
+
+    // RN-23: las tres condiciones de la contraseña. La regla vive en `servidor/credenciales.js`,
+    // no acá: las piezas 7 y 9 también crean contraseñas y tienen que cumplir exactamente lo mismo.
+    //
+    // Se manda **qué falta**, no un texto ya armado: las palabras que la persona lee las escribe la
+    // pantalla. Y que esto esté en el servidor —y no solo en el JavaScript del navegador— es lo que
+    // hace que la regla no se pueda saltar mandando el pedido al API por fuera de la página.
+    const leFaltaALaContrasena = queLeFaltaALaContrasena(contrasena)
+    if (leFaltaALaContrasena.length > 0) {
+      return respuesta.status(422).json({
+        error: "contrasena_invalida",
+        faltan: leFaltaALaContrasena,
+      })
     }
 
     // El correo tiene que estar libre en las dos tablas: si coincidiera con la cuenta de Personal,
@@ -51,6 +73,12 @@ export function crearRutasDeAutenticacion({ base, sesiones }) {
   })
 
   // RF-2: entrar con correo y contraseña, y quedar con la sesión abierta.
+  //
+  // **Acá NO se comprueban RN-23 ni RN-24, a propósito.** Esas reglas valen donde se *elige* una
+  // contraseña, no donde se *usa* la que ya existe: una cuenta creada antes del 2026-08-19 tiene que
+  // poder seguir entrando con la contraseña que tenía, y obligarla a cambiarla la dejaría afuera de
+  // su propia cuenta sin haber hecho nada. Aparte, rechazar acá por «esa contraseña no cumple el
+  // formato» le regalaría a quien intenta adivinar una pista que hoy no tiene.
   rutas.post("/sesion", (pedido, respuesta) => {
     const correo = normalizarCorreo(pedido.body?.correo)
     const contrasena = String(pedido.body?.contrasena ?? "")

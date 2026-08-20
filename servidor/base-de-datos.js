@@ -214,4 +214,31 @@ function crearTablas(base) {
     CREATE UNIQUE INDEX IF NOT EXISTS cita_horario_unico
       ON cita (proveedor_id, inicio) WHERE estado = 'activa';
   `)
+
+  // ── Pieza 4: el registro de los correos enviados (REG-3) ────────────────────────────────────
+  //
+  // Una fila por cada correo que el sistema intentó mandar, haya salido bien o no. Las columnas no
+  // se inventaron acá: se copiaron del bloque «Produce» de la pieza 4 de `PLAN.md`.
+  //
+  // Que las fallas también queden guardadas es lo que hace útil a esta tabla. Un registro que solo
+  // anotara los envíos exitosos no serviría para lo único que hace falta preguntarle: «¿a quién no
+  // le llegó su aviso?».
+  base.exec(`
+    CREATE TABLE IF NOT EXISTS correo_enviado (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      destinatario_correo TEXT    NOT NULL,
+      cliente_id          INTEGER NOT NULL REFERENCES cliente(id),
+      -- Vacío para los correos que no son de una cita: el de recuperar la contraseña (pieza 9).
+      cita_id             INTEGER REFERENCES cita(id),
+      -- \`confirmacion\`, \`recordatorio\` (pieza 6) o \`recuperacion\` (pieza 9).
+      tipo                TEXT    NOT NULL,
+      enviado_en          TEXT    NOT NULL,
+      -- SQLite no tiene un tipo «sí o no»: se guarda 1 o 0, igual que \`debe_cambiar_contrasena\`.
+      exito               INTEGER NOT NULL
+    );
+
+    -- La pieza 6 pregunta muy seguido «¿a esta cita ya le mandé el recordatorio?», y ese es
+    -- justamente el atajo que evita recorrer la tabla entera en cada revisión.
+    CREATE INDEX IF NOT EXISTS correo_por_cita ON correo_enviado (cita_id, tipo);
+  `)
 }

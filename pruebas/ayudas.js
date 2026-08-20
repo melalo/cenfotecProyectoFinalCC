@@ -47,6 +47,10 @@ export function relojDetenidoEn(momento) {
  *
  * `opciones.reloj` deja parar el tiempo en un momento concreto. Si no se pasa, la aplicación usa
  * la hora de verdad, igual que cuando la levanta `npm start`.
+ *
+ * `opciones.enviador` deja poner un enviador de correo de mentira (pieza 4). Si no se pasa, la
+ * aplicación usa el mismo que cuando no hay `RESEND_API_KEY`: falla sin tocar la red. Eso es a
+ * propósito — **ninguna prueba automática puede mandar un correo de verdad**.
  */
 export async function crearEntornoDePrueba(contexto, opciones = {}) {
   const carpeta = mkdtempSync(join(tmpdir(), "reservas-prueba-"))
@@ -70,6 +74,7 @@ export async function crearEntornoDePrueba(contexto, opciones = {}) {
         base,
         sesionSecreto: SESION_SECRETO_DE_PRUEBA,
         reloj: opciones.reloj,
+        enviador: opciones.enviador,
       }).listen(0)
       await once(servidor, "listening")
       entorno.direccion = `http://localhost:${servidor.address().port}`
@@ -187,4 +192,44 @@ export function buscarPorNombre(lista, nombre) {
 /** Saca del calendario el día que se pide, escrito como «2026-09-02». */
 export function diaDelCalendario(calendario, fecha) {
   return calendario.dias.find((dia) => dia.fecha === fecha)
+}
+
+/**
+ * Un enviador de correo **de mentira**, para la pieza 4. Guarda cada correo que le mandan en vez de
+ * entregarlo a nadie, y devuelve lo guardado para poder mirarlo.
+ *
+ * Es la única imitación que hay en todas las pruebas de este proyecto, y tiene su razón: el correo
+ * es el borde donde la aplicación habla con un servicio de afuera, y una prueba automática no puede
+ * mandarle correos de verdad a nadie. Todo lo que está **de este lado del borde** —la plantilla, el
+ * registro en la tabla, el reintento— se prueba de verdad, no imitado.
+ *
+ * `comoSeComporta` recibe el número de intento (1, 2, 3…) y devuelve el error con el que ese
+ * intento tiene que fallar, o nada si tiene que salir bien. Así una prueba puede pedir «falla la
+ * primera vez y andá bien la segunda».
+ */
+export function enviadorDeMentira(comoSeComporta = () => null) {
+  const enviados = []
+
+  async function enviador(correo) {
+    enviados.push(correo)
+    const falla = comoSeComporta(enviados.length)
+    if (falla) throw falla
+  }
+
+  enviador.enviados = enviados
+  return enviador
+}
+
+/** Una falla de correo de las que **sí** se reintentan: la red se cayó, o el servicio no contestó. */
+export function fallaPasajera(mensaje = "no se pudo llegar al servicio de correo") {
+  const falla = new Error(mensaje)
+  falla.pasajera = true
+  return falla
+}
+
+/** Una falla de correo de las que **no** se reintentan: la clave no sirve, el remitente no existe. */
+export function fallaDefinitiva(mensaje = "el servicio de correo rechazó el pedido") {
+  const falla = new Error(mensaje)
+  falla.pasajera = false
+  return falla
 }

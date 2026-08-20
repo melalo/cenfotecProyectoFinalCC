@@ -54,7 +54,7 @@ todas las piezas)*:
 |---|---|---|---|
 | 1 | Entrar a la aplicación | — | **cerrada el 2026-08-17** |
 | 2 | Elegir servicio y proveedor, y ver el calendario | 1 | **cerrada el 2026-08-19** |
-| 3 | Reservar un horario | 2 | **construida el 2026-08-19** — revisión visual hecha; falta solo la comprobación 7 (ver el push en verde en GitHub) |
+| 3 | Reservar un horario | 2 | **cerrada el 2026-08-19** |
 | 4 | Correo de confirmación | 3 | pendiente |
 | 5 | Cancelar y reagendar | 3 | pendiente |
 | 6 | Recordatorio de 24 horas | 4 y 5 | pendiente |
@@ -520,7 +520,7 @@ negocio fue un miércoles, así que «mañana» fue el jueves 2026-08-20):
 | 4 | Reservado además `2026-08-20T14:00:00-06:00` con el mismo cliente → **`201`**, y `GET /api/citas` devuelve **las dos**, ordenadas por hora. RN-16 cumplida: nadie le impuso un máximo. |
 | 5 | **CA-1.** La prueba automática dispara las dos reservas del mismo horario con `Promise.all`, sin que ninguna espere a la otra: **una recibe `201` y la otra `409 horario_no_disponible`**, y en la base queda **exactamente 1** cita activa para ese horario. Se comprobó además, aparte de la prueba, que **el candado es de la base y no del código**: insertando dos veces a mano la misma cita activa, la segunda se estrella contra `SQLITE_CONSTRAINT_UNIQUE`; y después de pasar la primera a `cancelada`, el horario se puede volver a tomar. |
 | 6 | **CA-2.** La prueba automática pide reservar un horario de hoy → **`422 mismo_dia`**, y lo prueba con **los ocho horarios del día**, no con uno: «sin importar la hora a la que se intente», como dice el criterio. Comprobado también contra la aplicación de verdad: `2026-08-19T15:00:00-06:00` → `422 mismo_dia`. Un horario de ayer da lo mismo. |
-| 7 | **PENDIENTE.** El push se hizo el 2026-08-19 y **la primera corrida salió en ROJO**. Encontró dos defectos reales, los dos arreglados el mismo día (ver abajo). Se cierra cuando la estudiante confirme que la corrida siguiente quedó en verde: el agente no tiene forma de mirar la pestaña **Actions**. |
+| 7 | **CUMPLIDA.** Push hecho el 2026-08-19. La **primera** corrida (`Pruebas #1`, commit `e4267e0`) salió en **rojo** y encontró dos defectos reales (ver abajo). Arreglados y subidos, la **segunda** corrida (`Pruebas #2`, commit `341187f`) quedó en **verde**: `Status: Success`, 2m 10s, y **los dos trabajos en verde — `pruebas (20)` y `pruebas (24)`**, con las 95 pruebas cada uno. Confirmado por la estudiante en la pestaña Actions, con captura de pantalla. |
 
 **Revisión visual — hecha por la estudiante el 2026-08-19.** Abrió `http://localhost:3000`, recorrió
 la lista de comprobaciones visuales de `PROXIMA-SESION.md` y **confirmó que la pieza se ve y funciona
@@ -529,9 +529,7 @@ las comprobaciones 1, 2 y 4, que ninguna prueba automática puede ver. La revisi
 pantalla **ya con el paso de categorías** que agregó la pieza 11, así que cubre el recorrido tal como
 quedó y no el que existía antes.
 
-**Con esto la pieza 3 queda CONSTRUIDA y con 6 de sus 7 comprobaciones cerradas.** Falta solo la
-**comprobación 7**, que no se puede cerrar sin haber hecho el push y haber visto el resultado en la
-pestaña Actions de GitHub.
+**Con esto la pieza 3 queda CERRADA**, con sus 7 comprobaciones cumplidas y la revisión visual hecha.
 
 **La primera corrida de la integración continua salió en ROJO** (2026-08-19, `Pruebas #1`, commit
 `e4267e0`), y encontró **dos defectos que las 95 pruebas locales no podían encontrar** — que es
@@ -549,6 +547,20 @@ exactamente para lo que existe:
    —o una corrida un sábado a fin de mes— se queda sin ninguno. Arreglado parando el reloj en
    `MOMENTO_DE_PRUEBA` como el resto de las pruebas, y escribiendo la fecha fija. Quedó como convención
    en `CLAUDE.md`: **ninguna prueba se cuelga del día en que se corre**, no solo las del calendario.
+
+**La segunda corrida quedó en verde** (`Pruebas #2`, commit `341187f`): `Status: Success`, 2m 10s, con
+los dos trabajos en verde —`pruebas (20)` y `pruebas (24)`— y las 95 pruebas en cada uno. **Con eso la
+comprobación 7 queda cumplida y la pieza 3 cerrada.**
+
+*Nota sobre los dos avisos amarillos de esa corrida.* Dicen que `actions/checkout@v4` y
+`actions/setup-node@v4` «apuntan a Node.js 20, que está obsoleto, y se están forzando a correr en Node
+24». **No tienen nada que ver con la promesa de Node 20 de este proyecto**, y conviene tenerlo claro
+porque es fácil confundirlo: hay dos Node distintos en juego. Uno es el que corre **la aplicación y sus
+pruebas** —Node 20 y Node 24, los dos en verde, y es el que promete el `README.md`—; el otro es el que
+GitHub usa para ejecutar **sus propias herramientas**, y ese es el que GitHub está jubilando. El aviso
+es sobre el segundo. No rompe nada. Se puede silenciar subiendo esas dos herramientas a su versión 5, y
+conviene hacerlo en algún momento: un aviso que aparece siempre, incluso en verde, enseña a ignorar los
+avisos.
 
 **Lo que se construyó además, y no era parte del encargo de la pieza:**
 
@@ -611,7 +623,82 @@ exactamente para lo que existe:
   - La función de envío de correo que las piezas 6 y 9 reutilizan, con la plantilla y el registro
     ya resueltos.
 
+**Decisiones tomadas al construir**
+
+*Cuatro preguntas que ningún documento del proyecto tenía respondidas. Se le preguntaron a la
+estudiante el 2026-08-19, antes de escribir una línea, y las cuatro las decidió ella.*
+
+1. **A Resend se le habla con lo que Node ya trae, no con su paquete de npm.** Mandar un correo es
+   un solo pedido a una dirección, con la clave en una cabecera, y `fetch` viene incluido en Node
+   20. Así el `README.md` puede seguir prometiendo que este proyecto no necesita nada raro
+   instalado. Son unas 20 líneas en `servidor/enviador-resend.js`.
+2. **La pantalla espera a que el correo salga antes de contestar «tu cita quedó reservada».** La
+   cita ya está guardada cuando el envío empieza, así que RF-19 se cumple igual. Lo que se gana
+   esperando es que el resultado del envío se pueda comprobar: contestando primero, toda prueba
+   del correo tendría que adivinar cuánto esperar, y una prueba así falla sola cada tanto.
+3. **El correo lleva los colores del sistema visual**, con una versión de texto plano de respaldo.
+4. **La estudiante todavía no tiene cuenta de Resend**, así que las comprobaciones que necesitan
+   una bandeja de entrada de verdad quedan pendientes — ver abajo cuáles.
+
+*Y dos límites que no estaban escritos en ninguna parte y se adoptaron acá, con su razón:*
+
+5. **Se reintenta una sola vez, y solo cuando la falla puede ser pasajera.** `ESPECIFICACION.md`
+   dice «el sistema reintenta» sin decir cuántas veces. Dos intentos, con un segundo de pausa
+   entre ellos, porque quien reservó está esperando en la pantalla. Y **no se reintenta cuando el
+   problema es el pedido** —la clave no sirve, el remitente no está verificado—: el segundo intento
+   daría exactamente lo mismo y solo haría esperar más. Del 500 para arriba el problema es de
+   Resend y sí se reintenta.
+6. **Se espera a Resend cinco segundos como mucho.** Sin ese límite, un servicio que no contesta
+   dejaría el botón «Confirmar la reserva» girando hasta que Node se cansara.
+
 **Evidencia**
+
+*Construida el 2026-08-19.*
+
+**Pruebas automáticas — `npm test`: 109 pruebas, 109 pasan, 0 fallan.** De esas, **14 son nuevas de
+esta pieza** (las otras 95 son las de las piezas 1, 2, 3, 10 y 11, que siguen pasando). Se
+escribieron antes del código y **se vieron fallar primero**: la corrida previa dio «tests 96, pass
+95, fail 1», con el error de que `servidor/enviador-resend.js` no existía. Viven en
+`pruebas/correo.test.js`.
+
+**Cómo se prueba un correo sin mandar correos.** El enviador entra **como dato**, igual que el
+reloj: la aplicación no sabe cómo se manda un correo, recibe una función que lo manda y la llama.
+En `npm start` esa función habla con Resend; en las pruebas es una de mentira que guarda los
+correos en una lista. Así queda probado de verdad todo lo que está de este lado del borde —la
+plantilla, el registro en la tabla y el reintento—, y **ninguna prueba automática le manda un correo
+a nadie**. Es la única imitación en todas las pruebas del proyecto, y esta es su razón.
+
+Las 14 cubren: que el correo trae los cinco datos de RF-11 en sus dos versiones (la de diseño y la
+de texto plano), que trae el teléfono del negocio, que va a la dirección de quien reservó, que cada
+envío deja su fila en `correo_enviado` con los seis campos, que **si el correo falla la cita se
+crea igual y se ve en «Mis citas»** (RF-19), que **sin servicio de correo configurado la aplicación
+funciona igual**, que una falla pasajera se reintenta una vez y una definitiva no, que dos intentos
+del mismo correo son **una** fila y no dos, y —del lado del enviador, sin tocar la red— qué pedido
+se le arma a Resend y cómo se clasifica cada respuesta.
+
+**Las 4 comprobaciones de arriba:**
+
+| # | Resultado |
+|---|---|
+| 1 | **PENDIENTE.** Necesita una cuenta de Resend y una dirección de correo real de prueba, y la estudiante todavía no la tiene (decisión del 2026-08-19). El paso a paso para crearla está en el `README.md`, sección «Cómo conseguir la clave de Resend». Lo que sí está comprobado sin cuenta: que los cinco datos están en el correo, con sus valores correctos, por la prueba automática. |
+| 2 | **CUMPLIDA con el enviador de prueba, PENDIENTE contra un envío de verdad.** La prueba automática mira la tabla y comprueba la fila entera: `destinatario_correo` = el correo de quien reservó, `cita_id` = el id de la cita que se acaba de crear, `tipo` = `confirmacion`, `exito` = 1, `cliente_id` lleno y `enviado_en` escrito en la hora del negocio (`2026-09-01T08:00:00-06:00`). Lo único que falta comprobar es que esa misma fila quede con `exito` = 1 después de un envío **real**, que es lo que la comprobación 1 desbloquea. |
+| 3 | **CUMPLIDA.** En dos mitades, y las dos comprobadas. **La mitad de la aplicación:** la prueba automática reserva con un enviador que falla, y la cita queda creada (`201`), se ve en `GET /api/citas`, y la fila del correo queda con `exito` = 0. **La mitad de Resend, contra el servicio de verdad:** se le mandó un envío con la clave `re_clave_totalmente_inventada_para_probar` y Resend contestó **`401 {"statusCode":401,"name":"validation_error","message":"API key is invalid"}`**, que la aplicación clasificó como falla **definitiva** (no la reintentó). Eso comprueba de paso que la dirección y las cabeceras del pedido son las correctas: un error de ruta habría dado 404, no un 401 hablando de la clave. |
+| 4 | **PENDIENTE.** Depende de la 1. |
+
+**Comprobado además, corriendo los comandos** —que ninguna prueba automática ejecuta—: `npm start`
+levanta la aplicación **sin `RESEND_API_KEY` en el `.env`**, avisa por consola qué falta y qué pasa
+si no se arregla, y contesta los pedidos con normalidad (`GET /api/negocio` → `200`). Es RF-19 en el
+arranque, no solo en el envío.
+
+**Un defecto encontrado y arreglado durante la construcción.** `npm run datos` iba a quedar roto:
+`correo_enviado` apunta a `cita` y a `cliente`, la base tiene las llaves foráneas encendidas, y el
+borrado de los datos de prueba no incluía la tabla nueva. SQLite se habría negado a borrar la cita
+con `SQLITE_CONSTRAINT_FOREIGNKEY`. Se descubrió al revisar el guion, se escribió una prueba que lo
+reprodujo, y se arregló agregando `DELETE FROM correo_enviado` **primero de todo**. Es el mismo tipo
+de defecto que la pieza 11 destapó a mano, y ahora está cubierto por una prueba.
+
+**Revisión visual — PENDIENTE.** Esta pieza no tiene pantalla, así que lo que hay que mirar es que
+reservar siga funcionando igual de bien: la lista está en `PROXIMA-SESION.md`.
 
 ---
 
@@ -1077,6 +1164,116 @@ siempre son seguidos.
 **Revisión visual — hecha por la estudiante el 2026-08-19**, y con eso **la pieza 11 queda CERRADA**.
 Recorrió el paso de categorías, el paso del tipo de masaje, el salto de ese paso en «Facial» y la
 numeración de los pasos, y confirmó que se ve y funciona como corresponde, sin defectos nuevos.
+
+---
+
+### Pieza 12: Reglas para la contraseña y el correo al crear la cuenta
+
+*Pedida por la estudiante el 2026-08-19, fuera del plan original, mientras esperaba su cuenta de
+Resend. **Resuelve un pendiente que estaba abierto desde la pieza 1** y anotado en `SEGUIMIENTO.md`:
+«decidir si la contraseña lleva un largo mínimo. Hoy no lo lleva, a propósito: ningún documento lo
+pide y no se agregó una regla de negocio desde el código». Ahora sí hay documento que lo pide: RN-23
+y RN-24 de `ESPECIFICACION.md`, escritas antes de construir esta pieza.*
+
+*Toca el registro, que es de la **pieza 1, ya cerrada**. Por eso lo primero que se corrigió fue
+`ESPECIFICACION.md`, y solo después el código — el mismo camino de las piezas 10 y 11.*
+
+**Qué tiene que ser cierto**
+- Una contraseña nueva cumple las tres condiciones de RN-23: **6 caracteres o más**, **al menos una
+  mayúscula** y **al menos un número**. Si le falta alguna, el registro se rechaza y el mensaje dice
+  **cuál** falta.
+- Un correo sin forma de correo se rechaza al registrarse (RN-24).
+- **La regla la hace cumplir el servidor**, no la pantalla: un pedido mandado al API por fuera del
+  navegador se rechaza igual.
+- **Al entrar (RF-2) no se comprueba nada de esto.** Las cuentas que ya existían siguen entrando con
+  la contraseña que tenían, aunque no cumpla las reglas nuevas.
+- Mientras la persona escribe la contraseña, la pantalla muestra **dos renglones** con las
+  condiciones, que se ponen verdes con un ✓ a medida que se cumplen y rojos cuando no (RF-23). Antes
+  de escribir la primera letra están en gris.
+- El correo se comprueba **al salir del campo**, no en cada tecla: marcar en rojo un correo a medio
+  escribir es regañar por algo que la persona todavía está haciendo.
+
+**Con qué se comprueba**
+1. Registrarse con `abc` → se rechaza, y el mensaje nombra las tres condiciones que faltan.
+2. Registrarse con `abcdefg` (largo, sin mayúscula, sin número) → se rechaza, y el mensaje nombra
+   **solo** lo que falta: la mayúscula y el número. No las que ya se cumplen.
+3. Registrarse con `Abc12` (mayúscula y número, pero 5 caracteres) → se rechaza por el largo.
+4. Registrarse con `Abc123` → **se acepta**. Es el caso justo en el límite: 6 caracteres exactos.
+5. Registrarse con el correo `ana` y con `ana@ejemplo` → los dos se rechazan; `ana@ejemplo.com` se
+   acepta.
+5b. Registrarse con `Ángela2026` → **se rechaza** por dos motivos a la vez: la `Á` no cuenta como
+   mayúscula, y además ninguna letra puede llevar tilde. Con `Angela2026` se acepta.
+5c. Registrarse con `óArtolo123` → **se rechaza**. Es el caso que destapó la regla: pasaba por la
+   `A` de «Artolo», no por la `ó`.
+5d. Registrarse con `Contraseña123` → **se acepta**. La ñ es una letra del alfabeto, no una vocal
+   acentuada, y la regla no la prohíbe. Con `PequeÑo123` también.
+6. Entrar con una cuenta que ya existía y cuya contraseña no cumple las reglas nuevas → **entra
+   igual**.
+7. Mandarle el pedido de registro al API **sin pasar por la pantalla**, con una contraseña de una
+   letra → se rechaza igual. Es lo que demuestra que la regla vive en el servidor.
+8. En el navegador: comprobar que **los renglones de requisitos no se ven** al abrir la pantalla,
+   que **aparecen al tocar el campo de la contraseña**, que se esconden si se sale del campo sin
+   escribir nada, y que escribiendo letra por letra cambian de gris a rojo y de rojo a verde.
+
+**Toca:** Autenticación, Interfaz.
+
+**Interfaces**
+- *Consume:* `POST /api/registro` de la pieza 1.
+- *Produce:*
+  - `POST /api/registro` devuelve `422` con `{error: "contrasena_invalida", faltan: [...]}` cuando la
+    contraseña no cumple RN-23. `faltan` es una lista con los nombres de las condiciones que no se
+    cumplieron: `"largo"`, `"mayuscula"`, `"numero"`. Se manda la lista y no un texto armado porque
+    **quién escribe el mensaje es la pantalla**, igual que en el resto del proyecto.
+  - `POST /api/registro` devuelve `422` con `{error: "correo_invalido"}` cuando el correo no tiene
+    forma de correo (RN-24).
+  - La regla de RN-23, escrita **en un solo lugar** del servidor, que las piezas 7 y 9 reutilizan
+    cuando les toque crear o cambiar una contraseña.
+
+**Evidencia**
+
+*Construida el 2026-08-19, el mismo día que se pidió.*
+
+**Pruebas automáticas — `npm test`: 135 pruebas, 135 pasan, 0 fallan.** De esas, **26 son nuevas de
+esta pieza**. Se escribieron antes del código y **se vieron fallar primero**: la corrida previa dio
+«tests 17, pass 9, fail 8», y las 8 que fallaban eran exactamente las de las reglas nuevas — las 9
+que pasaban comprobaban que nada de lo anterior se rompiera. Viven en
+`pruebas/contrasenas-y-correos.test.js`.
+
+**Las 8 comprobaciones de arriba:**
+
+| # | Resultado |
+|---|---|
+| 1 | `abc` → **`422`** con `{"error":"contrasena_invalida","faltan":["largo","mayuscula","numero"]}`, y **ninguna cuenta guardada**. Comprobado también contra la aplicación de verdad en `http://localhost:3000`. |
+| 2 | `abcdefg` → **`422`** con `faltan: ["mayuscula","numero"]`. **No nombra el largo**, que ya se cumplía. Comprobado también contra la aplicación de verdad. |
+| 3 | `Abc12` → **`422`** con `faltan: ["largo"]`, y solo eso. |
+| 4 | `Abc123` → **`201`**. El borde exacto: RN-23 dice «al menos 6», así que 6 entra. Comprobado también contra la aplicación de verdad. |
+| 5 | `ana` y `ana@ejemplo` → los dos **`422 correo_invalido`**, sin guardar nada; `ana@ejemplo.com` → **`201`**. Se comprobaron además `ana ro@ejemplo.com`, `ana@@ejemplo.com`, `@ejemplo.com` y `ana@.com` (rechazados), y `ana.maria-lopez@sub.ejemplo.co.cr` (aceptado): la regla tiene que atrapar el dedazo **sin** rechazar direcciones legítimas. |
+| 6 | Se insertó a mano una cuenta con la contraseña `hola` —que no cumple ninguna de las tres condiciones— y **entró igual**: `200`. También sigue entrando la cuenta de Personal precargada. RN-23 se aplica al **elegir** una contraseña, no al usarla. |
+| 7 | **CUMPLIDA.** La prueba usa `fetch` pelado contra el API, **sin el ayudante que simula el navegador**, con la contraseña `a` → **`422 contrasena_invalida`** y cero cuentas guardadas. Es lo que demuestra que la regla vive en el servidor y no en el JavaScript de la página. |
+| 5b | **CUMPLIDA.** `Ángela2026` → `422` con `faltan: ["mayuscula","sin_acentos"]`; `Angela2026` → `201`. |
+| 5c | **CUMPLIDA.** `óArtolo123` → `422` con `faltan: ["sin_acentos"]`; `Contrasena123` → `201`. Se comprobaron además la diéresis (`Pingüino123`), un acento en minúscula en medio de la palabra (`Angéla2026`) y una contraseña que falla por las cuatro condiciones a la vez (`añí`). |
+| 5d | **CUMPLIDA.** `Contraseña123` → `201`, y `PequeÑo123` → `201`. Se comprobó además que `ñañaña` falla **solo** por lo que le falta —mayúscula y número— y que las eñes no aparecen en la lista de motivos. |
+
+**Las comprobaciones 5b, 5c y 5d nacieron de la revisión visual, en tres rondas**, y las tres son
+correcciones que hizo la estudiante mirando la pantalla, no cosas que estuvieran planeadas:
+
+1. Probó `Ángela2026` → decidió que una mayúscula con tilde no cuente como mayúscula.
+2. Probó `óArtolo123` y la vio pasar → **la regla hacía lo que decía pero no lo que ella quería**
+   (pasaba por la `A` de «Artolo», no por la `ó`), así que se cambió la regla, no la explicación.
+3. **Corrigió la ronda anterior**: ese cambio también prohibía la ñ, y ella lo señaló — «la ñ no es
+   una tilde, es una letra». Tenía razón, y la regla se volvió a ajustar.
+
+Es el mejor ejemplo del proyecto de por qué `CLAUDE.md` exige que **una pieza no se cierre sin que
+una persona abra el navegador y mire**: ninguna de las tres rondas la podía encontrar una prueba
+automática, porque las tres eran sobre qué *tenía que* decir la regla, no sobre si el código cumplía
+lo escrito.
+| 8 | **PENDIENTE:** es la parte visual, y la tiene que mirar una persona. Ninguna prueba de este proyecto ve la página dibujada. |
+
+**Comprobado además que las reglas nuevas no pisaron las que ya existían:** un correo repetido sigue
+dando `409 correo_ya_registrado` (no `422`), y un registro sin nombre sigue dando
+`422 datos_incompletos`.
+
+**Revisión visual — PENDIENTE.** Es la comprobación 8.
 
 ---
 

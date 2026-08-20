@@ -110,6 +110,75 @@ export function esAnteriorOIgual(a, b) {
   return a <= b
 }
 
+/**
+ * Los nombres de los días y de los meses, para escribir una fecha en palabras.
+ *
+ * Sí, la misma lista existe también en `publico/aplicacion-cliente.js`, y eso es a propósito: ese
+ * archivo corre **en el navegador**, que no puede leer nada de la carpeta `servidor/`. No es una
+ * regla de negocio duplicada —son dos listas de palabras—, y la alternativa sería mandar los
+ * nombres por el API, que es mucho ruido para lo que resuelve. Si un día cambia una, cambian las
+ * dos.
+ *
+ * «Setiembre» va sin «p», que es como se escribe en Costa Rica.
+ */
+const DIAS_DE_LA_SEMANA = [
+  "domingo",
+  "lunes",
+  "martes",
+  "miércoles",
+  "jueves",
+  "viernes",
+  "sábado",
+]
+
+const MESES = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "setiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+]
+
+/**
+ * Una fecha escrita en palabras: `2026-09-02` se convierte en «miércoles 2 de setiembre de 2026».
+ *
+ * Existe desde la pieza 4, para el correo de confirmación. Un correo que dijera «2026-09-02» le
+ * haría contar meses a quien lo lee; en palabras se entiende de un vistazo, que es justo lo que un
+ * aviso tiene que lograr.
+ */
+export function escribirFechaEnPalabras(fecha) {
+  const diaSemana = DIAS_DE_LA_SEMANA[diaDeLaSemana(fecha)]
+  const numero = Number(fecha.slice(8, 10))
+  const mes = MESES[Number(fecha.slice(5, 7)) - 1]
+  const anio = fecha.slice(0, 4)
+
+  return `${diaSemana} ${numero} de ${mes} de ${anio}`
+}
+
+/**
+ * La hora de un momento del proyecto, sin la fecha: de `2026-09-02T10:00:00-06:00` saca `10:00`.
+ *
+ * No hace ninguna cuenta a propósito: **recorta**. El momento ya viene escrito en la hora del
+ * negocio —ese `-06:00` del final lo dice—, así que convertirlo a algo para volver a leer la hora
+ * sería inventar una oportunidad de equivocarse en una hora, que es de donde salen los errores que
+ * este archivo existe para evitar.
+ */
+export function escribirHoraDelMomento(inicio) {
+  return inicio.slice(11, 16)
+}
+
+/** La fecha de un momento del proyecto: de `2026-09-02T10:00:00-06:00` saca `2026-09-02`. */
+export function fechaDelMomento(inicio) {
+  return inicio.slice(0, 10)
+}
+
 /** Comprueba que un mes esté escrito como `2026-09`, con un mes de verdad entre 01 y 12. */
 export function mesEstaBienEscrito(mes) {
   return typeof mes === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(mes)

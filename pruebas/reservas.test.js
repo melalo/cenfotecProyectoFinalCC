@@ -24,6 +24,7 @@ import {
   entrarComoPersonal,
   buscarPorNombre,
   diaDelCalendario,
+  enviadorDeMentira,
   relojDetenidoEn,
   MOMENTO_DE_PRUEBA,
 } from "./ayudas.js"
@@ -47,7 +48,13 @@ function momento(fecha, hora) {
  * para reservar y para mirar el calendario.
  */
 async function prepararReservas(contexto) {
-  const entorno = await crearEntornoDePrueba(contexto, { reloj: relojDetenidoEn(MOMENTO_DE_PRUEBA) })
+  // Desde la pieza 4, crear una cita manda un correo. Estas pruebas no son del correo, pero sin un
+  // enviador que funcione cada reserva dejaría un aviso de «falló el envío» en la salida de
+  // `npm test`. Una salida llena de avisos de siempre enseña a no leerlos.
+  const entorno = await crearEntornoDePrueba(contexto, {
+    reloj: relojDetenidoEn(MOMENTO_DE_PRUEBA),
+    enviador: enviadorDeMentira(),
+  })
   const navegador = crearNavegador(entorno)
   await entrarComoClienta(navegador)
 

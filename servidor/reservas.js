@@ -25,6 +25,7 @@
 // decir «no».
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
+import { enviarConfirmacionDeCita } from "./correo.js"
 import { revisarHorario } from "./disponibilidad.js"
 import { escribirMomento } from "./tiempo.js"
 
@@ -99,6 +100,38 @@ export function crearCita({ base, clienteId, servicioId, proveedorId, inicio, ah
     }
     throw falla
   }
+}
+
+/**
+ * Crea la cita **y le avisa al cliente por correo** (RF-11). Es lo que llaman los endpoints; la
+ * pieza 7, cuando Personal reserve en nombre de alguien, va a llamar exactamente a esta.
+ *
+ * Existe para que «al crear una cita se manda la confirmación» esté escrito en **un solo lugar**.
+ * Si cada endpoint tuviera que acordarse de mandar el correo por su cuenta, el día que se agregue
+ * uno nuevo va a haber un camino por el que se reserva sin que nadie se entere. Es el mismo motivo
+ * por el que `DISENO.md` dice que Reservas «avisa a Notificaciones cuando algo cambia».
+ *
+ * El orden importa y no es casual: **primero se guarda la cita, después se manda el correo**. La
+ * cita ya está a salvo cuando el envío empieza, así que un correo que falla no puede arrastrarla
+ * (RF-19). Y `enviarConfirmacionDeCita` nunca lanza errores, así que tampoco hay nada que atajar
+ * acá.
+ */
+export async function crearCitaYConfirmar({
+  base,
+  enviador,
+  clienteId,
+  servicioId,
+  proveedorId,
+  inicio,
+  ahora,
+}) {
+  const resultado = crearCita({ base, clienteId, servicioId, proveedorId, inicio, ahora })
+
+  if (resultado.ok) {
+    await enviarConfirmacionDeCita({ base, enviador, citaId: resultado.cita.id, ahora })
+  }
+
+  return resultado
 }
 
 /**

@@ -12,8 +12,18 @@
       <div class="envoltura encabezado__interior">
         <div class="encabezado__fila">
           <div class="encabezado__marca">
-            <h1 class="encabezado__titulo">Reservas en línea</h1>
-            <p class="encabezado__bajada">Bienestar y salud</p>
+            <!--
+              El logo del negocio. Va con `alt=""` (vacío) **a propósito**: el nombre está escrito
+              justo al lado, y un lector de pantalla que además leyera el logo diría dos veces lo
+              mismo. Un `alt` vacío es la forma correcta de decir «esta imagen es decoración, ya
+              está dicho con palabras».
+            -->
+            <img class="encabezado__logo" src="/img/logo-app.png" alt="" width="242" height="169" />
+
+            <div class="encabezado__textos">
+              <h1 class="encabezado__titulo">Bienestar y salud</h1>
+              <p class="encabezado__bajada">Reservas en línea</p>
+            </div>
           </div>
 
           <!--
@@ -128,9 +138,30 @@
                     type="password"
                     name="contrasena"
                     autocomplete="new-password"
+                    aria-describedby="requisitos-contrasena"
                     required
                   />
                 </label>
+
+                <!--
+                  Los requisitos de la contraseña (RF-23). Son un **espejo** de RN-23, que es la
+                  regla de verdad y vive en el servidor: esto avisa, no decide.
+
+                  `aria-live="polite"` es lo que hace que un lector de pantalla anuncie el cambio
+                  cuando un requisito pasa a cumplirse. Sin eso, quien no ve la pantalla no se entera
+                  de nada: los renglones cambiarían de color en silencio.
+                -->
+                <ul id="requisitos-contrasena" class="requisitos" aria-live="polite" hidden>
+                  <li class="requisito" data-requisito="largo">
+                    Al menos 6 caracteres<span class="solo-lectores"></span>
+                  </li>
+                  <li class="requisito" data-requisito="letra-y-numero">
+                    Una letra mayúscula y un número<span class="solo-lectores"></span>
+                  </li>
+                  <li class="requisito" data-requisito="sin-acentos">
+                    No tildes<span class="solo-lectores"></span>
+                  </li>
+                </ul>
 
                 <button class="boton" type="submit">Crear mi cuenta</button>
                 <p id="aviso-registro" class="aviso" role="alert" hidden></p>

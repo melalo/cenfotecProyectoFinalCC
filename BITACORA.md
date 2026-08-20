@@ -941,3 +941,272 @@ hecha y no había encontrado nada. Y aun así quedaban dos defectos, y los dos e
 que solo se puede ver en un lugar distinto de donde se construyó.** Es la misma lección que dieron los
 defectos visuales de las piezas 2 y 3 —que solo se ven mirando la pantalla— aplicada a otra dimensión:
 la máquina donde corre.
+
+**Cierre.** La segunda corrida (`Pruebas #2`, commit `341187f`) quedó en **verde**: `Status: Success`,
+2m 10s, los dos trabajos en verde —`pruebas (20)` y `pruebas (24)`— con las 95 pruebas cada uno.
+Confirmado por la estudiante en la pestaña Actions. **Con eso la comprobación 7 quedó cumplida y la
+pieza 3 cerrada**, y las tres piezas del día —3, 10 y 11— quedaron cerradas.
+
+**Queda anotado un pendiente chico, sin urgencia:** esa corrida trae dos avisos amarillos que dicen que
+`actions/checkout@v4` y `actions/setup-node@v4` apuntan a Node.js 20, que GitHub está jubilando **como
+motor de sus propias herramientas**. No tiene relación con la promesa de Node 20 de este proyecto —son
+dos Node distintos— y no rompe nada. Conviene subir esas dos herramientas a su versión 5 en algún
+momento: un aviso que aparece siempre, incluso cuando todo está en verde, enseña a ignorar los avisos.
+
+### 2026-08-19 — el tiempo dedicado al proyecto sube de 6 a 9 horas por semana
+
+**Decisión de la estudiante**, el mismo día que se cerraron las piezas 3, 10 y 11. Es el segundo
+aumento: el 2026-08-17 había subido de 4 a 6.
+
+**Qué cambia en la cuenta.** Desde hoy y hasta la entrega del **8 de setiembre de 2026** (`PROYECTO.md`
+§ encabezado) quedan unas **26 horas** de trabajo disponibles.
+
+**El estimado de lo que falta, calibrado con lo que de verdad tardó lo hecho** —las piezas 1, 2 y 3
+llevaron unas 5 horas de sesión cada una; la 10 y la 11 alrededor de una hora cada una—:
+
+| | Horas |
+|---|---|
+| Piezas 4, 5, 7, 8 y 9 | ~19 |
+| La skill propia que pide la rúbrica, más preparar la presentación | ~4 |
+| **Subtotal** | **~23 de 26** |
+| Pieza 6 adaptada | +5 |
+| **Con la pieza 6** | **~28 de 26** |
+
+**La conclusión, y no es una opinión: la pieza 6 no entra.** Coincide con lo que
+`FICHA-APROBACION.md` anticipó desde el principio —«la de mayor riesgo técnico… la primera en recortar
+si el tiempo aprieta»—, y ahora hay además una razón técnica concreta, no solo de tiempo: **su tarea
+programada de GitHub Actions no puede llamar a una aplicación que corre en `localhost`**, y alojarla en
+un servidor público es una decisión que `DISENO.md` dejó explícitamente abierta. El desglose y los tres
+caminos posibles están en `PROXIMA-SESION.md`.
+
+**Una corrección del agente, anotada porque afectó una decisión.** Al estimar por primera vez, el
+agente dijo «unas 14-15 horas» para las cinco piezas sin la 6. **Estaba mal: la suma de sus propios
+números da 19.** Con 6 horas por semana la diferencia parecía chica; con la entrega a tres semanas y la
+pieza 6 en la balanza, esas 4-5 horas son exactamente lo que decide si algo entra o no. El número
+corregido es el que quedó escrito en `PROXIMA-SESION.md` y acá.
+
+*Nota de método, igual que con el aumento anterior: `FICHA-APROBACION.md` sigue diciendo «4 horas por
+semana» a propósito. Ese documento es registro fechado de lo que el docente aprobó, no un documento
+vivo. Si alguien encuentra «4 horas» o «6 horas» en un documento anterior a esta entrada, el número
+vigente es **9**.*
+
+---
+
+### 2026-08-19 — construcción de la pieza 4: el correo de confirmación
+
+**Qué se construyó.** Al confirmarse una reserva, al cliente le llega un correo con la fecha, la
+hora, el servicio, el proveedor y la ubicación del negocio (RF-11), y cada envío queda registrado
+—haya salido bien o mal— en la tabla nueva `correo_enviado` (REG-3). Es la primera pieza que habla
+con un **servicio de afuera**: Resend.
+
+**Cuatro preguntas antes de escribir una línea.** Ningún documento del proyecto decía cómo llamar a
+Resend, si la pantalla tenía que esperar al correo, ni cómo se veía el correo. Se buscaron en
+`ESPECIFICACION.md`, `DISENO.md`, `PLAN.md`, `README.md` y `VISUALS.md`, no estaban, y se le
+preguntaron a la estudiante. Las cuatro las decidió ella:
+
+1. **A Resend se le habla con `fetch`, la función que Node 20 ya trae, sin instalar su paquete de
+   npm.** Mandar un correo es un solo pedido a una dirección con la clave en una cabecera: son unas
+   20 líneas a cambio de una dependencia menos. El `README.md` apuntaba a `resend-node` como
+   repositorio oficial del correo y se corrigió con esta decisión.
+2. **La pantalla espera a que el correo salga** antes de contestar «tu cita quedó reservada». La
+   cita ya está guardada cuando el envío empieza, así que RF-19 se cumple igual; lo que se gana es
+   que el resultado del envío se pueda comprobar sin que ninguna prueba tenga que adivinar cuánto
+   esperar.
+3. **El correo lleva los colores del sistema visual**, con una versión de texto plano de respaldo.
+4. **La estudiante todavía no tiene cuenta de Resend**, así que las comprobaciones 1 y 4 del plan
+   —«ver que el correo llega»— quedan pendientes, anotadas como tales en `PLAN.md`. El paso a paso
+   para crear la cuenta quedó escrito en el `README.md`.
+
+**Dos límites que no estaban en ningún lado y se adoptaron acá.** `ESPECIFICACION.md` dice «el
+sistema reintenta» sin decir cuántas veces. Se fijaron **dos intentos con un segundo de pausa**, y
+—esto es lo que importa— **se reintenta solo cuando la falla puede ser pasajera**: si Resend contesta
+que la clave no sirve, repetir el pedido daría exactamente lo mismo y solo haría esperar más a quien
+reservó. También se fijó una **espera máxima de 5 segundos** por intento, porque sin ella un
+servicio que no contesta dejaría el botón «Confirmar la reserva» girando indefinidamente.
+
+**Cómo se prueba un correo sin mandar correos.** Es el problema central de la pieza, y se resolvió
+con la misma idea que las fechas: **el enviador entra como dato**, igual que el reloj. La aplicación
+no sabe cómo se manda un correo — recibe una función y la llama. En `npm start` es la que habla con
+Resend; en las pruebas es una de mentira que los guarda en una lista. Así **ninguna prueba
+automática le manda un correo a nadie**, la integración continua no necesita ninguna clave secreta,
+y todo lo que está de este lado del borde —la plantilla, el registro y el reintento— queda probado de
+verdad. Es la única imitación en las 109 pruebas del proyecto, y esa es su razón.
+
+**Un defecto encontrado leyendo, no corriendo.** `npm run datos` iba a quedar roto: `correo_enviado`
+apunta a `cita` y a `cliente`, la base tiene las llaves foráneas encendidas, y el borrado de los
+datos de prueba no incluía la tabla nueva — SQLite se habría negado a borrar la cita. Se escribió
+primero la prueba que lo reproduce (falló con `SQLITE_CONSTRAINT_FOREIGNKEY`), y después el arreglo.
+Es el mismo tipo de defecto que la pieza 11 destapó a mano; ahora hay una prueba que lo cubre, y la
+lección quedó escrita en el `CLAUDE.md` de la carpeta.
+
+**Un segundo defecto, este del propio agente.** Al escribir los avisos de consola de
+`servidor/index.js` quedaron saltos de línea de verdad adentro de los textos, en vez de la marca
+`
+`. Eso es un error de sintaxis: **`npm start` no habría arrancado**. Ninguna de las 109 pruebas lo
+podía detectar, porque `npm test` no ejecuta `index.js`. Se descubrió leyendo el propio cambio, se
+arregló, y se comprobó con `node --check` y levantando la aplicación de verdad. Refuerza la regla que
+ya estaba escrita desde la pieza 11: **los comandos también hay que correrlos**.
+
+**Qué se comprobó, y qué no.** Las 14 pruebas nuevas se escribieron antes del código y se vieron
+fallar (la corrida previa dio «tests 96, pass 95, fail 1»). `npm test` da **109 de 109**. Se comprobó
+además, corriendo los comandos, que **`npm start` levanta sin `RESEND_API_KEY`**, avisa qué falta y
+contesta los pedidos con normalidad — que es RF-19 en el arranque y no solo en el envío. Y se hizo
+una comprobación contra el Resend **de verdad**: se le mandó un envío con una clave inventada y
+contestó `401 API key is invalid`, que la aplicación clasificó bien como falla definitiva. Eso
+demuestra de paso que la dirección y las cabeceras del pedido son correctas — un error de ruta habría
+dado 404, no un 401 hablando de la clave. **Lo que no se comprobó: que un correo llegue a una bandeja
+de entrada de verdad.** Eso necesita la cuenta de Resend, y queda anotado como pendiente en `PLAN.md`
+en vez de darse por hecho.
+
+**Documentos corregidos por esta pieza**, dentro de `proyectoFinal/`: `PLAN.md` (evidencia y
+decisiones de la pieza 4), `DISENO.md` (once decisiones nuevas y el modelo de datos, que ahora dice
+que `correo_enviado` guarda también los envíos fallidos), `CLAUDE.md` (una sección «El correo» nueva,
+la estructura de carpetas, el conteo de pruebas y dos lecciones más en «Pruebas»), `README.md` (la
+tabla del stack, que apuntaba al paquete que no se usa, y una guía nueva para conseguir la clave de
+Resend), `.env.ejemplo`, `SEGUIMIENTO.md` y `PROXIMA-SESION.md`.
+
+**Un defecto visual, encontrado por la estudiante mirando la pantalla.** «Tu cita quedó reservada»
+salía **con los colores de error**, en rojo: una buena noticia con cara de problema. La causa era que
+ese mensaje usaba `mostrarAviso` a secas en vez de `mostrarAvisoDeExito`, la función que ya existía.
+Y al arreglarlo apareció un hueco de fondo: **`VISUALS.md` nombra un «success green» entre los
+indicadores de estado pero nunca dice cuál es**, así que el proyecto no tenía ningún verde. La
+estudiante eligió `#d6e9db` con texto negro, y quedó registrado como decisión en `DISENO.md`. Es el
+**cuarto** defecto visual del proyecto encontrado por una persona: **ninguna prueba automática puede
+ver un color equivocado**, porque todas hablan con el API.
+
+---
+
+### 2026-08-19 — pieza 12: las reglas de la contraseña y del correo
+
+**Qué se pidió y qué había antes.** La estudiante pidió, mientras esperaba su cuenta de Resend, que
+al crear una cuenta se exigiera **6 caracteres, una mayúscula y un número**, que las condiciones se
+vieran ponerse verdes mientras uno escribe, y que se comprobara el formato del correo. Hasta ese día
+**el sistema aceptaba cualquier contraseña, incluso una sola letra**, y cualquier texto como correo.
+
+**Eso no era un olvido, y por eso importa.** Estaba anotado en `SEGUIMIENTO.md` desde la pieza 1 como
+un pendiente **abierto a propósito**: «decidir si la contraseña lleva un largo mínimo. Hoy no lo
+lleva, a propósito: ningún documento lo pide y **no se agregó una regla de negocio desde el
+código**». O sea: en su momento se decidió no inventar la regla, sino esperar a que alguien la
+decidiera. Ese día llegó, y la decidió la estudiante.
+
+**El camino fue el de las piezas 10 y 11, no el atajo.** Primero se escribieron las reglas en
+`ESPECIFICACION.md` —RN-23 (la contraseña), RN-24 (el correo) y RF-23 (mostrarlas mientras se
+escribe)—, después se anotó la pieza 12 en `PLAN.md` con sus 8 comprobaciones, y **recién entonces**
+se escribieron las pruebas y el código. Esto toca el registro, que es de la pieza 1 **ya cerrada**:
+por eso lo primero que se corrigió fue el documento anterior.
+
+**Tres decisiones que la estudiante tomó y que no eran obvias:**
+
+1. **Dos renglones en pantalla, no tres**, aunque las condiciones sean tres: el largo va solo (es lo
+   único que cambia en cada tecla) y la mayúscula y el número van juntas.
+2. **Antes de escribir la primera letra los renglones están en gris**, ni verdes ni rojos. Marcar en
+   rojo un campo que nadie tocó es regañar antes de que pase nada.
+3. **El correo se comprueba al salir del campo, no en cada tecla.** Escribir un correo pasa por
+   muchos estados inválidos (`a`, `an`, `ana@`), y marcarlos sería regañar por algo que la persona
+   todavía está haciendo.
+
+**Lo que hubo que resolver de fondo: la misma regla escrita en dos lados.** La pantalla necesita
+conocer las condiciones para pintar los renglones, y el navegador **no puede leer los archivos de
+`servidor/`**. Eso choca de frente con la convención del proyecto —«una regla de negocio se escribe en
+un solo lugar»—, así que la salida fue declarar explícitamente que **los dos no pesan igual**: el
+servidor **decide** y la pantalla **avisa**. Si se desincronizaran, lo peor que puede pasar es que la
+pantalla diga «verde» y el servidor rechace igual; nunca al revés. Quedó escrito en
+`servidor/credenciales.js`, en `CLAUDE.md` y en el propio RF-23.
+
+**La comprobación que hace que esto no sea decorativo** es la 7: una prueba que le manda el pedido al
+API con `fetch` pelado, **sin el ayudante que simula el navegador**, con la contraseña `a`. Se rechaza
+igual. Si la regla viviera solo en el JavaScript de la página, esa prueba pasaría de largo y
+cualquiera podría saltársela abriendo una terminal.
+
+**Qué se comprobó.** Las 17 pruebas nuevas se escribieron antes del código y se vieron fallar: la
+corrida previa dio «tests 17, pass 9, fail 8», y las 8 que fallaban eran exactamente las de las reglas
+nuevas. `npm test` da **126 de 126**. Se comprobó además contra la aplicación de verdad en
+`http://localhost:3000` que `abc` da `faltan: ["largo","mayuscula","numero"]`, que `abcdefg` da
+`faltan: ["mayuscula","numero"]` —sin nombrar el largo, que ya se cumplía—, que `ana@ejemplo` da
+`correo_invalido`, y que `Abc123` (el borde exacto de 6) da `201`. **Falta la comprobación 8**, que es
+la visual y la tiene que mirar una persona.
+
+**La comprobación del correo es a propósito generosa:** `ana.maria-lopez@sub.ejemplo.co.cr` se
+acepta. Una comprobación demasiado estricta deja a gente afuera de su propia cuenta, que es peor que
+el problema que resuelve.
+
+**La regla de la contraseña se corrigió tres veces esa misma tarde, y las tres las encontró la
+estudiante mirando la pantalla.** Queda anotado porque es el mejor ejemplo que tiene el proyecto de
+por qué `CLAUDE.md` exige que una pieza no se cierre sin que una persona la abra en el navegador:
+
+1. **El primer intento aceptaba mayúsculas con tilde** (`Á`, `É`, `Ñ`) como la mayúscula
+   obligatoria. Ella probó `Ángela2026`, no le gustó, y pidió que no contaran.
+2. **Después escribió `óArtolo123` y la vio pasar.** El agente revisó y no era un defecto: pasaba
+   por la `A` de «Artolo», no por la `ó`. **La regla hacía exactamente lo que decía, pero no lo que
+   ella quería.** Se cambió la regla, no la explicación — y ahí se prohibieron las tildes del todo.
+3. **Y ese cambio se pasó de largo: también prohibía la ñ.** Ella lo señaló con una frase que zanja
+   el asunto: «la ñ no es una tilde, es una letra compuesta». Tenía razón. La ñ es una letra del
+   alfabeto español, con su lugar entre la N y la O; lo que lleva encima es una virgulilla y es parte
+   de la letra, no un acento. Quedó afuera de la prohibición: `Contraseña123` se acepta,
+   `óArtolo123` no.
+
+**Ninguna prueba automática podía encontrar ninguna de las tres**, y no por falta de cobertura: las
+tres eran sobre **qué tenía que decir la regla**, no sobre si el código cumplía lo escrito. Una
+prueba comprueba lo segundo. Lo primero solo lo ve una persona.
+
+**Un defecto de oficio del agente, encontrado al revisar su propio cambio:** al escribir la
+comprobación de las tildes, los acentos quedaron metidos en el código como **caracteres
+invisibles** (los acentos sueltos, sin la letra que los lleva). Funcionaba, pero esa línea era
+ilegible para cualquiera. Se reescribió con los códigos (`\u0300-\u036f`) y quedó anotado en el
+propio archivo por qué va escrito así.
+
+---
+
+### 2026-08-19 — los ajustes visuales de la tarde, todos pedidos mirando la pantalla
+
+Ninguno estaba planeado. Todos salieron de la estudiante abriendo la aplicación en el navegador, y
+por eso se anotan juntos: es la evidencia de que **la revisión visual es parte del trabajo, no un
+trámite al final.**
+
+| Qué se pidió | Qué había antes | Por qué importa |
+|---|---|---|
+| **El aviso de «tu cita quedó reservada», en verde** (`#d6e9db`, letra negra) | Salía **en rojo**, con los colores de error | Era un defecto de verdad: una buena noticia con cara de problema. La causa era que ese mensaje llamaba a `mostrarAviso` a secas en vez de a `mostrarAvisoDeExito`, que ya existía. Y al arreglarlo apareció un hueco de fondo: **`VISUALS.md` nombra un «success green» pero nunca dice cuál es**, así que el proyecto no tenía ningún verde. |
+| **El texto de guía y de error, a 12px** | 14px los requisitos y la ayuda, 16px los avisos | Es el `label-sm` de `VISUALS.md`, así que no se inventó un tamaño: se cambió de un token del sistema a otro. Quedó como convención en `CLAUDE.md` para las pantallas que vengan. |
+| **Los requisitos de la contraseña, escondidos hasta tocar el campo** | Se veían siempre, colgando debajo de un campo vacío | Tres renglones de reglas antes de que haya nada que revisar son ruido. Se esconden de nuevo al salir del campo **solo si quedó vacío**: si hay algo escrito se quedan, porque ahí sí hay algo que revisar. |
+| **Sin los íconos ✓ y ✗: solo el color de la letra** | Cada renglón tenía una marca a la izquierda | Al sacar el ícono, el texto quedó **alineado con el campo de arriba sin necesidad de ningún margen** — la sangría la causaba la marca. Alinear quitando lo que desalinea, no compensándolo. **Pero el color solo no le llega a quien no ve la pantalla**, ni a quien no distingue el rojo del verde: el estado se conservó en un texto invisible que solo leen los lectores de pantalla. Visualmente es idéntico a lo pedido. |
+| **El logo del negocio en el encabezado, y los dos textos invertidos** | «Reservas en línea» era el título y «Bienestar y salud» la bajada | Ahora el nombre del negocio es el `h1` —el título principal de la página, lo que un buscador y un lector de pantalla toman como «de qué se trata esto»— y «Reservas en línea» quedó como bajada. El logo va con `alt=""` vacío a propósito: el nombre está escrito al lado, y leerlo dos veces molesta. |
+| **El fondo de flores, un 25% más tenue** | A opacidad completa | **No se hizo con `opacity`**, y la razón quedó escrita como convención: `opacity` sobre el `body` volvería translúcido *todo* lo de adentro —textos, tarjetas, botones—, no solo el fondo. Se le puso encima una capa del color del lienzo al 25%: el resultado en pantalla es idéntico y no toca el contenido. |
+| **El azul oscuro, de `#002554` a `#2f3367`** | El «Deep Navy» original de `VISUALS.md` | **El cambio se hizo en la variable `$navy` del `.scss`, no lugar por lugar**, y valió de una vez para las 18 apariciones del CSS final: encabezado, pie, botones, foco de los campos, el día de hoy del calendario, las fichas de horario tomadas, **y el encabezado del correo de confirmación**. Es exactamente para lo que existe una variable. |
+
+**Tres cosas derivadas que había que mover con el azul, y que es fácil olvidar:**
+
+1. **El tono oscuro del paso del mouse** (`$navy-oscuro`), de `#00112d` a `#1f2247`. Tiene que ser
+   una versión más oscura **del mismo** azul: si no, un botón cambiaría de *color* al pasarle el
+   mouse en vez de solo oscurecerse.
+2. **Dos sombras escritas como `rgb(0 37 84)`**, que es el mismo color en otra notación porque una
+   sombra necesita transparencia. **Por estar escritas así se escapan de cualquier búsqueda del
+   texto `#002554`**, y la segunda apareció recién en una comprobación posterior, después de dar el
+   trabajo por terminado. Ahora quedó anotado en el comentario de cada una.
+3. **`VISUALS.md`**, que es la autoridad sobre la apariencia: su `primary` y su `primary-container`
+   se actualizaron. Si se dejaban viejos, el sistema visual diría una cosa y el código otra. Es el
+   mismo camino del 2026-08-17 con el fondo.
+
+**El contraste se comprobó, no se supuso:** blanco sobre el azul nuevo da **11,7 : 1** y el celeste
+de la bajada y el pie da **6,9 : 1**. El mínimo exigido para texto normal es 4,5 : 1, así que los dos
+quedan holgados.
+
+**Las entradas históricas de `BITACORA.md` y `SEGUIMIENTO.md` conservan `#002554` a propósito**: son
+el registro fechado de lo que se decidió el 17 de agosto, no documentos vivos. Es la misma regla por
+la que `FICHA-APROBACION.md` sigue diciendo «4 horas por semana».
+
+---
+
+### 2026-08-19 — el `CLAUDE.md` de la carpeta madre, corregido por la estudiante
+
+Dos reglas nuevas, escritas por ella:
+
+1. **«Explicame en lenguaje simple y de manera puntual.»** Se suma a la regla que ya estaba de
+   explicar sin asumir: hay que explicar todo, pero corto.
+2. **«Cuando me preguntes cosas, vamos una a la vez, una por una.»** Corrige algo concreto de esa
+   misma sesión: al arrancar la pieza 4 el agente le hizo **cuatro preguntas juntas** en un solo
+   bloque. Las cuatro eran necesarias y ninguna se podía adivinar, pero juntas son un formulario, no
+   una conversación.
+
+Quedan anotadas acá porque son la primera vez que la estudiante corrige **cómo se trabaja**, no qué
+se construye.
+

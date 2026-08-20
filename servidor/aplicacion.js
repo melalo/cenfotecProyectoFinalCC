@@ -8,6 +8,7 @@ import express from "express"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { ENVIADOR_SIN_CONFIGURAR } from "./correo.js"
 import { crearSesiones } from "./sesion.js"
 import { crearRutasDeAutenticacion } from "./rutas/autenticacion.js"
 import { crearRutasDeCatalogo } from "./rutas/catalogo.js"
@@ -25,8 +26,19 @@ const RELOJ_DE_VERDAD = () => new Date()
  * el tiempo en un miércoles, en un sábado o en un feriado concreto y comprobar siempre lo mismo:
  * sin eso, «mañana hay horarios» fallaría los sábados. Si no se pasa, la aplicación usa la hora de
  * verdad y se comporta exactamente igual que siempre.
+ *
+ * `enviador` es lo mismo pero para el correo (pieza 4): una función que entrega un correo ya
+ * escrito. En `npm start` es la que habla con Resend; en las pruebas es una de mentira que los
+ * guarda en una lista. **Si no se pasa, la aplicación levanta igual** y los correos quedan
+ * registrados como fallidos — que es exactamente lo que tiene que pasar cuando el `.env` no tiene
+ * `RESEND_API_KEY` (RF-19).
  */
-export function crearAplicacion({ base, sesionSecreto, reloj = RELOJ_DE_VERDAD }) {
+export function crearAplicacion({
+  base,
+  sesionSecreto,
+  reloj = RELOJ_DE_VERDAD,
+  enviador = ENVIADOR_SIN_CONFIGURAR,
+}) {
   const aplicacion = express()
 
   // Entiende los pedidos que llegan con un cuerpo en formato JSON.
@@ -35,7 +47,7 @@ export function crearAplicacion({ base, sesionSecreto, reloj = RELOJ_DE_VERDAD }
   const sesiones = crearSesiones(sesionSecreto)
   aplicacion.use("/api", crearRutasDeAutenticacion({ base, sesiones }))
   aplicacion.use("/api", crearRutasDeCatalogo({ base, sesiones, reloj }))
-  aplicacion.use("/api", crearRutasDeCitas({ base, sesiones, reloj }))
+  aplicacion.use("/api", crearRutasDeCitas({ base, sesiones, reloj, enviador }))
   aplicacion.use("/api", crearRutasDeUsuario({ base, sesiones, reloj }))
 
   // Todo lo que hay en `publico/` se sirve tal cual: el HTML, el CSS ya compilado y el JavaScript

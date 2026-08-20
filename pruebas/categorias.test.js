@@ -17,6 +17,7 @@ import {
   crearNavegador,
   entrarComoClienta,
   buscarPorNombre,
+  enviadorDeMentira,
   relojDetenidoEn,
   MOMENTO_DE_PRUEBA,
 } from "./ayudas.js"
@@ -28,7 +29,13 @@ async function prepararCatalogo(contexto) {
   // el reloj de verdad dice cosas distintas según el día en que se corra**: buscaba «algún día del mes
   // en curso con horarios libres», y un mes que arranca en sus últimos días —o una corrida un sábado
   // de fin de mes— se queda sin ninguno. Eso rompió la integración continua la primera vez que corrió.
-  const entorno = await crearEntornoDePrueba(contexto, { reloj: relojDetenidoEn(MOMENTO_DE_PRUEBA) })
+  // Desde la pieza 4, crear una cita manda un correo. Estas pruebas no son del correo, pero sin un
+  // enviador que funcione cada reserva dejaría un aviso de «falló el envío» en la salida de
+  // `npm test`. Una salida llena de avisos de siempre enseña a no leerlos.
+  const entorno = await crearEntornoDePrueba(contexto, {
+    reloj: relojDetenidoEn(MOMENTO_DE_PRUEBA),
+    enviador: enviadorDeMentira(),
+  })
   const navegador = crearNavegador(entorno)
   await entrarComoClienta(navegador)
 

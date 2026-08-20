@@ -98,7 +98,7 @@ descartaron. **No lo cambies sin actualizar ese documento con la razón.**
 | Backend | Node.js con **Express** | https://github.com/expressjs/express |
 | Base de datos | **SQLite**, accedida con **better-sqlite3** | https://github.com/WiseLibs/better-sqlite3 |
 | Frontend | HTML + CSS con **Sass** | https://github.com/sass/dart-sass |
-| Correo | **Resend** | https://github.com/resend/resend-node |
+| Correo | **Resend**, llamado con `fetch` — **sin instalar su paquete de npm** (ver `DISENO.md`, pieza 4) | https://resend.com/docs/api-reference/emails/send-email |
 | Disparador del recordatorio | Tarea programada en **GitHub Actions** | https://github.com/features/actions |
 
 La lista definitiva de dependencias, con su versión, va a estar en `package.json` cuando la pieza 1
@@ -161,12 +161,41 @@ que se sepa cuáles hacen falta.
 | `PORT` | 1 | Puerto donde escucha la aplicación. Si no está, vale 3000. |
 | `SESION_SECRETO` | 1 | Firma las sesiones de login. Cualquier texto largo e inventado. |
 | `RESEND_API_KEY` | 4 | Clave del servicio de correo. Se saca de una cuenta gratuita de Resend. |
-| `CORREO_REMITENTE` | 4 | Dirección desde la que salen los correos. |
+| `CORREO_REMITENTE` | 4 | Dirección desde la que salen los correos, escrita `Nombre <correo@dominio>`. |
 | `RECORDATORIOS_SECRETO` | 6 | Clave que protege el disparador del recordatorio, para que nadie de afuera lo pueda ejecutar. |
 
 **Sin `RESEND_API_KEY` la aplicación tiene que levantar igual.** Los correos van a fallar y quedar
 registrados como fallidos, pero las citas se siguen creando: así lo exige RF-19 de
 `ESPECIFICACION.md`.
+
+### Cómo conseguir la clave de Resend
+
+Hace falta desde la **pieza 4**, para que el correo de confirmación llegue de verdad. La aplicación
+funciona sin ella, así que esto se puede dejar para después. Es gratis y no pide tarjeta.
+
+1. Entrá a **https://resend.com** y creá una cuenta con tu correo.
+2. En el menú de la izquierda, abrí **API Keys** y tocá **Create API Key**. Ponele cualquier nombre
+   (por ejemplo `reservas-local`) y dejale el permiso de enviar.
+3. Copiá la clave que aparece — empieza con `re_`. **Se muestra una sola vez**: si cerrás la
+   ventana sin copiarla, hay que crear otra.
+4. Pegala en tu archivo `.env`:
+   ```
+   RESEND_API_KEY=re_la_clave_que_copiaste
+   CORREO_REMITENTE=Belleza y Bienestar <onboarding@resend.dev>
+   ```
+5. Apagá la aplicación (`Ctrl + C`) y volvé a levantarla con `npm start`, para que lea el `.env`
+   nuevo. Si la clave está, el aviso amarillo del arranque deja de salir.
+
+**Sobre `onboarding@resend.dev`:** es la dirección de pruebas que Resend regala a toda cuenta nueva,
+y sirve para no tener que comprar un dominio. Tiene **un límite importante**: con ella solo se puede
+mandar correo **a la dirección con la que te registraste en Resend**, no a cualquiera. Para las
+comprobaciones de la pieza 4 alcanza — se reserva con esa misma dirección. Para mandarle correos a
+clientes de verdad haría falta un dominio propio verificado en Resend, y eso queda fuera de esta
+entrega.
+
+**Si algo no llega:** mirá la consola donde corre `npm start`. Cada envío fallido deja ahí un aviso
+con el motivo exacto que devolvió Resend, y además queda una fila con `exito = 0` en la tabla
+`correo_enviado` de la base.
 
 ## Datos de prueba
 

@@ -13,6 +13,10 @@ const formaEntrar = document.getElementById("forma-entrar")
 const formaRegistro = document.getElementById("forma-registro")
 const avisoEntrar = document.getElementById("aviso-entrar")
 const avisoRegistro = document.getElementById("aviso-registro")
+// Los dos renglones de requisitos de la contraseña (pieza 12, RF-23).
+const campoContrasenaRegistro = formaRegistro.querySelector('input[name="contrasena"]')
+const campoCorreoRegistro = formaRegistro.querySelector('input[name="correo"]')
+const requisitosContrasena = document.getElementById("requisitos-contrasena")
 // «Salir» está escrito dos veces en la página —una en el menú de arriba y otra en el del pie—
 // porque cada uno se ve en un tamaño de pantalla distinto. Se buscan los dos juntos y los dos hacen
 // lo mismo, así que agregar un «Salir» en otro lado no pide código nuevo.
@@ -95,6 +99,11 @@ const MENSAJES = {
     "El teléfono tiene que ser de 8 dígitos, como 8888-7777. Se puede escribir con guión o sin él.",
   fecha_nacimiento_invalida:
     "Esa fecha de nacimiento no sirve: revisá que exista y que no sea del futuro.",
+  // Los dos de la pieza 12. El de la contraseña se arma aparte, en `mensajeDeLaContrasena`,
+  // porque nombra **solo** lo que falta en vez de repetir siempre las tres condiciones.
+  correo_invalido:
+    "Ese correo no parece un correo. Revisá que tenga una arroba y una terminación, " +
+    "como ana@ejemplo.com.",
   desconocido: "Algo falló y no se pudo completar. Volvé a intentar en un momento.",
 }
 
@@ -120,9 +129,10 @@ function mostrarAviso(elemento, mensaje) {
 function esconderAviso(elemento) {
   elemento.textContent = ""
   elemento.hidden = true
-  // Si el aviso había quedado en azulado por un mensaje de «salió bien», vuelve a ser un aviso de
-  // error normal. Sin esto, el próximo error se mostraría con la cara de una buena noticia.
+  // Si el aviso había quedado en verde o en azulado, vuelve a ser un aviso de error normal. Sin
+  // esto, el próximo error se mostraría con la cara de una buena noticia.
   elemento.classList.remove("aviso--informativo")
+  elemento.classList.remove("aviso--exito")
 }
 
 function mensajeDelError(cuerpo) {
@@ -772,7 +782,9 @@ async function confirmarReserva() {
   await cargarCalendario()
 
   mostrarVista("citas")
-  mostrarAviso(avisoCitas, "Tu cita quedó reservada. Acá abajo está, con su día y su hora.")
+  // Va en verde, no en rojo: es una buena noticia. Hasta la pieza 4 usaba `mostrarAviso` a secas y
+  // salía con los colores de error — lo vio la estudiante en su revisión del 2026-08-19.
+  mostrarAvisoDeExito(avisoCitas, "Tu cita quedó reservada. Acá abajo está, con su día y su hora.")
 }
 
 /** El mensaje de un rechazo al reservar. El de RN-4 lleva el teléfono del negocio adentro. */
@@ -930,7 +942,7 @@ formaUsuario.addEventListener("submit", async (evento) => {
 
 /** Un aviso que no es un error: usa el azulado del sistema en vez del rojo. */
 function mostrarAvisoDeExito(elemento, mensaje) {
-  elemento.classList.add("aviso--informativo")
+  elemento.classList.add("aviso--exito")
   mostrarAviso(elemento, mensaje)
 }
 
@@ -963,6 +975,153 @@ formaEntrar.addEventListener("submit", async (evento) => {
   mostrarPantallaDentro(respuesta.cuerpo)
 })
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Los requisitos de la contraseña (pieza 12, RF-23)
+//
+// Esto es un **espejo** de RN-23, no la regla. La regla vive en `servidor/credenciales.js` y se
+// cumple pase lo que pase, incluso si alguien le manda el pedido al API sin abrir esta página. Acá
+// solo se avisa mientras la persona escribe, para que no tenga que mandar el formulario a ciegas y
+// descubrir después qué le faltaba.
+//
+// Si un día los dos se desincronizaran, lo peor que puede pasar es que esta pantalla diga «verde» y
+// el servidor rechace igual. Nunca al revés.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** El mínimo de caracteres. Es el mismo número que `LARGO_MINIMO_DE_CONTRASENA` del servidor. */
+const LARGO_MINIMO_DE_CONTRASENA = 6
+
+/**
+ * Qué comprueba cada renglón. Son **dos**, aunque las condiciones de RN-23 sean tres: la mayúscula y
+ * el número van juntas en el segundo *(decidido por la estudiante el 2026-08-19)*. El largo va solo
+ * porque es lo único que la persona ve cambiar en cada tecla.
+ *
+ * Son **tres** renglones desde el 2026-08-19, cuando la estudiante prohibió los acentos (RN-23).
+ * Los dos primeros piden algo; el tercero prohíbe algo, y por eso se lee al revés: está verde
+ * cuando **no** hay acentos.
+ *
+ * `normalize("NFD")` separa una letra de su acento —la «á» se vuelve una «a» y un acento suelto—, y
+ * el rango `\u0300-\u036f` es donde viven esos acentos sueltos. **La ñ se cambia por
+ * una `n` antes de mirar**, porque es una letra del alfabeto y no una n acentuada: sin eso, ese
+ * mismo truco la daría por acentuada. Es la misma comprobación que hace
+ * `servidor/credenciales.js`, escrita igual, porque el servidor es el que decide.
+ */
+const REQUISITOS = {
+  largo: (contrasena) => contrasena.length >= LARGO_MINIMO_DE_CONTRASENA,
+  "letra-y-numero": (contrasena) => /[A-Z]/.test(contrasena) && /[0-9]/.test(contrasena),
+  "sin-acentos": (contrasena) => {
+    const sinLaEne = contrasena.normalize("NFC").replaceAll("ñ", "n").replaceAll("Ñ", "N")
+    return !/[\u0300-\u036f]/.test(sinLaEne.normalize("NFD"))
+  },
+}
+
+/**
+ * Repinta los renglones según lo que haya escrito hasta ahora.
+ *
+ * Tres estados, no dos:
+ *
+ *   - campo vacío  → gris. Nadie escribió nada todavía; no hay nada que reprochar.
+ *   - cumplido     → verde
+ *   - sin cumplir  → rojo
+ *
+ * **El color es toda la señal visible** (decisión de la estudiante del 2026-08-19, que sacó los
+ * íconos ✓ y ✗ que había antes). Pero el color solo no le llega a quien no ve la pantalla, ni a
+ * quien no distingue el rojo del verde, así que el mismo dato va además en un texto **invisible**
+ * que solo leen los lectores de pantalla. Cuesta una línea y no cambia nada de lo que se ve.
+ */
+function repintarRequisitos(contrasena) {
+  const todaviaNoEscribioNada = contrasena === ""
+
+  for (const renglon of requisitosContrasena.querySelectorAll(".requisito")) {
+    const cumple = REQUISITOS[renglon.dataset.requisito](contrasena)
+
+    renglon.classList.toggle("requisito--cumplido", !todaviaNoEscribioNada && cumple)
+    renglon.classList.toggle("requisito--falta", !todaviaNoEscribioNada && !cumple)
+
+    // El texto invisible. Cambia solo cuando el requisito cambia de estado, así que el lector de
+    // pantalla lo anuncia en ese momento y no en cada tecla.
+    const paraLectores = renglon.querySelector(".solo-lectores")
+    if (todaviaNoEscribioNada) paraLectores.textContent = ""
+    else paraLectores.textContent = cumple ? ": cumplido" : ": falta"
+  }
+}
+
+/**
+ * El mensaje de una contraseña rechazada por el servidor. Nombra **solo** lo que falta: a quien
+ * escribió siete letras minúsculas no le sirve que le digan que le falta largo, porque le sobra.
+ *
+ * El servidor manda la lista (`["mayuscula", "numero"]`) y las palabras las pone acá, que es la
+ * convención del proyecto: el API manda el dato, la interfaz manda el texto.
+ */
+function mensajeDeLaContrasena(cuerpo) {
+  const COMO_SE_DICE = {
+    largo: `al menos ${LARGO_MINIMO_DE_CONTRASENA} caracteres`,
+    mayuscula: "una letra mayúscula",
+    numero: "un número",
+  }
+
+  const todas = cuerpo?.faltan ?? []
+
+  // El acento no es algo que «falta»: es algo que sobra, así que se dice aparte y en otra frase. Un
+  // mensaje que dijera «a tu contraseña le falta sin acentos» no se entendería.
+  const tieneAcentos = todas.includes("sin_acentos")
+  const avisoDeAcentos = tieneAcentos
+    ? " Y sacale los acentos: ninguna vocal puede llevar tilde. (La ñ sí se puede.)"
+    : ""
+
+  const faltan = todas
+    .filter((cual) => cual !== "sin_acentos")
+    .map((cual) => COMO_SE_DICE[cual])
+    .filter(Boolean)
+
+  if (faltan.length === 0) {
+    return tieneAcentos
+      ? "Tu contraseña no puede llevar vocales con tilde. Cambiá esas letras por su versión sin acento — la ñ sí se puede usar."
+      : "Esa contraseña no sirve. Revisá los requisitos de acá abajo."
+  }
+
+  // «a y b» y «a, b y c»: la lista se lee como la escribiría una persona, no separada por comas
+  // hasta el final.
+  const ultimo = faltan.pop()
+  const lista = faltan.length === 0 ? ultimo : `${faltan.join(", ")} y ${ultimo}`
+
+  return `A tu contraseña le falta ${lista}.${avisoDeAcentos}`
+}
+
+// Los requisitos **no se ven hasta que la persona toca el campo de la contraseña** (decisión de la
+// estudiante del 2026-08-19, al ver el formulario). La razón: quien viene a crear su cuenta ve
+// primero tres campos y un botón; tres renglones de reglas colgando debajo de un campo vacío son
+// ruido antes de que haya nada que revisar.
+campoContrasenaRegistro.addEventListener("focus", () => {
+  requisitosContrasena.hidden = false
+})
+
+// Y se vuelven a esconder al salir del campo **solo si quedó vacío**. Si hay algo escrito se
+// quedan a la vista aunque la persona se vaya a otro campo: ahí sí hay algo que revisar, y
+// esconderle los requisitos justo cuando le falta cumplir alguno sería lo contrario de ayudar.
+campoContrasenaRegistro.addEventListener("blur", () => {
+  if (campoContrasenaRegistro.value === "") requisitosContrasena.hidden = true
+})
+
+// Se repinta con cada tecla, que es lo que pide RF-23: «mientras la persona la escribe».
+campoContrasenaRegistro.addEventListener("input", (evento) => {
+  repintarRequisitos(evento.target.value)
+})
+
+// El correo se comprueba **al salir del campo**, no en cada tecla. Escribir un correo pasa por
+// muchos estados inválidos —`a`, `an`, `ana@`— y marcarlos en rojo sería regañar a alguien por algo
+// que todavía está haciendo. El servidor lo vuelve a comprobar igual (RN-24): esto es solo el aviso
+// temprano.
+campoCorreoRegistro.addEventListener("blur", () => {
+  const correo = campoCorreoRegistro.value.trim()
+  if (correo === "") return
+
+  if (!/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(correo)) {
+    mostrarAviso(avisoRegistro, MENSAJES.correo_invalido)
+  } else {
+    esconderAviso(avisoRegistro)
+  }
+})
+
 formaRegistro.addEventListener("submit", async (evento) => {
   evento.preventDefault()
   esconderAviso(avisoRegistro)
@@ -973,12 +1132,24 @@ formaRegistro.addEventListener("submit", async (evento) => {
   })
 
   if (respuesta.estado !== 201) {
-    mostrarAviso(avisoRegistro, mensajeDelError(respuesta.cuerpo))
+    // La contraseña tiene su propio mensaje porque nombra qué condición falta; el resto sale de la
+    // lista de siempre.
+    const mensaje =
+      respuesta.cuerpo?.error === "contrasena_invalida"
+        ? mensajeDeLaContrasena(respuesta.cuerpo)
+        : mensajeDelError(respuesta.cuerpo)
+
+    mostrarAviso(avisoRegistro, mensaje)
     return
   }
 
   // Al registrarse la sesión ya queda abierta, así que se pasa directo a la pantalla de adentro.
   formaRegistro.reset()
+  // `reset()` vacía los campos pero no avisa nada, así que los renglones quedarían verdes sobre un
+  // campo vacío. Se vuelven a pintar a mano para que arranquen en gris la próxima vez, y se
+  // esconden de nuevo: el formulario tiene que quedar como estaba antes de que nadie lo tocara.
+  repintarRequisitos("")
+  requisitosContrasena.hidden = true
   mostrarPantallaDentro(respuesta.cuerpo)
 })
 

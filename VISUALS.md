@@ -16,9 +16,9 @@ colors:
   outline: '#747780'
   outline-variant: '#c4c6d0'
   surface-tint: '#435e90'
-  primary: '#002554'
+  primary: '#2f3367'
   on-primary: '#ffffff'
-  primary-container: '#00112d'
+  primary-container: '#1f2247'
   on-primary-container: '#738ec2'
   inverse-primary: '#acc7ff'
   secondary: '#6250a8'
@@ -121,7 +121,7 @@ The chosen style is **Modern Corporate**, utilizing a structured grid, crisp whi
 
 ## Colors
 
-The palette is anchored by **Deep Navy** (#002554), chosen for its psychological association with medical authority and stability.
+The palette is anchored by **Deep Navy** (#2f3367), chosen for its psychological association with medical authority and stability. *(Updated from #002554 on 2026-08-19 by the student, choosing a slightly more violet blue that sits better with the Medical Indigo secondary.)*
 
 - **Primary:** Deep Navy is used for global navigation, primary buttons, and critical headers.
 - **Secondary:** A sophisticated **Medical Indigo** (#402D84) is used for secondary actions and subtle brand accents to add depth without compromising professionalism.
@@ -165,7 +165,7 @@ The shape language is **Soft** but geometric. To align with a professional medic
 
 ## Components
 
-- **Buttons:** Primary buttons are solid Deep Navy (#002554) with white text. They should appear sturdy and impactful. Secondary buttons use a 1px Medical Indigo (#402D84) border with indigo text.
+- **Buttons:** Primary buttons are solid Deep Navy (#2f3367) with white text. They should appear sturdy and impactful. Secondary buttons use a 1px Medical Indigo (#402D84) border with indigo text.
 - **Input Fields:** Crisp white background with a 1px Slate border. On focus, the border shifts to Deep Navy. Labels should always be visible (not floating) to ensure accessibility.
 - **Cards:** Medical professional or service cards should feature high-contrast text and clear alignment. Avoid excessive drop shadows; use the Slate-colored background to make white cards pop.
 - **Appointment Chips:** Rectangular with minimal rounding. Available slots are white with an Indigo border; selected slots are solid Indigo.

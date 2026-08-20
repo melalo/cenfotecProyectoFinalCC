@@ -142,6 +142,61 @@ solo calendario y no dos agendas que se puedan desincronizar.
     tiene **uno solo**, el sistema lo toma por él y **no le muestra ese paso**. *(Decidido por la
     estudiante el 2026-08-19.)*
 
+23. **RN-23:** Una contraseña nueva tiene que cumplir **cuatro condiciones a la vez**: al menos **6
+    caracteres**, al menos **una letra mayúscula de la A a la Z**, al menos **un número**, y
+    **ninguna vocal acentuada** (á, é, í, ó, ú, ü). **La ñ sí se permite.**
+    *(Decidido por la estudiante el 2026-08-19. Resolvía un pendiente que estaba abierto desde la pieza 1: hasta ese
+    día el sistema aceptaba cualquier contraseña, incluso una sola letra, porque ningún documento
+    del proyecto pedía un mínimo y **una regla de negocio no se inventa desde el código**.)*
+
+    **La regla vale donde una contraseña se crea o se cambia, no donde se usa para entrar.** Al
+    registrarse (RF-1) y en las dos pantallas que cambian la contraseña —la temporal de RN-11 y la
+    olvidada de la pieza 9— se comprueba; al entrar (RF-2) no, porque ahí no se está eligiendo una
+    contraseña nueva sino comprobando la que ya existe. Comprobarla al entrar además le daría a
+    quien intenta adivinar una pista que hoy no tiene.
+
+    **Las cuentas que ya existían siguen entrando con su contraseña de siempre.** La regla se aplica
+    al momento de elegir una, no hacia atrás: obligar a cambiarla dejaría a alguien afuera de su
+    propia cuenta sin haber hecho nada.
+
+    **La contraseña no puede llevar vocales acentuadas, ni en mayúscula ni en minúscula**, y eso
+    incluye la diéresis: `óArtolo123` y `Pingüino123` se rechazan. **La ñ sí se permite**, en
+    mayúscula y en minúscula: `Contraseña123` y `PequeÑo123` se aceptan.
+
+    **Por qué la ñ es la excepción, y no es un capricho:** la ñ **es una letra del alfabeto
+    español**, con su lugar propio entre la N y la O. Lo que lleva encima se llama *virgulilla* y es
+    parte de la letra, igual que el palito de la `t` o el punto de la `i`. Un acento es otra cosa:
+    es una marca que se le pone a una vocal que sigue siendo la misma vocal — la `á` de «acción» es
+    una `a`. Por eso «sin acentos» no dice nada sobre la ñ.
+
+    *(Decidido por la estudiante el 2026-08-19, y **llegó en tres pasos, los tres probando en
+    pantalla**, que es lo que hace que la decisión valga:*
+
+    1. *Primero pidió que una mayúscula con tilde **no contara** como la mayúscula obligatoria: el
+       primer intento aceptaba `Á`, `É` y `Ñ`, y ella lo cambió al verlo.*
+    2. *Después escribió `óArtolo123` y la vio pasar. Pasaba por la `A` de «Artolo», no por la `ó`
+       —o sea, la regla hacía exactamente lo que decía—, pero eso no era lo que ella quería. Lo que
+       quería era que una contraseña con acentos no se pudiera usar. **Se cambió la regla, no la
+       explicación.**
+    3. *Y **corrigió el paso 2**: ese intento también prohibía la ñ, y ella lo señaló — «la ñ no es
+       una tilde, es una letra». Tenía razón. Quedó afuera de la prohibición.)*
+
+    **Qué se pierde con esto, escrito a propósito:** una contraseña con acentos —`Canción2026`— ya no
+    se puede usar, y es un costo real para quien escribe en español. A cambio se gana una regla que
+    se explica en una frase. La comprobación **no** se hace con una lista escrita a mano
+    (`áéíóúüÁÉÍÓÚÜ`), que siempre se olvida de algún caso, sino separando cada vocal de su acento:
+    así quedan cubiertas también la `ç`, la `à` y la `ô`, sin tener que acordarse de ninguna. La ñ se
+    saca **antes** de esa separación, justamente porque si no el mismo mecanismo la daría por
+    acentuada.
+
+24. **RN-24:** Un correo tiene que **tener forma de correo** —algo, una arroba, algo, un punto y una
+    terminación— para que se acepte al crear una cuenta. *(Decidido por la estudiante el
+    2026-08-19.)* El sistema **no comprueba que ese correo exista de verdad ni que la persona lo
+    reciba**: eso solo se puede saber mandándole algo y esperando respuesta, y está fuera de alcance
+    de esta entrega. Lo que la regla evita es el dedazo: `ana@ejemplo` sin terminación, o un correo
+    sin arroba. Es una comprobación importante para RF-11, porque **el correo de confirmación va a
+    esa dirección**: si está mal escrita, la persona no se entera de nada.
+
     **Es a propósito lo contrario de lo que hace RN-8 con los proveedores**, donde el paso se muestra
     igual aunque haya uno solo, y la diferencia tiene su razón: saber **quién** te va a atender es
     información que el cliente quiere tener incluso cuando no hay nada que elegir; saber que la
@@ -344,6 +399,56 @@ igual a las cuentas de Personal.
     y su fecha de nacimiento (REG-2, RN-21). La edad se calcula a partir de la fecha de nacimiento, y
     «desde cuándo es cliente» es la fecha de su primera cita. *(Pedido por la estudiante el
     2026-08-19. No estaba en el encargo original.)*
+
+23. **RF-23:** El sistema **muestra las condiciones de la contraseña (RN-23) mientras la persona la
+    escribe**, marcando cada una en verde cuando ya se cumple y en rojo cuando todavía no, y
+    rechaza el registro con un correo que no tenga forma de correo (RN-24). *(Pedido por la
+    estudiante el 2026-08-19. No estaba en el encargo original.)*
+
+    **Se muestran en dos renglones, no en tres**, aunque las condiciones sean tres *(decidido por la
+    estudiante el 2026-08-19)*:
+
+    | Renglón | Qué comprueba |
+    |---|---|
+    | Al menos 6 caracteres | el largo |
+    | Una letra mayúscula y un número | dos condiciones, juntas |
+    | No tildes | la cuarta |
+
+    **Eran dos renglones y pasaron a ser tres** el 2026-08-19, al agregarse la prohibición de los
+    acentos. El tercero se llama **«No tildes»**, corto a propósito *(decidido por la estudiante ese
+    mismo día, acortando una versión anterior que decía «Sin acentos (nada de á, é, í, ó, ú). La ñ
+    sí se puede»)*: un renglón de una lista se lee de un vistazo, y una frase larga con paréntesis
+    y una excepción adentro deja de leerse. Quien igual escriba una vocal acentuada ve el renglón
+    ponerse rojo, y si manda el formulario recibe el mensaje completo, que sí explica que la ñ se
+    permite.
+
+    **El tercer renglón se lee al revés que los otros dos:** los dos primeros piden algo y se ponen
+    verdes cuando lo tenés; el tercero prohíbe algo y se pone verde cuando **no** lo tenés.
+
+    **El color de la letra es toda la señal que se ve: no hay ningún ícono.** *(Decidido por la
+    estudiante el 2026-08-19, sacando los ✓ y ✗ que tenía la primera versión.)* Sin el ícono, el
+    texto arranca pegado al borde izquierdo, alineado con el campo de arriba. **El mismo dato viaja
+    además en un texto invisible que solo leen los lectores de pantalla**, porque un estado dicho
+    solo con color no le llega a quien no ve la pantalla ni a quien no distingue el rojo del verde.
+
+    **Los tres renglones no se ven hasta que la persona toca el campo de la contraseña**, y se
+    esconden de nuevo si sale del campo sin haber escrito nada. *(Decidido por la estudiante el
+    2026-08-19, mirando el formulario.)* La razón: quien llega a crear su cuenta ve primero tres
+    campos y un botón, y tres renglones de reglas colgando debajo de un campo vacío son ruido antes
+    de que haya nada que revisar. **Si ya escribió algo, se quedan a la vista aunque se vaya a otro
+    campo:** ahí sí hay algo que revisar, y esconderle los requisitos justo cuando le falta cumplir
+    alguno sería lo contrario de ayudar.
+
+    El largo va solo porque es lo que la persona ve cambiar en cada tecla; la mayúscula y el número
+    son de la misma naturaleza —«poné algo de este tipo»— y separarlas daría una lista más larga sin
+    ganar claridad. **Antes de escribir la primera letra los renglones están en gris**, ni verdes
+    ni rojos: marcar en rojo un campo que todavía nadie tocó es regañar antes de que pase nada.
+
+    **Lo que se ve en pantalla es un espejo de la regla, no la regla.** Quien decide si una
+    contraseña sirve es el servidor, y lo sigue comprobando aunque el navegador no haya mostrado
+    nada: es la misma convención que el resto del proyecto —el frontend no decide reglas de
+    negocio—, y sin ella bastaría con mandarle un pedido al API por fuera de la pantalla para
+    saltarse la regla entera.
 
 ## Requisitos no funcionales
 

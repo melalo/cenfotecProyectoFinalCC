@@ -1,42 +1,38 @@
-# Próxima sesión — confirmar Actions y arrancar la pieza 4
+# Próxima sesión — la revisión visual, y después la pieza 5
 
-*Escrito el 2026-08-19, al terminar de construir la pieza 3. Esta es la hoja para retomar sin releer
-nada.*
+*Escrito el 2026-08-19, al final de una sesión larga. Esta es la hoja para retomar sin releer nada.*
 
 ---
 
-## Antes que nada: queda UNA sola cosa pendiente
+## Antes que nada: te queda UNA sola cosa pendiente
 
-El 2026-08-19 se construyeron **tres piezas**: la **3** (reservar un horario, la que tocaba según el
-plan), la **10** (la sección «Usuario») y la **11** (las categorías de servicio). Las dos últimas no
-estaban en el plan original: se pidieron ese día, se escribieron primero en `ESPECIFICACION.md` y
-`PLAN.md` —con sus requisitos, sus reglas y sus comprobaciones— y solo después se construyeron. La 11
-además **corrigió RF-5**, que era de la pieza 2, ya cerrada.
+**La revisión visual** en el navegador. La lista está más abajo, y es lo único que falta para cerrar
+las piezas 4 y 12. No hay nada de programar.
 
-Ese mismo día la estudiante hizo **la revisión visual de las tres** y no salió ningún defecto, así
-que:
+## Qué se hizo el 2026-08-19 (fue un día largo)
 
-- **Las piezas 10 y 11 quedaron CERRADAS.**
-- **La pieza 3 quedó con 6 de sus 7 comprobaciones cerradas.**
-- **El push se hizo**: las piezas 2, 3, 10 y 11 subieron juntas, más la configuración de integración
-  continua en la raíz del repositorio.
-
-**Lo único que falta es la comprobación 7 de la pieza 3**, que dice: «hacer un push al repositorio y
-ver, en la pestaña de acciones de GitHub, que las dos pruebas corrieron y quedaron en verde». El push
-ya está hecho; falta **mirar el resultado**, y eso el agente no lo puede hacer: no tiene `gh`
-instalado ni ninguna otra forma de ver esa pestaña.
+| | |
+|---|---|
+| **Pieza 4 — el correo de confirmación** | Construida. **La cuenta de Resend está creada y el correo llegó de verdad** a la bandeja de entrada, así que las comprobaciones 1 y 4 del plan quedaron cumplidas. |
+| **Pieza 12 — reglas de contraseña y correo** | Pedida y construida el mismo día. Resolvió el pendiente de la pieza 1 sobre el largo mínimo. **Se corrigió tres veces**, las tres mirando la pantalla. |
+| **Siete ajustes visuales** | Todos pedidos abriendo el navegador: el aviso de éxito en verde, el texto de guía a 12px, los requisitos escondidos hasta tocar el campo, sin íconos ✓/✗, el logo en el encabezado, el fondo de flores más tenue, y el azul oscuro cambiado en todo el proyecto. |
+| **Pruebas** | `npm test` → **135 y todas pasan.** |
+| **Subido a GitHub** | **Todo**, al cierre de la sesión. |
 
 ## Lo primero: qué decir cuando abrás la conversación
 
-Entrá a **GitHub → pestaña Actions** y mirá el trabajo llamado **Pruebas**. Tiene que haber **dos
-corridas en verde**, una en Node 20 y otra en Node 24, con 95 pruebas cada una. Después decí:
+Si vas a **hacer la revisión visual y cerrar las piezas 4 y 12**:
 
-> La carpeta del día es `proyectoFinal`. Actions quedó en verde: cerrá la comprobación 7 y la pieza 3,
-> y arrancamos la pieza 4.
+> La carpeta del día es `proyectoFinal`. Vamos a hacer la revisión visual para cerrar las piezas 4 y 12.
 
-**Si algo salió rojo**, copiá el error y traelo: es información valiosa, porque sería la primera vez
-que el proyecto falla **fuera de esta máquina** — que es exactamente lo que la integración continua
-existe para descubrir.
+Si eso ya está hecho y vas a **arrancar la pieza 5**:
+
+> La carpeta del día es `proyectoFinal`. Vamos a construir la pieza 5 del plan.
+
+Con eso alcanza. El agente tiene que leer por su cuenta `ESPECIFICACION.md`, `DISENO.md`, la pieza de
+`PLAN.md` que corresponda, `VISUALS.md` y el `CLAUDE.md` de la carpeta. **No le expliques el
+proyecto**: si no lo entiende leyendo, es que falta algo escrito, y eso es justamente lo que hay que
+descubrir.
 
 ## Cómo levantar la aplicación y qué mirar
 
@@ -52,96 +48,169 @@ npm start       # levanta la aplicación
 
 Para apagarla: `Ctrl + C`.
 
+**El `.env` ya está armado en esta máquina**, con la clave de Resend, la dirección de salida y una
+firma de sesión al azar. **No se sube al repositorio** (Git lo ignora), así que en otra máquina hay
+que volver a crearlo — el paso a paso está en el `README.md`, «Cómo conseguir la clave de Resend».
+
+Al arrancar **no tiene que salir ningún aviso** sobre el correo. Si sale uno que dice que falta
+`RESEND_API_KEY`, es que el `.env` no se está leyendo.
+
 **La base está recién creada, sin ninguna cuenta y sin ninguna cita**, así que lo primero es crearte
 una cuenta desde la pantalla «Crear mi cuenta». *(La cuenta de Personal sí viene cargada:
 `personal@ejemplo.com` / `Personal123`.)*
 
+> **Registrate con `melalo9@gmail.com`.** Con la dirección de pruebas que regala Resend
+> (`onboarding@resend.dev`) **solo se le puede mandar correo a la casilla con la que te registraste
+> en Resend**, no a cualquiera. Con otro correo la cita se crea igual, pero el aviso no llega.
+
 ### El recorrido a mirar, en orden
-*(Esta lista ya se recorrió el 2026-08-19 y quedó sin defectos. Se conserva porque es la que hay que
-volver a pasar cada vez que una pieza nueva toque estas pantallas.)*
+
+*Los pasos 1 a 18 son los mismos de siempre y ya pasaron sin defectos. Se repiten porque la pieza 4
+toca el camino de reservar y hay que comprobar que no lo rompió. **Los pasos 19 a 22 son nuevos de
+esta pieza.***
+
+**Ojo con la contraseña al registrarte:** desde la pieza 12 tiene reglas. Usá algo como
+`Prueba123`. Si escribís `Contraseña123` también sirve (la ñ se permite), pero `óArtolo123` **no**
+(las vocales con tilde no se aceptan).
 
 1. **Antes de entrar:** la barra azul de arriba **no** tiene que mostrar las tres rayitas, y el pie
    **no** tiene que mostrar el menú. Aparecen solo con la sesión abierta.
 2. **Al entrar:** arriba a la derecha aparecen las tres rayitas (en pantalla de teléfono) o los
    enlaces «Reservar» y «Mis citas» (desde tableta). En el pie, los mismos enlaces más **«Salir»**.
-   *(«Salir» se ve en un solo lugar a la vez: en teléfono adentro de la hamburguesa, y desde tableta
-   abajo en el pie. Ya no hay ningún botón «Cerrar sesión» al lado del saludo.)*
-3. **Solo tiene que verse el paso 1.** Los pasos 2 y 3 no se muestran hasta que elijas. *(Esto es lo
-   que estaba roto y se arregló en esta pieza: antes se veían desde el arranque, vacíos.)*
-4. **El paso 1 ahora muestra categorías**, no servicios: «Masaje» (dice «3 tipos») y «Facial» (dice
+3. **Solo tiene que verse el paso 1.** Los pasos 2 y 3 no se muestran hasta que elijas.
+4. **El paso 1 muestra categorías**, no servicios: «Masaje» (dice «3 tipos») y «Facial» (dice
    «Limpieza facial», porque tiene uno solo).
 5. **Tocá «Masaje»**: aparece un paso nuevo, **«Elegí el tipo de masaje»**, con los tres. Elegí
    «Masaje relajante» → **«Ana»**, y tocá el día de mañana en el calendario.
 6. **Fijate en los números de los pasos:** tienen que ir 1, 2, 3, 4 seguidos.
 7. **Después probá «Facial»**, que tiene un solo servicio: el paso del tipo **no tiene que aparecer**
-   y se pasa directo a los proveedores (Ana y Luisa). Los números vuelven a ir 1, 2, 3 seguidos, sin
-   saltos.
+   y se pasa directo a los proveedores (Ana y Luisa). Los números vuelven a ir 1, 2, 3 seguidos.
 8. **Tocá el horario de las 10:00.** Tiene que quedar pintado en índigo sólido, y abajo tiene que
    aparecer la tarjeta **«Confirmá tu reserva»** con el servicio, quién te atiende, el día y la hora.
 9. **Tocá «Confirmar la reserva».** La pantalla tiene que cambiar sola a **«Mis citas»**, con el
    aviso «Tu cita quedó reservada» y la cita en la lista.
-10. **Volvé a «Reservar» desde el menú** y abrí el mismo día: **las 10:00 tienen que aparecer en azul
-   marino con la letra blanca y la hora tachada** — así se ve un horario ya tomado.
+10. **Volvé a «Reservar» desde el menú** y abrí el mismo día: las 10:00 tienen que aparecer en azul
+    marino con la letra blanca y la hora tachada.
 11. **Reservá también las 14:00.** En «Mis citas» tienen que quedar las dos, ordenadas por hora.
 12. **Tocá el día de hoy en el calendario:** no tiene que ofrecer ningún horario, solo el mensaje de
-   que no se puede reservar para hoy y a qué número llamar.
+    que no se puede reservar para hoy y a qué número llamar.
 13. **En pantalla angosta** (angostá la ventana del navegador): que nada se salga de su tarjeta, que
     las tres rayitas abran y cierren el menú, y que las fichas de horario queden alineadas.
-
-### Y el recorrido de la sección «Usuario» (pieza 10)
-
 14. **Abrí «Usuario»** desde el menú: se ven tu nombre y tu correo, y el teléfono, la edad y «cliente
-    desde» dicen **«Sin completar»** (o, el último, que todavía no tuviste tu primera cita — si ya
-    reservaste en el paso 6, tiene que mostrar la fecha de esa cita).
+    desde» dicen «Sin completar» (o la fecha de tu primera cita, si ya reservaste).
 15. **Tocá «Completar o corregir mis datos»**: se abre un formulario con tu nombre ya cargado.
 16. **Escribí el teléfono `88887777` sin guión** y elegí una fecha de nacimiento, y guardá: el
-    teléfono tiene que mostrarse **`8888-7777`**, con el guión puesto por el sistema, y la edad tiene
-    que aparecer en años, calculada.
+    teléfono tiene que mostrarse **`8888-7777`** y la edad tiene que aparecer en años.
 17. **Probá que rechace lo que está mal:** un teléfono de 7 dígitos y una fecha de nacimiento del
     futuro. Los dos tienen que dar un mensaje que diga **qué** dato está mal.
-18. **El correo no se puede cambiar:** en el formulario no hay campo de correo, y abajo dice que si
-    lo necesitás cambiar hay que llamar al negocio.
+18. **El correo no se puede cambiar:** en el formulario no hay campo de correo.
 
-Si algo se ve mal, decilo con una captura de pantalla: así salieron los tres defectos anteriores.
+### Lo nuevo de la pieza 4
+
+19. **Lo más importante primero — que reservar siga siendo rápido.** Al tocar «Confirmar la reserva»
+    (paso 9), la pantalla tiene que pasar a «Mis citas» **sin quedarse pensando**. Desde esta pieza,
+    antes de contestar, el servidor intenta mandar el correo. Si notás que el botón tarda varios
+    segundos, **decilo**: puede que el límite de espera de 5 segundos esté quedando corto o largo.
+
+20. **Que la cita se cree aunque el correo no salga.** Es la regla RF-19, y es la más importante de
+    esta pieza. **Si todavía no tenés la clave de Resend, ya la estás probando**: reservaste en el
+    paso 9 sin clave, y la cita apareció igual. Mirá la consola donde corre `npm start`: por cada
+    reserva tiene que haber un aviso que dice
+    `Aviso: falló el envío de un correo a tu@correo.com — No hay ningún servicio de correo configurado`.
+    **Ese aviso es la prueba de que la regla funciona**, no un problema.
+
+21. **Que el envío haya quedado anotado.** Cada intento de correo deja una fila en la tabla
+    `correo_enviado`, salga bien o mal. Es lo que pide REG-3. Si querés mirarla, pedíselo al agente:
+    tiene que mostrarte una fila por cada cita que reservaste, con `tipo = confirmacion`, el número
+    de la cita, y `exito` en 0 (sin clave) o en 1 (con clave).
+
+22. **Con la clave de Resend puesta — que el correo llegue.** Esto es lo que cierra las
+    comprobaciones 1 y 4 del plan:
+    - Poné la clave en el `.env` (ver `README.md`), apagá la aplicación con `Ctrl + C` y volvé a
+      levantarla con `npm start`. **El aviso amarillo del correo tiene que desaparecer.**
+    - Reservá una cita y **abrí tu bandeja de entrada**. Tiene que llegar un correo con el asunto
+      «Tu reserva quedó confirmada» y la fecha y la hora.
+    - **Revisá que el correo diga los cinco datos**, que es lo que exige RF-11: el **servicio**, **quién
+      te atiende**, el **día escrito en palabras** («miércoles 2 de setiembre de 2026»), la **hora**, y
+      la **ubicación del negocio**. Más abajo tiene que estar el **teléfono** para llamar.
+    - **Mirá cómo se ve:** encabezado azul marino, tarjeta blanca, y una línea índigo a la izquierda
+      de los datos. Si algo se ve roto o desalineado, mandá una captura.
+    - *(Si no llega, revisá primero la carpeta de correo no deseado, y después la consola de
+      `npm start`: ahí queda escrito el motivo exacto que devolvió Resend.)*
+
+### Y lo que hay que mirar de la pieza 12 y de los ajustes visuales
+
+23. **El encabezado.** Tiene que verse el **logo de la flor** a la izquierda, y al lado
+    **«Bienestar y salud»** grande con **«RESERVAS EN LÍNEA»** chiquito abajo. Todo sobre el azul
+    nuevo `#2f3367`.
+24. **El fondo.** Las flores tienen que verse **más tenues** que antes, sin competir con el
+    contenido.
+25. **En «Crear mi cuenta», los requisitos de la contraseña:**
+    - Al abrir la pantalla **no se ven**.
+    - Al hacer clic en el campo **aparecen los tres, en gris**.
+    - Escribiendo, van a **verde** o **rojo** — **sin ningún ícono**, solo el color.
+    - Tienen que estar **alineados con el borde izquierdo del campo**.
+    - Si borrás todo y hacés clic afuera, **desaparecen**.
+26. **Probá que rechace lo que está mal:** `abc` (corta, sin mayúscula, sin número) y
+    `óArtolo123` (tiene tilde). El mensaje tiene que decir **qué** falta, no «revisá el formulario».
+27. **Probá que acepte `Contraseña123`:** la ñ **sí** se permite. Y `Prueba123` también.
+28. **El correo mal escrito:** escribí `ana@ejemplo` y salí del campo. Tiene que avisarte. *(Se
+    revisa al salir del campo, no en cada tecla, a propósito.)*
+29. **Reservá una cita y mirá tu Gmail.** El correo tiene que llegar con el **encabezado en el azul
+    nuevo**, y con los cinco datos: servicio, quién te atiende, día en palabras, hora y ubicación.
+30. **El aviso de «Tu cita quedó reservada» tiene que ser VERDE**, no rojo. Es lo que estaba mal y
+    se arregló.
+
+Si algo se ve mal, decilo con una captura de pantalla: así salieron **todos** los defectos visuales
+de este proyecto — que a esta altura son siete.
 
 ## Dónde quedó todo
 
 | | |
 |---|---|
 | **Pieza 1** | **Cerrada** el 2026-08-17. Evidencia fechada en `PLAN.md`. |
-| **Pieza 2** | **Cerrada** el 2026-08-19. Evidencia fechada en `PLAN.md`. |
-| **Pieza 3** | **Construida** el 2026-08-19, revisión visual hecha. Falta solo confirmar Actions (comprobación 7). |
-| **Pieza 10** | **Cerrada** el 2026-08-19, construida fuera de orden. No estaba en el plan original. |
-| **Pieza 11** | **Cerrada** el 2026-08-19, construida fuera de orden. No estaba en el plan original, y corrigió RF-5 de la pieza 2. |
-| **Pieza 4** | La que sigue: «Correo de confirmación». |
-| **Subido a GitHub** | **Todo**: las piezas 1, 2, 3, 10 y 11, más la integración continua. Subido el 2026-08-19. |
-| **Tiempo** | 6 horas por semana. Quedan 6 piezas y unas 18 horas: ~3 horas por pieza. |
-| **Pruebas** | `npm test` → hoy son **95** y todas pasan. Y desde la pieza 3 **corren solas en cada push**. |
+| **Pieza 2** | **Cerrada** el 2026-08-19. |
+| **Pieza 3** | **Cerrada** el 2026-08-19, con sus 7 comprobaciones y la revisión visual. |
+| **Pieza 10** | **Cerrada** el 2026-08-19, construida fuera de orden. |
+| **Pieza 11** | **Cerrada** el 2026-08-19, construida fuera de orden. Corrigió RF-5 de la pieza 2. |
+| **Pieza 4** | **Construida el 2026-08-19**, con sus 4 comprobaciones cumplidas —el correo llegó de verdad—. **Falta solo la revisión visual.** |
+| **Pieza 12** | **Construida el 2026-08-19**, fuera del plan original. Resolvió el pendiente de la pieza 1. Falta solo su comprobación 8, que es la visual. |
+| **Pieza 5** | La que sigue: «Cancelar y reagendar». Trae **CA-3**. |
+| **Subido a GitHub** | **Todo**, incluidas las piezas 4 y 12 y los ajustes visuales. |
+| **Tiempo** | **9 horas por semana.** Hasta la entrega del 8 de setiembre quedan unas **22 horas**. |
+| **Pruebas** | `npm test` → hoy son **135** y todas pasan. Corren solas en cada push. |
 
-## Qué trae la pieza 4 (resumen — el detalle está en `PLAN.md`)
+## Qué trajo la pieza 4, en tres frases
 
 Al confirmarse una reserva, al cliente le llega un correo con la fecha, la hora, el servicio, el
-proveedor y la ubicación del negocio. Es la primera pieza que habla con un **servicio de afuera**
-(Resend), y por eso trae dos cosas nuevas:
+proveedor y la ubicación del negocio (RF-11), y cada envío queda anotado en la tabla nueva
+`correo_enviado`, haya salido bien o mal (REG-3). Es la primera pieza que habla con un servicio de
+afuera, y por eso la regla que la manda es que **un correo que falla nunca invalida una cita**
+(RF-19): la cita se guarda primero, el correo se manda después, y si no sale, se anota y se sigue.
+Nacieron tres archivos —`servidor/correo.js`, `servidor/plantillas-de-correo.js` y
+`servidor/enviador-resend.js`— y no se instaló ninguna dependencia nueva.
 
-- **Las variables de entorno `RESEND_API_KEY` y `CORREO_REMITENTE`**, que van en el `.env` y no se
-  suben. Vas a tener que crear una cuenta en Resend y sacar una clave.
-- **La regla de que sin clave la aplicación tiene que levantar igual** (RF-19): el correo falla y
-  queda registrado como fallido, pero **la cita se sigue creando**. Eso significa que el envío de
-  correo no puede estar en el camino de guardar la cita.
+**La idea que hay que entender para defender esta pieza:** el enviador de correo **entra como dato**,
+exactamente igual que el reloj. La aplicación no sabe mandar correos — recibe una función que los
+manda y la llama. En `npm start` esa función habla con Resend; en las pruebas es una de mentira que
+los guarda en una lista. Por eso **`npm test` no le manda un correo a nadie** y la integración
+continua no necesita ninguna clave secreta.
 
-## Lo que la pieza 4 se encuentra ya hecho
+## Lo que la pieza 5 se encuentra ya hecho
 
-1. **La cita se crea y se guarda**, con su cliente, servicio, proveedor, día y hora. El correo se
-   dispara desde ahí: `servidor/reservas.js`, en la función `crearCita`.
-2. **Los datos que el correo tiene que decir ya están todos**: la ubicación y el teléfono del negocio
-   están en `configuracion_negocio` y salen por `GET /api/negocio`; el nombre del servicio y del
-   proveedor los devuelve ya `GET /api/citas`.
-3. **La integración continua ya existe**, así que las pruebas de la pieza 4 van a correr solas desde
-   el primer push. No hay que montar nada.
-4. **La tabla de correos enviados NO existe todavía.** `DISENO.md` la describe en su modelo de datos
-   («Correo enviado»: cliente, cita, tipo, fecha de envío, si tuvo éxito) y la pieza 4 es la que la
-   crea, con los nombres exactos que fije su bloque *Produce* en `PLAN.md`.
+1. **El correo ya está resuelto**, con su plantilla, su registro y su reintento. Las piezas 6 y 9 lo
+   reutilizan sin escribir nada de eso otra vez.
+2. **`GET /api/citas` ya devuelve las citas del cliente** con los nombres del servicio y del
+   proveedor, y **no filtra por estado** a propósito: las canceladas también van a salir.
+3. **La tabla `cita` ya tiene las columnas `cancelada_en` y `cancelada_por`**, vacías, esperando a
+   esta pieza.
+4. **El candado de CA-1 mira solo las citas activas**, así que cancelar libera el horario de
+   inmediato (RN-7) sin tocar nada del índice.
+5. **`servidor/tiempo.js` ya tiene casi todas las cuentas de fechas** que la regla de las 4 horas va
+   a necesitar.
+
+Lo delicado de la pieza 5, anotado de antemano: **reagendar libera un horario y toma otro en un solo
+movimiento**, y tiene que convivir con el candado de la pieza 3.
 
 ## Las convenciones que hay que seguir respetando
 
@@ -153,23 +222,64 @@ Están completas en el `CLAUDE.md` de la carpeta. Las que más se olvidan:
   máquina. Y un momento se escribe siempre `2026-09-02T10:00:00-06:00`.
 - **Toda cuadrícula de ancho repartido se escribe `minmax(0, 1fr)`, nunca `1fr` a secas.**
 - **Una regla de negocio se escribe en un solo lugar del servidor**, y quien la necesite la llama.
-- **Ninguna dependencia puede exigir más que Node 20**, y ahora la integración continua lo comprueba
-  en cada push. Si se pone roja en Node 20, se cambia la dependencia, no la promesa del README.
-- **Nada de dependencias que haya que compilar o configurar.**
+- **Ninguna dependencia puede exigir más que Node 20**, y la integración continua lo comprueba.
+- **Los comandos también hay que correrlos.** `npm test` no ejecuta `npm run datos` ni `npm start`, y
+  en la pieza 4 los dos tuvieron un defecto que ninguna prueba podía ver.
+- **Una tabla nueva que apunte a otra hay que agregarla al borrado de `guiones/datos-de-prueba.js`**,
+  y primero de todo: la base tiene las llaves foráneas encendidas.
+
+## Cuánto falta
+
+*Estimado el 2026-08-19, después de construir la pieza 4. Se calibró con lo que de verdad tardaron
+las piezas 1, 2 y 3 (~5 h cada una), la 10 y la 11 (~1 h cada una) y la 4.*
+
+| Pieza | Estimado | Por qué |
+|---|---|---|
+| **8** — Personal cierra las citas pasadas | **~2 h** | La más corta. Dos endpoints, ninguna tabla nueva, y reusa la pantalla de Personal que construye la 7. |
+| **9** — Restablecer la contraseña | **~3 h** | Una tabla nueva y dos pantallas chicas. Es corta **porque el correo ya lo resolvió la pieza 4**: solo hay que agregar una plantilla más. |
+| **5** — Cancelar y reagendar | **~4-5 h** | Larga, y es **núcleo comprometido** en `FICHA-APROBACION.md`. Trae la regla de las 4 horas y **CA-3**. |
+| **7** — Personal atiende el teléfono | **~5-6 h. La más larga.** | Es casi una segunda aplicación, para otro tipo de usuario. Tiene **10 comprobaciones**. |
+| **6** — Recordatorio de 24 h | **~5 h, y está trabada** | Ver la sección siguiente. |
+
+**El total, sin la pieza 6: unas 15 horas.** Más **~4 horas** de la skill propia del curso y la
+presentación: **~19 de las 22 que quedan**. Con la pieza 6 serían 24 y **no entra** — que es
+exactamente lo que `FICHA-APROBACION.md` anticipó al marcarla como la primera en recortar.
+
+**El orden recomendado: 5 → 7 → 8 → 9, y la 6 al final, si sobra tiempo.** La 8 es corta **solo si**
+la pantalla de Personal de la 7 ya existe.
+
+## La pieza 6 sigue trabada por una decisión abierta
+
+Su plan dice que una tarea programada de GitHub Actions llama al backend. Pero la aplicación corre en
+`http://localhost:3000`, que quiere decir «esta computadora»: **GitHub no puede llamar a tu
+computadora**. No hay clave ni configuración que lo arregle.
+
+Y la salida —alojar la aplicación en un servidor público— es una decisión que `DISENO.md` dejó
+**explícitamente abierta**. Tres caminos, y la elección es tuya:
+
+1. **Recortarla**, que es lo que la ficha ya anticipaba.
+2. **Alojar la aplicación** en algún servicio gratuito. Suma tiempo aparte del de la pieza.
+3. **Adaptarla:** construir el endpoint y su regla completos, con sus pruebas, y disparar la revisión
+   **a mano**. Se cumplirían 7 de sus 8 comprobaciones; la 8 quedaría anotada como no cumplida.
 
 ## Lo que quedó sin decidir
 
-- ~~**Los subtipos de servicio.**~~ **Resuelto y construido el 2026-08-19**, en la pieza 11: hay
-  categorías, el cliente elige primero la categoría y después el tipo, y ese paso se salta cuando la
-  categoría tiene un solo servicio (RN-22).
-- **Los paquetes de sesiones y los tratamientos activos** siguen fuera de alcance: son PA-1, bloqueado
-  por PA-2. Lo que falta decidir **no es técnico** — es quién dice que alguien compró un paquete y cómo
-  se descuenta una sesión. La estudiante decidió el 2026-08-19 dejarlo afuera por ahora. Cuando lo
-  decida, el camino es el mismo de las piezas 10 y 11: escribirlo primero en `ESPECIFICACION.md`
-  (resolviendo PA-2) y en `PLAN.md`, y después construirlo.
+- **Los paquetes de sesiones y los tratamientos activos** siguen fuera de alcance: son PA-1,
+  bloqueado por PA-2. Lo que falta decidir **no es técnico** — es quién dice que alguien compró un
+  paquete y cómo se descuenta una sesión. El camino, cuando lo decidas, es el mismo de las piezas 10
+  y 11: escribirlo primero en `ESPECIFICACION.md` y en `PLAN.md`, y después construirlo.
+
+## Dos pendientes chicos
+
+- **La integración continua trae dos avisos amarillos:** `actions/checkout@v4` y
+  `actions/setup-node@v4` apuntan a un Node que GitHub está jubilando **como motor de sus propias
+  herramientas**. No tiene nada que ver con la promesa de Node 20 de este proyecto y no rompe nada.
+  Conviene subirlas a la versión 5 cuando haya un rato: un aviso que aparece siempre enseña a
+  ignorar los avisos.
+- **El año del pie de página** sigue escrito a mano («2026»). Anotado en `DISENO.md`.
 
 ## Lo que sigue pendiente del curso (no del sistema)
 
 - **La skill propia de arranque** que pide la rúbrica. No es una vertical slice porque no es un
   requisito del sistema: está en «Fuera del plan» de `PLAN.md` y anotada en `SEGUIMIENTO.md`.
-- **El año del pie de página** sigue escrito a mano («2026»). Anotado en `DISENO.md`.
+- **Preparar la presentación** de la sesión 8.

@@ -56,12 +56,23 @@ $canvas: #F4F6F8;
 // Capa 1: las tarjetas y los campos, blanco puro, para que se despeguen del lienzo.
 $blanco: #ffffff;
 
-// El azul de la marca: «Deep Navy». Es autoridad médica, no espá. Es el `primary` de VISUALS.md.
-$navy: #002554;
+// El azul de la marca. Es autoridad médica, no espá.
+//
+// **Cambiado de `#002554` a `#2f3367` el 2026-08-19**, elegido por la estudiante mirando la
+// pantalla: el nuevo tiene algo más de violeta y se lleva mejor con el índigo secundario. El cambio
+// se hizo **acá, en la variable**, así que valió de una sola vez para las nueve cosas que usan este
+// azul —encabezado, pie, botones, el borde de un campo con el foco, el día de hoy del calendario,
+// las fichas de horario tomadas— sin tener que ir a buscarlas una por una. Es exactamente para lo
+// que existe una variable.
+//
+// `VISUALS.md` se corrigió con este valor, igual que se hizo el 2026-08-17 con el fondo: ese archivo
+// es la autoridad sobre la apariencia, así que cuando la estudiante decide un color, se actualiza
+// ahí y no queda una versión distinta escondida en el `.scss`.
+$navy: #2f3367;
 // El tono más oscuro del mismo azul, para cuando algo se presiona o se pasa el mouse por encima.
 // Es el `primary-container` de VISUALS.md. Tiene que existir un tono más oscuro que $navy: si el
 // botón no cambiara nada al pasarle el mouse, parecería que no responde.
-$navy-oscuro: #00112d;
+$navy-oscuro: #1f2247;
 // El acento secundario: «Medical Indigo».
 $indigo: #402d84;
 // El azul claro que se lee bien encima del azul marino. Es el `inverse-primary` de VISUALS.md, y
@@ -77,6 +88,18 @@ $borde-fuerte: #c4c6d0;
 $error: #ba1a1a;
 $error-fondo: #ffdad6;
 $error-texto: #93000a;
+
+// El verde de «salió bien». VISUALS.md **nombra** un «success green» entre los indicadores de
+// estado pero nunca dice cuál es, así que hasta la pieza 4 no se usaba ninguno. Estos tres los
+// eligió la estudiante el 2026-08-19, al ver que «Tu cita quedó reservada» salía con la cara de un
+// error. Siguen la misma forma que los de arriba: fondo pálido, borde visible, texto oscuro.
+$exito-fondo: #d6e9db; // el verde grisáceo pálido que pidió la estudiante
+$exito-texto: $texto; // negro — el mismo $texto de todo el proyecto, para no inventar un segundo
+$exito: #8fb59c; // el borde: el mismo verde, más oscuro, para que la caja tenga contorno
+// Y un verde **oscuro**, para cuando el verde tiene que ser la letra en vez del fondo: los
+// requisitos de la contraseña (pieza 12). El pálido de arriba no sirve ahí — escrito sobre blanco no
+// se lee, y un requisito que no se puede leer no avisa nada.
+$exito-verde-texto: #2f6b45;
 
 // Los tonos con los que el calendario distingue un día de otro. Ninguno se inventó acá: los cinco
 // salen de la lista de colores de VISUALS.md, y al lado de cada uno está con qué nombre aparece
@@ -161,7 +184,21 @@ body {
   // El fondo. El color va PRIMERO y la imagen encima: si la imagen tardara en cargar o no
   // estuviera, la página se ve igual de bien con el gris azulado del sistema, nunca en blanco.
   background-color: $canvas;
-  background-image: url("/img/bg-img.jpg");
+
+  // Las flores van al **75%**, un cuarto más tenues que la imagen original (pedido de la estudiante
+  // el 2026-08-19, para que el fondo no compita con el contenido).
+  //
+  // No se hace con `opacity`, y la razón importa: `opacity` sobre el `body` volvería translúcido
+  // **todo** lo que hay adentro —los textos, las tarjetas, los botones—, no solo el fondo. Lo que se
+  // hace en cambio es poner **una capa del color del lienzo, al 25%, encima de la imagen**. El
+  // resultado en pantalla es exactamente el mismo que si la imagen estuviera al 75% sobre ese color,
+  // y no toca ni un pixel del contenido.
+  //
+  // Las dos capas van en la misma línea, separadas por coma, y **la primera es la de arriba**:
+  // primero el velo de color, después la imagen debajo.
+  background-image:
+    linear-gradient(rgba($canvas, 0.25), rgba($canvas, 0.25)),
+    url("/img/bg-img.jpg");
   background-repeat: no-repeat;
   background-position: center top;
   // «cover» = que cubra toda la pantalla aunque tenga que recortar los bordes de la imagen. Como
@@ -223,7 +260,36 @@ body {
     gap: $stack-sm;
   }
 
+  // El logo y los dos textos, uno al lado del otro.
   &__marca {
+    display: flex;
+    align-items: center;
+    gap: $stack-sm;
+  }
+
+  // El logo del negocio, que la estudiante agregó el 2026-08-19.
+  //
+  // El PNG tiene fondo transparente, así que la flor apoya directo sobre el azul marino sin ningún
+  // recuadro blanco detrás. Se le da **solo la altura** y `width: auto`: así, si algún día se cambia
+  // por otro logo de otra forma, no queda estirado ni aplastado — la imagen decide su ancho a partir
+  // de su propia proporción.
+  //
+  // El `width` y el `height` que lleva la etiqueta en el HTML son los del archivo, y no son los que
+  // se ven: existen para que el navegador sepa **cuánto espacio reservar** antes de que la imagen
+  // termine de cargar. Sin eso, el encabezado da un salto cuando la imagen aparece.
+  &__logo {
+    flex: 0 0 auto;
+    // Subió de 48/56 a 56/64 el 2026-08-19, a pedido de la estudiante. Los dos son múltiplos de 4,
+    // la unidad base del sistema.
+    height: 56px;
+    width: auto;
+
+    @media (min-width: $tableta) {
+      height: 64px;
+    }
+  }
+
+  &__textos {
     @include columna($base);
   }
 
@@ -484,8 +550,8 @@ body {
   // Al pasar el mouse, el sistema pide una sombra apenas insinuada, no un salto.
   &:hover {
     // Es el mismo $navy escrito en la otra notación, porque una sombra necesita transparencia:
-    // rgb(0 37 84) es #002554, y el 5% final es cuánto se deja ver.
-    box-shadow: 0 2px 8px rgb(0 37 84 / 5%);
+    // rgb(47 51 103) es #2f3367, y el 5% final es cuánto se deja ver.
+    box-shadow: 0 2px 8px rgb(47 51 103 / 5%);
   }
 
   &--sola {
@@ -546,8 +612,10 @@ body {
   // explicar: qué es opcional, qué no se puede cambiar acá.
   &__ayuda {
     margin: 0;
-    font-size: 14px;
-    line-height: 20px;
+    // `label-sm` de VISUALS.md: 12px. Mismo tamaño que el aviso y que los requisitos de la
+    // contraseña — los tres son texto de guía, y en el sistema se ven igual.
+    font-size: 12px;
+    line-height: 16px;
     color: $texto-suave;
   }
 
@@ -651,21 +719,99 @@ body {
 .aviso {
   margin: 0;
   padding: 12px;
-  font-size: 16px;
-  line-height: 24px;
+  // `label-sm` de VISUALS.md: 12px con interlineado de 16. Es el tamaño que la estudiante fijó el
+  // 2026-08-19 para **todo** texto de guía o de error, para que ese tipo de texto se distinga de un
+  // vistazo del contenido de verdad, sin tener que leerlo.
+  font-size: 12px;
+  line-height: 16px;
   color: $error-texto;
   background-color: $error-fondo;
   border: 1px solid $error;
   border-radius: $radio-control;
 }
 
-// El aviso informativo (RN-14: «no quedan horarios en los próximos 7 días»). Comparte la forma del
-// aviso de error pero no su color: no es que algo haya fallado, es una noticia.
+// Un texto que **está en la página pero no se ve**: solo lo leen los lectores de pantalla.
+//
+// No se usa `display: none` ni `visibility: hidden`, porque esos dos también lo esconden del lector
+// de pantalla, que es justo lo contrario de lo que se quiere. El truco es dejarlo del tamaño de un
+// punto y recortarlo: sigue existiendo para quien lo escucha, y no ocupa nada para quien lo mira.
+//
+// Existe desde la pieza 12, para decir si un requisito de la contraseña está cumplido o no. Antes
+// eso lo decía un ✓ o una ✗, y la estudiante los sacó el 2026-08-19 porque quería solo el color.
+// Pero el color solo no le sirve a quien no ve la pantalla —ni a quien no distingue el rojo del
+// verde, que es una de cada doce personas—, así que la señal se conserva acá, invisible.
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+// ══════════════════════════════════════════════════════ los requisitos de la contraseña (pieza 12)
+//
+// Los dos renglones que se ponen verdes mientras la persona escribe su contraseña (RF-23). Son un
+// espejo de RN-23: avisan, no deciden — quien decide es el servidor.
+//
+// Tienen **tres** estados, no dos, y el tercero importa: antes de que la persona escriba la primera
+// letra los dos están en gris, ni verdes ni rojos. Marcar en rojo un campo que todavía nadie tocó es
+// regañar antes de que pase nada.
+.requisitos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: $base;
+}
+
+.requisito {
+  // `label-sm` de VISUALS.md: 12px, peso 500, interlineado 16.
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  // El gris del estado «todavía no escribiste nada». Los otros dos colores los pone el modificador.
+  color: $gris-texto;
+
+  // **Sin ícono a la izquierda**, a pedido de la estudiante el 2026-08-19: el color de la letra es
+  // toda la señal. Sin la marca, el texto arranca pegado al borde izquierdo de la lista, que es el
+  // mismo borde del campo de arriba — y por eso los renglones quedan alineados con el campo sin
+  // tener que empujarlos con ningún margen.
+
+  // Cumplido. El mismo verde del aviso de «salió bien», para que verde signifique lo mismo en toda
+  // la aplicación.
+  &--cumplido {
+    color: $exito-verde-texto;
+  }
+
+  // Sin cumplir, pero solo una vez que la persona empezó a escribir.
+  &--falta {
+    color: $error;
+  }
+}
+
+// Los otros dos avisos. Comparten la forma del aviso de error pero no su color, porque no todo lo
+// que hay que decir es un problema:
+//
+//   --informativo → una noticia, ni buena ni mala (RN-14: «no quedan horarios en 7 días»)
+//   --exito       → algo salió bien (la cita quedó reservada, los datos se guardaron)
+//
+// Los dos existían mezclados hasta la pieza 4: «Tu cita quedó reservada» salía en rojo, con la cara
+// de un error. Separarlos fue el arreglo.
 .aviso {
   &--informativo {
     color: $indigo-texto;
     background-color: $indigo-suave;
     border-color: $indigo;
+  }
+
+  &--exito {
+    color: $exito-texto;
+    background-color: $exito-fondo;
+    border-color: $exito;
   }
 }
 
@@ -778,7 +924,9 @@ body {
 
   &:hover {
     border-color: $indigo;
-    box-shadow: 0 2px 8px rgb(0 37 84 / 5%);
+    // rgb(47 51 103) es el $navy escrito en la otra notación, porque una sombra necesita
+    // transparencia. Se cambió con el azul, el 2026-08-19.
+    box-shadow: 0 2px 8px rgb(47 51 103 / 5%);
   }
 
   &:focus-visible {

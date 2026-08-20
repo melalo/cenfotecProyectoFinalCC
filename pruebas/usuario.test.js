@@ -20,6 +20,7 @@ import {
   entrarComoOtroCliente,
   entrarComoPersonal,
   buscarPorNombre,
+  enviadorDeMentira,
   relojDetenidoEn,
   ANA,
   MOMENTO_DE_PRUEBA,
@@ -27,7 +28,13 @@ import {
 
 /** Levanta la aplicación con el reloj parado y entra como Ana. */
 async function prepararUsuario(contexto) {
-  const entorno = await crearEntornoDePrueba(contexto, { reloj: relojDetenidoEn(MOMENTO_DE_PRUEBA) })
+  // Desde la pieza 4, crear una cita manda un correo. Estas pruebas no son del correo, pero sin un
+  // enviador que funcione cada reserva dejaría un aviso de «falló el envío» en la salida de
+  // `npm test`. Una salida llena de avisos de siempre enseña a no leerlos.
+  const entorno = await crearEntornoDePrueba(contexto, {
+    reloj: relojDetenidoEn(MOMENTO_DE_PRUEBA),
+    enviador: enviadorDeMentira(),
+  })
   const navegador = crearNavegador(entorno)
   await entrarComoClienta(navegador)
 
