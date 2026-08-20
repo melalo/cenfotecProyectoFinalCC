@@ -697,6 +697,11 @@ con `SQLITE_CONSTRAINT_FOREIGNKEY`. Se descubrió al revisar el guion, se escrib
 reprodujo, y se arregló agregando `DELETE FROM correo_enviado` **primero de todo**. Es el mismo tipo
 de defecto que la pieza 11 destapó a mano, y ahora está cubierto por una prueba.
 
+**Integración continua — EN VERDE.** Push del 2026-08-19, commit `bf17952`. La estudiante lo
+confirmó en la pestaña Actions de GitHub: las **135 pruebas corren en verde en Node 20 y en Node
+24**, los dos trabajos. Con eso las 14 pruebas de esta pieza quedan protegidas en cada push, que es
+lo que pide `PROYECTO.md` §7.
+
 **Revisión visual — PENDIENTE.** Esta pieza no tiene pantalla, así que lo que hay que mirar es que
 reservar siga funcionando igual de bien: la lista está en `PROXIMA-SESION.md`.
 
@@ -1272,6 +1277,9 @@ lo escrito.
 **Comprobado además que las reglas nuevas no pisaron las que ya existían:** un correo repetido sigue
 dando `409 correo_ya_registrado` (no `422`), y un registro sin nombre sigue dando
 `422 datos_incompletos`.
+
+**Integración continua — EN VERDE.** Push del 2026-08-19, commit `bf17952`, confirmado por la
+estudiante en la pestaña Actions: las 135 pruebas pasan en Node 20 y en Node 24.
 
 **Revisión visual — PENDIENTE.** Es la comprobación 8.
 
