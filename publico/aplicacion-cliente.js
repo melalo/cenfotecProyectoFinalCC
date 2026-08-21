@@ -69,6 +69,7 @@ const listaHistorial = document.getElementById("lista-historial")
 // Los pedazos que agrega la pieza 5: el cartel de «estás moviendo una cita» y las partes de la
 // tarjeta de confirmar que cambian de texto cuando se está reagendando en vez de reservando.
 const cartelReagendar = document.getElementById("cartel-reagendar")
+const reagendarTitulo = document.getElementById("reagendar-titulo")
 const reagendarCual = document.getElementById("reagendar-cual")
 const botonDejarComoEsta = document.getElementById("boton-dejar-como-esta")
 const confirmacionTitulo = document.getElementById("confirmacion-titulo")
@@ -640,6 +641,44 @@ function motivoDelDia(dia) {
   return null
 }
 
+/**
+ * La hora de un momento del proyecto escrita con `am` y `pm`: de `2026-08-27T10:00:00-06:00` saca
+ * «10:00am», y de `…T14:00:00-06:00` saca «2:00pm».
+ *
+ * Existe desde el 2026-08-21, para el cartel de reagendar, porque la estudiante pidió ese formato ahí.
+ *
+ * **No se le pega «am» a la hora y listo, y la diferencia no es un detalle:** a las 14:00 eso daría
+ * «14:00am», que no existe. Así que se convierte de verdad — se le restan 12 a las horas de la tarde
+ * y se elige `am` o `pm` según corresponda.
+ *
+ * Los dos casos borde del reloj de 12 horas, aunque hoy ninguno pueda pasar en este negocio (atiende
+ * de 9 a 18): **el mediodía es 12:00pm, no 12:00am**, y **la medianoche es 12:00am, no 0:00am**. Están
+ * resueltos igual, porque el día que el negocio cambie su horario nadie se va a acordar de venir a
+ * arreglarlos.
+ *
+ * Sí, esto es una cuenta de horas escrita **en el navegador**, y la convención del proyecto dice que
+ * las fechas viven en `servidor/tiempo.js`. Es la misma excepción, con la misma razón, que los nombres
+ * de los días y de los meses de más abajo: este archivo corre en el navegador, que **no puede leer**
+ * nada de `servidor/`. Y no es una regla de negocio: **el momento no se toca, solo se escribe de otra
+ * forma** — el texto que viaja al servidor sigue siendo `2026-08-27T14:00:00-06:00`, con su hora de 24
+ * y su desfase.
+ *
+ * **Es el único lugar de la aplicación que usa am/pm.** El calendario, la lista de citas, la tarjeta
+ * de confirmar y el correo siguen mostrando la hora de 24 (`14:00`). Queda anotado como pendiente en
+ * `DISENO.md`: o se extiende a todo, o se vuelve atrás acá.
+ */
+function horaConAmPm(inicio) {
+  const hora = Number(inicio.slice(11, 13))
+  const minutos = inicio.slice(14, 16)
+
+  const esDeLaTarde = hora >= 12
+  // El 0 (medianoche) y el 12 (mediodía) se escriben los dos «12»: el resto de la tarde se pasa a
+  // su número de la mañana restándole 12.
+  const enDoceHoras = hora % 12 === 0 ? 12 : hora % 12
+
+  return `${enDoceHoras}:${minutos}${esDeLaTarde ? "pm" : "am"}`
+}
+
 /** «Miércoles 9 de setiembre de 2026», a partir de «2026-09-09». */
 function tituloDelDia(fecha) {
   const diaDeLaSemana = DIAS_DE_LA_SEMANA[new Date(`${fecha}T12:00:00Z`).getUTCDay()]
@@ -1126,9 +1165,13 @@ async function empezarAReagendar(cita) {
   pasoServicio.hidden = true
   pasoProveedor.hidden = true
 
+  // El cartel dice dos cosas en dos renglones: **qué** cita se está moviendo y **cuándo** es ahora.
+  // Texto pedido por la estudiante el 2026-08-21.
+  reagendarTitulo.textContent =
+    `Estás reagendando tu cita de ${cita.servicio} - Terapista: ${cita.proveedor}`
   reagendarCual.textContent =
-    `${cita.servicio}, terapista ${cita.proveedor}. ` +
-    `Hoy es el ${tituloDelDia(cita.inicio.slice(0, 10)).toLowerCase()} a las ${cita.inicio.slice(11, 16)}.`
+    `${tituloDelDia(cita.inicio.slice(0, 10))} a las ${horaConAmPm(cita.inicio)}.`
+
   cartelReagendar.hidden = false
 
   mostrarVista("reservar")

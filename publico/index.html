@@ -201,11 +201,17 @@
             mira no tendría manera de saber en cuál de las dos está.
           -->
           <article id="cartel-reagendar" class="reagendar" hidden>
-            <h3 class="reagendar__titulo">Estás moviendo una cita</h3>
+            <!--
+              El título **se escribe desde el JavaScript**, no está fijo acá: nombra el servicio y la
+              terapista de la cita que se está moviendo, y eso cambia en cada cita. Sigue siendo un
+              `<h3>` porque es el encabezado de esta tarjeta, y un lector de pantalla usa los
+              encabezados para saltar de sección en sección.
+              Texto pedido por la estudiante el 2026-08-21.
+            -->
+            <h3 id="reagendar-titulo" class="reagendar__titulo"></h3>
             <p id="reagendar-cual" class="reagendar__cual"></p>
             <p class="reagendar__nota">
-              El servicio y tu terapista no cambian. Si querés otro servicio u otra persona,
-              cancelá esta cita y reservá de nuevo.
+              Para agendar otro servicio u otro profesional, cancelá esta cita y reservá de nuevo.
             </p>
             <button id="boton-dejar-como-esta" class="boton boton--suave" type="button">
               Dejarla como está
