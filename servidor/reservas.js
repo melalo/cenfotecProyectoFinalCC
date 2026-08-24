@@ -27,21 +27,29 @@
 
 import { enviarConfirmacionDeCita } from "./correo.js"
 import { revisarHorario } from "./disponibilidad.js"
+import { QUIEN_CLIENTE, QUIEN_PERSONAL } from "./quien-actua.js"
 import { escribirMomento, horasHasta } from "./tiempo.js"
 
 /** Los estados de una cita (bloque *Produce* de la pieza 3). Los otros dos son de la pieza 8. */
 export const ESTADO_ACTIVA = "activa"
 export const ESTADO_CANCELADA = "cancelada"
 
-/** Los canales de una cita (RN-12). Esta pieza solo crea el primero; el otro es de la pieza 7. */
+/**
+ * Los canales de una cita (RN-12): la reservó el cliente por su cuenta, o la reservó Personal
+ * atendiendo el teléfono. El segundo lo trajo la pieza 7.
+ *
+ * Es el mismo dato que necesita el reporte semestral de `NEGOCIO.md` —en línea contra teléfono—, sin
+ * ningún cálculo adicional: alcanza con agrupar por esta columna.
+ */
 export const CANAL_EN_LINEA = "en_linea"
+export const CANAL_ASISTIDA = "asistida"
 
 /**
- * Quién está pidiendo cancelar o mover una cita. Son los dos valores que puede tomar la columna
- * `cancelada_por` (REG-1), y también lo que decide si la ventana de 4 horas se aplica o no (RN-6).
+ * Quién está pidiendo. **Se definen en `servidor/quien-actua.js`** desde el 2026-08-21 —ahí está
+ * escrito por qué— y se vuelven a exportar desde acá para que nada de lo que ya las pedía a este
+ * archivo tenga que cambiar de lugar.
  */
-export const QUIEN_CLIENTE = "cliente"
-export const QUIEN_PERSONAL = "personal"
+export { QUIEN_CLIENTE, QUIEN_PERSONAL }
 
 /**
  * La ventana de cancelación: cuántas horas antes de la cita se deja de poder cancelar o mover
@@ -57,26 +65,56 @@ const RECHAZO_DEL_INDICE_UNICO = "SQLITE_CONSTRAINT_UNIQUE"
  * Crea una cita activa para un cliente (RF-8).
  *
  * Devuelve `{ ok: true, cita }` si se pudo, o `{ ok: false, motivo }` si no. **No lanza errores ni
- * sabe de HTTP**: quien la llama traduce el motivo al número que corresponda. Los motivos posibles
- * son los dos rechazos que fija el plan:
+ * sabe de HTTP**: quien la llama traduce el motivo al número que corresponda. Los motivos posibles:
  *
- *   - `"mismo_dia"`             → el horario es de hoy o de un día que ya pasó (RN-4, CA-2)
+ *   - `"mismo_dia"`             → el horario es de hoy o de un día que ya pasó, y quien reserva es un
+ *     cliente (RN-4, CA-2)
+ *   - `"horario_ya_empezo"`     → ese horario ya arrancó, y quien reserva es Personal (RN-25)
  *   - `"horario_no_disponible"` → ya lo tomaron, es feriado, es domingo, o no es hora de atención
  *
  * `ahora` llega como dato, igual que en todo el proyecto: es lo que permite que las pruebas paren el
  * reloj y comprueben siempre lo mismo.
+ *
+ * `personalIdCreador` llega desde la pieza 7 y **cambia dos cosas, no una**:
+ *
+ *   1. La cita queda con canal `asistida` y con esa cuenta anotada (RN-12).
+ *   2. **La regla del tiempo pasa a ser la de Personal** (RN-25): puede reservar para hoy, en un
+ *      horario que todavía no haya empezado.
+ *
+ * Quién pregunta **se deduce de ese mismo dato** en vez de pedirse aparte, y es a propósito: si una
+ * cita la crea Personal, las reglas de Personal son las que valen. Pedir los dos por separado dejaría
+ * que un descuido las desalineara —una cita con canal `asistida` revisada con la vara del cliente— y
+ * ese error no se vería hasta que alguien intentara reservar para hoy.
+ *
+ * **Las demás reglas no cambian** (RN-13): el horario se comprueba con la misma `revisarHorario`, así
+ * que Personal tampoco puede tomar un horario ocupado, un feriado, un domingo ni el almuerzo.
  */
-export function crearCita({ base, clienteId, servicioId, proveedorId, inicio, ahora }) {
+export function crearCita({
+  base,
+  clienteId,
+  servicioId,
+  proveedorId,
+  inicio,
+  ahora,
+  personalIdCreador = null,
+}) {
+  const laCreaPersonal = personalIdCreador !== null
+  const canal = laCreaPersonal ? CANAL_ASISTIDA : CANAL_EN_LINEA
+  const quien = laCreaPersonal ? QUIEN_PERSONAL : QUIEN_CLIENTE
+
   const comprobarYGuardar = base.transaction(() => {
-    const revision = revisarHorario({ base, proveedorId, inicio, ahora })
+    const revision = revisarHorario({ base, proveedorId, inicio, ahora, quien })
 
     if (revision === "hoy_o_pasado") return { ok: false, motivo: "mismo_dia" }
+    if (revision === "ya_empezo") return { ok: false, motivo: "horario_ya_empezo" }
     if (revision !== "disponible") return { ok: false, motivo: "horario_no_disponible" }
 
     const guardada = base
       .prepare(
-        `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO cita
+           (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal,
+            personal_id_creador)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         clienteId,
@@ -85,11 +123,12 @@ export function crearCita({ base, clienteId, servicioId, proveedorId, inicio, ah
         inicio,
         ESTADO_ACTIVA,
         escribirMomento(ahora),
-        CANAL_EN_LINEA,
+        canal,
+        personalIdCreador,
       )
 
-    // Las otras cinco columnas de la tabla quedan vacías a propósito: `personal_id_creador` la
-    // llena la pieza 7, las dos de cancelación la pieza 5, y las dos de cierre la pieza 8.
+    // Las otras cuatro columnas de la tabla quedan vacías a propósito: las dos de cancelación las
+    // llena la pieza 5 cuando alguien cancela, y las dos de cierre la pieza 8.
     return {
       ok: true,
       cita: {
@@ -98,7 +137,7 @@ export function crearCita({ base, clienteId, servicioId, proveedorId, inicio, ah
         proveedorId,
         inicio,
         estado: ESTADO_ACTIVA,
-        canal: CANAL_EN_LINEA,
+        canal,
       },
     }
   })
@@ -118,8 +157,9 @@ export function crearCita({ base, clienteId, servicioId, proveedorId, inicio, ah
 }
 
 /**
- * Crea la cita **y le avisa al cliente por correo** (RF-11). Es lo que llaman los endpoints; la
- * pieza 7, cuando Personal reserve en nombre de alguien, va a llamar exactamente a esta.
+ * Crea la cita **y le avisa al cliente por correo** (RF-11). Es lo que llaman los endpoints, tanto
+ * cuando reserva el cliente como cuando reserva Personal en nombre de quien llama (pieza 7): el
+ * correo le llega al cliente igual, sin que la pieza 7 tenga que acordarse de mandarlo.
  *
  * Existe para que «al crear una cita se manda la confirmación» esté escrito en **un solo lugar**.
  * Si cada endpoint tuviera que acordarse de mandar el correo por su cuenta, el día que se agregue
@@ -139,8 +179,17 @@ export async function crearCitaYConfirmar({
   proveedorId,
   inicio,
   ahora,
+  personalIdCreador = null,
 }) {
-  const resultado = crearCita({ base, clienteId, servicioId, proveedorId, inicio, ahora })
+  const resultado = crearCita({
+    base,
+    clienteId,
+    servicioId,
+    proveedorId,
+    inicio,
+    ahora,
+    personalIdCreador,
+  })
 
   if (resultado.ok) {
     await enviarConfirmacionDeCita({ base, enviador, citaId: resultado.cita.id, ahora })
@@ -298,7 +347,11 @@ export function cancelarCita({ base, citaId, clienteId, quien, ahora }) {
  * escribir esa regla acá sería la manera de que un día una diga «libre» y la otra «ocupado».
  *
  * Motivos posibles: `"cita_no_encontrada"`, `"cita_no_activa"`, `"ventana_de_cancelacion"`,
- * `"mismo_dia"` y `"horario_no_disponible"`.
+ * `"mismo_dia"`, `"horario_ya_empezo"` y `"horario_no_disponible"`.
+ *
+ * Y le pasa `quien` a `revisarHorario` desde el 2026-08-21: mover una cita **a un horario de hoy** es
+ * lo mismo que reservarla ahí, así que la excepción de RN-25 vale igual para las dos. Tratarlas
+ * distinto sería escribir la regla dos veces con una diferencia que nadie pidió.
  */
 export function reagendarCita({ base, citaId, clienteId, quien, inicio, ahora }) {
   const comprobarYMover = base.transaction(() => {
@@ -308,8 +361,9 @@ export function reagendarCita({ base, citaId, clienteId, quien, inicio, ahora })
     const revision = revisarSiSePuedeCambiar({ cita, quien, ahora })
     if (revision !== "se_puede") return { ok: false, motivo: revision }
 
-    const horario = revisarHorario({ base, proveedorId: cita.proveedor_id, inicio, ahora })
+    const horario = revisarHorario({ base, proveedorId: cita.proveedor_id, inicio, ahora, quien })
     if (horario === "hoy_o_pasado") return { ok: false, motivo: "mismo_dia" }
+    if (horario === "ya_empezo") return { ok: false, motivo: "horario_ya_empezo" }
     if (horario !== "disponible") return { ok: false, motivo: "horario_no_disponible" }
 
     base.prepare("UPDATE cita SET inicio = ? WHERE id = ?").run(inicio, citaId)
@@ -427,8 +481,14 @@ export function primeraCitaDelCliente({ base, clienteId }) {
  * el campo `estado` de cada día del calendario. Si la pantalla contara las horas por su cuenta, un
  * navegador con la hora mal puesta le mostraría un botón que el servidor va a rechazar — o peor, le
  * esconderá uno que sí podía usar.
+ *
+ * **`quien` es lo que hace que la misma cita conteste dos cosas distintas** (pieza 7). Preguntada
+ * como cliente, una cita que empieza dentro de dos horas llega con `sePuedeCambiar: false` y
+ * `porQueNo: "ventana_de_cancelacion"`; preguntada como Personal, la misma cita llega con
+ * `sePuedeCambiar: true` (RN-6). **Eso es CA-3 visto desde la pantalla**, y no hay ninguna regla
+ * nueva escrita para lograrlo: es el mismo `revisarSiSePuedeCambiar` recibiendo otro `quien`.
  */
-export function citasDelCliente({ base, clienteId, ahora }) {
+export function citasDelCliente({ base, clienteId, ahora, quien = QUIEN_CLIENTE }) {
   const filas = base
     .prepare(
       `SELECT cita.id, cita.servicio_id AS servicioId, cita.proveedor_id AS proveedorId,
@@ -443,10 +503,9 @@ export function citasDelCliente({ base, clienteId, ahora }) {
     .all(clienteId)
 
   return filas.map((cita) => {
-    // Se pregunta como cliente, porque estas son las citas que el cliente ve en su pantalla. La
-    // pantalla de Personal (pieza 7) va a preguntar lo mismo con `QUIEN_PERSONAL` y va a recibir
-    // otras respuestas, que es exactamente la mitad de CA-3 que le toca a ella.
-    const porQueNo = porQueNoSePuedeCambiar({ cita, quien: QUIEN_CLIENTE, ahora })
+    // Preguntado con `QUIEN_PERSONAL`, esto contesta distinto para la cita que está dentro de las 4
+    // horas: es la mitad de CA-3 que le toca a la pieza 7, y sale de la misma función.
+    const porQueNo = porQueNoSePuedeCambiar({ cita, quien, ahora })
 
     return {
       ...cita,

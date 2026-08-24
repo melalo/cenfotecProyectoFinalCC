@@ -25,7 +25,11 @@ lo cambia.
 **Restricciones globales** *(copiadas de «Fuera de alcance» de `ESPECIFICACION.md`; aplican a
 todas las piezas)*:
 
-- No hay citas para el mismo día. Quien las necesita llama al negocio.
+- **El cliente** no puede reservar para el mismo día. Quien la necesita llama al negocio, y
+  **Personal sí puede agendarla** desde la aplicación, en un horario que todavía no haya empezado
+  (RN-25). *Corregido el 2026-08-21, durante la revisión visual de la pieza 7: hasta entonces esta
+  línea decía que no había citas para el mismo día, sin más, y eso dejaba la llamada del cliente sin
+  ningún lugar donde terminar.*
 - No se puede reservar sin cuenta: no existe el modo invitado.
 - No hay panel de administración con interfaz. Servicios, proveedores, horarios, feriados,
   ubicación, logo y colores se cargan como configuración.
@@ -58,7 +62,7 @@ todas las piezas)*:
 | 4 | Correo de confirmación | 3 | **cerrada el 2026-08-19** |
 | 5 | Cancelar y reagendar | 3 | **cerrada el 2026-08-20** |
 | 6 | Recordatorio de 24 horas | 4 y 5 | pendiente |
-| 7 | Personal atiende el teléfono | 5 | pendiente |
+| 7 | Personal atiende el teléfono | 5 | **cerrada el 2026-08-24** (construida el 2026-08-21) |
 | 8 | Personal cierra las citas pasadas | 7 | pendiente |
 | 9 | Restablecer la contraseña olvidada | 4 | pendiente |
 | 10 | La información del cliente | 1 y 3 | **cerrada el 2026-08-19**, construida fuera de orden |
@@ -966,8 +970,10 @@ candidata a recortar si el tiempo aprieta.
   hacer nada más (RF-4).
 - Las citas que crea Personal quedan con canal `"asistida"` y con la cuenta de Personal que las
   creó (RN-12).
-- Al crear una cita, Personal cumple **las mismas reglas** que el cliente: no puede tomar un
-  horario ocupado, ni un feriado, ni fuera del horario del negocio, ni para el mismo día (RN-13).
+- Al crear una cita, Personal cumple **las mismas reglas de agenda** que el cliente: no puede tomar
+  un horario ocupado, ni un feriado, ni fuera del horario del negocio ni en el almuerzo (RN-13).
+- Personal **sí** puede reservar para **hoy mismo**, y mover una cita a un horario de hoy, siempre que
+  ese horario todavía no haya empezado y esté libre (RN-25). El cliente no (RN-4, CA-2).
 - Personal **sí** puede cancelar y reagendar dentro de las 4 horas (RF-18, RN-6, CA-3 parte
   Personal).
 - El cliente recibe el mismo correo de confirmación que si hubiera reservado él.
@@ -984,7 +990,11 @@ candidata a recortar si el tiempo aprieta.
    exija nada.
 6. Intentar entrar con la contraseña temporal vieja: la rechaza.
 7. Como Personal, intentar reservar un horario ya ocupado: lo rechaza igual que al cliente.
-8. Como Personal, intentar reservar para hoy: lo rechaza igual que al cliente.
+8. Como Personal, reservar para **hoy** en un horario que todavía no empezó: **lo acepta** (RN-25).
+   El mismo intento hecho por el cliente sigue rechazándose (CA-2), y un horario de hoy que **ya
+   empezó** también se rechaza. *Corregido el 2026-08-21: hasta entonces esta comprobación pedía lo
+   contrario —«lo rechaza igual que al cliente»—, y el hueco se descubrió mirando la pantalla. La
+   razón completa está en RN-25 de `ESPECIFICACION.md`.*
 9. Insertar una cita que empiece dentro de 2 horas. Como Personal, cancelarla: **la acepta**, y en
    la base queda `cancelada_por` = personal.
 10. Correr la prueba automática de CA-3 (parte Personal): la misma cancelación a menos de 4 horas,
@@ -999,17 +1009,180 @@ candidata a recortar si el tiempo aprieta.
 - *Produce:*
   - `POST /api/personal/clientes` — solo para sesión de tipo `personal`; recibe `{nombre, correo}`;
     devuelve `201` con `{id, nombre, correo, contrasenaTemporal}`; devuelve `409` si el correo ya
-    existe.
+    existe **en cualquiera de las dos tablas de cuentas** (si coincidiera con la de Personal, al
+    entrar no se sabría cuál de las dos es — es la misma razón que ya tenía el registro de la pieza
+    1), y `422` si el nombre viene vacío o el correo no tiene forma de correo (RN-24). La cuenta
+    nace con `debe_cambiar_contrasena = 1`.
   - `GET /api/personal/clientes?busqueda=` — solo para sesión de tipo `personal`; devuelve
-    `[{id, nombre, correo}]`.
+    `[{id, nombre, correo}]`. Busca **pedazos** del nombre o del correo, sin distinguir mayúsculas.
+    **Con menos de 2 letras devuelve la lista vacía**, no la lista completa *(decidido por la
+    estudiante el 2026-08-21: Personal siempre sabe con quién está hablando, y una lista con todos
+    deja los correos de todos los clientes a la vista de quien pase por el mostrador)*.
+  - `GET /api/personal/clientes/:clienteId/citas` — solo para sesión de tipo `personal`; devuelve
+    las citas de ese cliente con la misma forma que `GET /api/citas` de la pieza 3, pero con
+    `sePuedeCambiar` y `porQueNo` **calculados como Personal**, así que una cita que empieza dentro
+    de 2 horas llega con `sePuedeCambiar: true` (RN-6). Devuelve `404` si ese cliente no existe.
+    *(Agregado el 2026-08-21, al diseñar esta pieza. El plan dejaba a Personal cancelar la cita de
+    un cliente pero no decía **cómo la ve para poder tocarla**: `GET /api/citas` devuelve las citas
+    de quien está en sesión, y Personal no tiene citas propias. Va bajo `/api/personal/` como las
+    otras dos para que todas las puertas que solo abre Personal vivan en el mismo pasillo, en vez
+    de dejar que un cliente pueda colar un `clienteId` ajeno en la puerta de siempre.)*
   - `POST /api/citas` acepta además `{clienteId}` cuando la sesión es de tipo `personal`, y en ese
-    caso guarda canal `"asistida"`.
-  - `POST /api/contrasena/cambiar` — recibe `{contrasenaActual, contrasenaNueva}`; apaga
-    `debe_cambiar_contrasena`; devuelve `204`.
+    caso guarda canal `"asistida"` **y `personal_id_creador`** con la cuenta que la creó (RN-12).
+    Devuelve `404` si ese `clienteId` no existe. Con sesión de cliente todo sigue igual que antes:
+    canal `"en_linea"` y `personal_id_creador` vacío.
+  - `POST /api/contrasena/cambiar` — **para cualquier sesión abierta**, de cliente o de Personal;
+    recibe `{contrasenaActual, contrasenaNueva}`; comprueba la actual, exige que la nueva cumpla
+    RN-23, la guarda cifrada y apaga `debe_cambiar_contrasena`; devuelve `204`. Devuelve
+    `422 contrasena_actual_incorrecta` si la actual no coincide, y `422 contrasena_invalida` con la
+    lista `faltan` si la nueva no cumple RN-23 — la misma forma que ya devuelve el registro de la
+    pieza 12. Es `422` y no `403` porque no es un problema de permisos: la sesión es válida y la
+    cuenta es la correcta; lo que no sirve es **el dato**.
   - `DELETE /api/citas/:citaId` y `PATCH /api/citas/:citaId` dejan de aplicar la ventana de 4 horas
-    cuando la sesión es de tipo `personal`.
+    cuando la sesión es de tipo `personal`. **Las reglas de agenda se aplican igual** —horario
+    ocupado, feriado, domingo, almuerzo (RN-13)—, y ahora también salen de `revisarHorario`, que
+    **desde el 2026-08-21 sí sabe quién pregunta**.
+  - **`POST /api/citas` y `PATCH /api/citas/:citaId` aceptan un horario de hoy cuando la sesión es de
+    tipo `personal`** (RN-25), y lo rechazan con `422 horario_ya_empezo` si ese horario ya empezó. Con
+    sesión de cliente el rechazo sigue siendo `422 mismo_dia` para todo el día de hoy, sin cambio
+    alguno: eso es **CA-2**. *(Agregado el 2026-08-21, con RN-25.)*
+  - **`GET /api/disponibilidad` devuelve el día de hoy con sus horarios libres cuando la sesión es de
+    tipo `personal`**, y con `estado: "con_horarios"` en vez de `"hoy_o_pasado"` mientras quede alguno
+    sin empezar. Para un cliente devuelve exactamente lo de siempre. Es el mismo principio de toda la
+    pieza: **el servidor decide y la pantalla muestra**, así que quién puede tomar un horario de hoy se
+    resuelve en `servidor/disponibilidad.js` y no en el navegador. *(Agregado el 2026-08-21, con
+    RN-25.)*
+  - **Mientras una cuenta de cliente tenga `debe_cambiar_contrasena` encendido, todos los endpoints
+    de cliente la rechazan con `403 debe_cambiar_contrasena`** — las citas y `mi-informacion`. Es
+    cómo se cumple RF-4 («antes de dejarlo hacer nada más») **en el servidor** y no solo en la
+    pantalla: el frontend no decide reglas de negocio. Siguen abiertos `GET /api/yo`,
+    `DELETE /api/sesion` y `POST /api/contrasena/cambiar`, que son justo los tres que esa pantalla
+    necesita para poder existir y para poder salir de ahí. *(Agregado el 2026-08-21, al diseñar esta
+    pieza: el plan pedía la obligación pero no decía dónde vivía.)*
 
 **Evidencia**
+
+*Construida el 2026-08-21. **76 pruebas nuevas** (58 en `pruebas/personal.test.js` y 18 en
+`pruebas/cambio-de-contrasena.test.js`); `npm test` da **250 de 250**. Tres archivos nuevos en el
+servidor (`servidor/personal.js`, `servidor/rutas/personal.js` y `servidor/quien-actua.js`), **ninguna
+tabla ni columna nueva** y **ninguna dependencia nueva**.*
+
+Las diez comprobaciones, y con qué se corrió cada una. Las marcadas «API de verdad» se corrieron
+además contra la aplicación levantada con `npm start` y la base de `npm run datos`, no solo contra las
+pruebas automáticas.
+
+| # | Qué pide | Resultado |
+|---|---|---|
+| 1 | Reservar a nombre de un cliente que existe; canal `asistida` y `personal_id_creador` | ✅ prueba «comprobación 1…» y **API de verdad**: la fila quedó `canal='asistida'`, `personal_id_creador=1`, `cliente_id=1` |
+| 2 | Ese cliente recibe el correo de confirmación | ✅ prueba «comprobación 2…»: el correo sale con `para` = el correo del **cliente**, no de Personal |
+| 3 | Crear la cuenta de un correo nuevo y ver una contraseña temporal | ✅ prueba «comprobación 3…» y **API de verdad**: devolvió `Puente146` |
+| 4 | Entrar con la temporal: el sistema exige cambiarla antes de seguir | ✅ tres pruebas «comprobación 4…» y **API de verdad**: `GET /api/citas` → `403 debe_cambiar_contrasena` |
+| 5 | Cambiarla, salir, y volver a entrar con la nueva: entra normal | ✅ dos pruebas «comprobación 5…» y **API de verdad**: `204`, y al volver a entrar `debeCambiarContrasena: false` |
+| 6 | La contraseña temporal vieja queda rechazada | ✅ prueba «comprobación 6…» y **API de verdad**: `401 credenciales_invalidas` |
+| 7 | Personal no puede tomar un horario ya ocupado | ✅ prueba «comprobación 7…»: `409 horario_no_disponible` |
+| 8 | **Personal sí puede reservar para hoy** en un horario que no empezó (RN-25) | ✅ tres pruebas «comprobación 8…» y **API de verdad**: `201` para un horario de hoy sin empezar, `422 horario_ya_empezo` para uno que ya arrancó, y `422 mismo_dia` para el cliente — **CA-2 intacto** |
+| 9 | Cita que empieza en 2 horas: Personal la cancela y queda `cancelada_por` = personal | ✅ prueba «CA-3 (Personal): Personal cancela…» y **API de verdad**: `204`, y la fila quedó `cancelada_por='personal'` con su `cancelada_en` |
+| 10 | La prueba automática de CA-3 (parte Personal) devuelve `204` y pasa en el push | ✅ tres pruebas marcadas `CA-3` en el título. **Contra la aplicación de verdad, la misma cita: al cliente `422`, a Personal `204`** |
+
+**CA-3 quedó cubierto por completo, y las dos mitades salen de la misma función.** No hay ninguna
+regla nueva escrita para Personal: `revisarSiSePuedeCambiar` de `servidor/reservas.js` recibe
+`QUIEN_CLIENTE` o `QUIEN_PERSONAL`, y eso es todo. Con esto **los tres criterios de aceptación del
+curso están enteros**, comprobados en cada push y en Node 20 y Node 24.
+
+**Cuatro decisiones de la estudiante**, tomadas antes de escribir código y anotadas con su razón en
+`DISENO.md`, «Decisiones tomadas al construir la pieza 7»: la pantalla de Personal es la misma con un
+paso más arriba; la contraseña temporal es una palabra y tres números (`Girasol472`); el formulario de
+cambio tiene dos campos y la pantalla recuerda la temporal; y el buscador no muestra nada hasta que se
+escriben 2 letras.
+
+**Dos cosas que este plan no decía y quedaron escritas antes de construirse**, arriba en el bloque
+*Produce*: la puerta `GET /api/personal/clientes/:clienteId/citas` —el plan dejaba a Personal cancelar
+la cita de un cliente pero no decía cómo la ve para poder tocarla— y **dónde vive la obligación de
+RF-4**, que resultó ser el guardia de la sesión y no la pantalla.
+
+**Dos pruebas viejas se reescribieron, no se borraron.** Las de las piezas 3 y 5 que decían que
+Personal **no** podía reservar ni cancelar por esos endpoints, y cuyos comentarios ya avisaban «eso es
+la pieza 7». Hoy dicen la verdad de ahora y conservan escrita la razón histórica: la de reservar sigue
+protegiendo exactamente lo mismo —que una cita nunca quede con el id de Personal en `cliente_id`—, solo
+que ahora eso se logra obligándolo a decir para quién en vez de cerrándole la puerta.
+
+**La revisión visual corrigió una regla de negocio, y es el hallazgo más importante de esta pieza.**
+La estudiante abrió el día de hoy con la cuenta de Personal y leyó *«No se puede reservar para hoy. Si
+necesitás una cita hoy, **llamá al negocio** al 2000-0000»*: un cartel diciéndole a la asistente del
+negocio que llame al negocio.
+
+El texto era absurdo **porque la regla detrás tenía un hueco**, y es **el mismo hueco que RN-6 existe
+para tapar**: la aplicación manda al cliente a llamar, y la asistente que atendía esa llamada
+descubría que ella tampoco podía agendarla — así que la cita terminaba en un papel, que es la segunda
+fuente de verdad que `NEGOCIO.md` dice haber eliminado. Se corrigieron **los dos**: nació **RN-25** en
+`ESPECIFICACION.md` y se cambió esta comprobación 8, que pedía literalmente lo contrario.
+
+**12 pruebas nuevas** para la regla, y **CA-2 quedó intacto**: el cliente sigue sin poder reservar
+para hoy, y hay pruebas del lado del cliente al lado de las de Personal para que las dos mitades se
+lean juntas. **Ninguna prueba automática podía encontrar esto**: el texto aparecía, y era falso solo
+**para quien lo estaba leyendo**.
+
+**La misma revisión pidió una forma de volver al inicio**, que no estaba en el plan: la entrada
+**«Inicio»** en los dos menús, solo para Personal, y **la marca del encabezado —el logo y el nombre—
+clickeable para las dos cuentas**. Las dos se apagan donde no hay inicio al que volver: la pantalla de
+entrar y la del cambio obligatorio de contraseña, porque ahí RF-4 dice que no se puede hacer nada más.
+No cambió ningún endpoint ni ninguna regla: es todo navegación de pantalla. *Hubo además una segunda
+entrada, «Nueva llamada», que se construyó y se sacó el mismo día por decisión de la estudiante — la
+razón está en `DISENO.md` y en `BITACORA.md`.*
+
+**Y una regla que se decidió NO agregar, escrita como decisión y no dejada al olvido:** un mínimo de
+anticipación en horas para el cliente. «No hoy» ya garantiza poco más de 9 horas, así que 4 horas
+sumadas nunca rechazarían nada, y reemplazando a «no hoy» **eliminarían CA-2**. La razón completa está
+en `DISENO.md` y en `BITACORA.md`.
+
+**Y un cuarto hallazgo, de la misma familia que el primero:** como Personal, mirando las citas de un
+cliente, **nada en pantalla decía de quién eran**. El único nombre era el de la asistente («Hola,
+Marta Jiménez») y el título decía «Sus próximas citas», un pronombre sin dueño. Ahora los dos títulos
+de la sección llevan el nombre: «Próximas citas de Marisol Prueba» y «Historial de Marisol Prueba».
+No cambió ningún endpoint: es texto de pantalla.
+
+**Y un quinto ajuste, de navegación:** la tarjeta «Atendiendo a» tenía un solo botón, así que para
+ver las citas de la persona elegida había que ir a buscar el menú. Ahora tiene dos, **«Citas del
+cliente»** y «Otra persona», los dos pegados a su nombre. Sin HTML ni CSS nuevo: la fila reusa la
+clase que ya usaban las otras filas de dos botones. *(El segundo botón se llamó «Atender a otra
+persona» hasta el 2026-08-24 — ver abajo.)*
+
+**La revisión visual quedó TERMINADA el 2026-08-24, y la pieza CERRADA.** Las tres cosas que faltaban
+se miraron en el navegador, con la aplicación levantada:
+
+| Qué faltaba mirar | Resultado |
+|---|---|
+| La contraseña temporal en grande, para poder dictarla por teléfono | ✅ Se lee de un vistazo; las letras separadas cumplen su función |
+| Recargar la página (`F5`) en el cambio obligatorio de contraseña | ✅ **Aparecen los tres campos**, cada uno con su ojito. La pantalla pide la temporal en vez de trabarse |
+| La pantalla angosta: el paso «¿Quién llama?», los resultados de la búsqueda y la fila de dos botones | ✅ Nada se sale ni se pisa |
+
+**No apareció ningún defecto nuevo.** Sí se resolvieron las tres decisiones que habían quedado
+abiertas de la revisión:
+
+1. **La etiqueta que partía en dos líneas se acortó a «Otra persona»** (entra en una línea desde
+   476px). Se eligió acortar la etiqueta y **no** ensanchar el botón ni mover el corte, porque el 48%
+   y el 476px los pidió la estudiante mirando la pantalla; y el verbo no se perdió, porque ya está
+   dicho en el título de la tarjeta que lo contiene, «Atendiendo a». **Es un cambio de texto en la
+   vista: ninguna función, ningún endpoint y ninguna prueba cambiaron.**
+2. **El corte de 476px se queda como modificador de una sola fila** (`confirmacion__botones--fila-centrada`),
+   no se unifica para las cuatro. Las otras tres filas de dos botones ya estaban revisadas y
+   aprobadas como están, y unificar las movería sin que nadie las hubiera vuelto a mirar. El costo,
+   asumido a propósito: entre 476 y 767px la aplicación tiene dos comportamientos.
+3. **Los botones «Reagendar» y «Cancelar» sobre una cita ya pasada se quedan como están, y la
+   decisión se difiere a la pieza 8**, que es la que trae las herramientas pensadas para ese caso
+   (marcar «completada» o «no asistió»). No se inventa ninguna regla desde el código: la
+   especificación no prohíbe que Personal toque una cita pasada, y restringirlo se escribiría primero
+   en `ESPECIFICACION.md`. **Queda anotado como punto abierto, no como olvido.**
+
+**Y un hallazgo de la revisión que NO terminó en un cambio de código, y por eso vale contarlo.** Se
+reportó que el campo de la contraseña temporal no aparecía al recargar. Se investigó antes de tocar
+nada: se reprodujo el pedido del navegador con `curl` (el servidor devolvía bien
+`debeCambiarContrasena: true`), se comparó el JavaScript servido contra el del disco (idénticos, sin
+caché vieja), se leyó el CSS compilado (la regla `[hidden]` estaba puesta) y se revisó el código
+(correcto). **No había defecto: había fallado el recorrido escrito**, que hacía tocar «Salir» a
+destiempo — y esa pantalla tiene su propio botón «Salir» justo abajo. Al repetirlo bien, los tres
+campos aparecieron. *La lección quedó en `CLAUDE.md`: un recorrido de revisión tiene que decir qué
+botones **no** tocar.*
 
 ---
 

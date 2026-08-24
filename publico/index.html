@@ -13,17 +13,59 @@
         <div class="encabezado__fila">
           <div class="encabezado__marca">
             <!--
-              El logo del negocio. Va con `alt=""` (vacío) **a propósito**: el nombre está escrito
-              justo al lado, y un lector de pantalla que además leyera el logo diría dos veces lo
-              mismo. Un `alt` vacío es la forma correcta de decir «esta imagen es decoración, ya
-              está dicho con palabras».
-            -->
-            <img class="encabezado__logo" src="/img/logo-app.png" alt="" width="242" height="169" />
+              **La marca entera es el «volver al inicio»**: la flor **y** el nombre, en un solo
+              elemento — para las dos cuentas, la del cliente y la de Personal. *Pedido de la
+              estudiante el 2026-08-21, durante la revisión visual de la pieza 7: primero pidió el
+              logo, y después corrigió que el logo es también el texto que dice «Bienestar y salud».*
 
-            <div class="encabezado__textos">
-              <h1 class="encabezado__titulo">Bienestar y salud</h1>
-              <p class="encabezado__bajada">Reservas en línea</p>
-            </div>
+              ── Por qué acá es un `<a>` y en el menú son `<button>` ─────────────────────────────
+
+              Parece una inconsistencia y no lo es. El menú usa botones porque **cambia de vista, no
+              de página**, y eso está bien. Acá hace lo mismo, pero **no puede ser un botón**, y la
+              razón es de HTML: adentro de un `<button>` **solo se permite texto y cosas de texto**, y
+              acá adentro va el `<h1>` con el nombre del negocio, que no lo es. Un `<h1>` dentro de un
+              `<button>` es HTML **inválido** — los navegadores lo dibujan igual, pero está mal
+              escrito.
+
+              La salida no es sacar el `<h1>`: es el **único encabezado principal de la página**, y
+              quien usa un lector de pantalla se orienta saltando de encabezado en encabezado. Así que
+              se usa un `<a>`, que **sí** puede envolver un `<h1>` sin dejar de ser válido.
+
+              ── Tres decisiones de accesibilidad ────────────────────────────────────────────────
+
+              1. **El nombre del enlace sale del texto que ya está adentro** («Bienestar y salud ·
+                 Reservas en línea»). No se le pone `aria-label`, y eso es a propósito: un
+                 `aria-label` **reemplaza** lo que se ve, así que quien usa un lector oiría algo
+                 distinto de lo que hay en pantalla. El `title` sí queda, pero solo es el cartelito
+                 del mouse.
+
+              2. **El `alt` de la imagen sigue vacío.** El nombre del negocio está escrito al lado, y
+                 un lector que además leyera la imagen diría dos veces lo mismo. Un `alt` vacío es la
+                 forma correcta de decir «esto es decoración, ya está dicho con palabras».
+
+              3. **Se apaga quitándole la dirección (`href`), no con `disabled`:** `disabled` solo
+                 existe para los botones. **Un enlace sin dirección no se puede tocar ni alcanzar con
+                 el tabulador**, que es exactamente lo que hace falta en las dos pantallas donde no
+                 hay ningún inicio al que volver: la de entrar, y la del cambio obligatorio de la
+                 contraseña temporal — ahí RF-4 dice que no se puede hacer nada más, y un logo que
+                 llevara a la aplicación sería una puerta de escape a esa regla.
+
+              El área tocable ahora es la flor **más** el nombre, así que es bastante más grande que
+              el mínimo de 44px que pide la accesibilidad para algo que se toca con el dedo.
+            -->
+            <a id="enlace-inicio" class="encabezado__inicio" title="Ir al inicio">
+              <img class="encabezado__logo" src="/img/logo-app.png" alt="" width="242" height="169" />
+
+              <!--
+                Va como `<div>` y no como `<span>`: un `<span>` es «texto», y adentro de él un `<h1>`
+                sería igual de inválido que adentro del `<button>`. Un `<div>` sí puede contenerlo, y
+                adentro de un `<a>` un `<div>` está permitido.
+              -->
+              <div class="encabezado__textos">
+                <h1 class="encabezado__titulo">Bienestar y salud</h1>
+                <p class="encabezado__bajada">Reservas en línea</p>
+              </div>
+            </a>
           </div>
 
           <!--
@@ -53,6 +95,25 @@
         </div>
 
         <nav id="navegacion" class="navegacion" aria-label="Secciones" hidden>
+          <!--
+            Las dos primeras entradas **solo las ve Personal** (pedidas por la estudiante el
+            2026-08-21, durante la revisión visual de la pieza 7). El problema que resuelven: estando
+            en «Citas del cliente», mirando las citas de la persona que llamó, ninguna entrada del
+            menú se leía como «volver al principio».
+
+            **Es una sola entrada, y hubo una segunda que se sacó el mismo día.** Primero se
+            construyeron dos —«Inicio», que mantiene a la persona que se está atendiendo, y «Nueva
+            llamada», que la suelta—, y la estudiante las vio y decidió que con «Inicio» alcanza.
+            Tenía razón, y por una razón mejor que el ahorro de espacio: **soltar a la persona es una
+            acción que cambia a quién se le está reservando**, y ese botón vive mejor pegado al nombre
+            de esa persona —donde ya está, «Otra persona» en la tarjeta «Atendiendo a»— que
+            en un menú, donde se toca por error y borra la llamada en curso. Con «Inicio» se llega
+            justo ahí, arriba, con la tarjeta a la vista.
+
+            Va con `data-accion` y no con `data-vista` porque **no es una sección**: es una acción. La
+            sección a la que lleva es «Reservar», y por eso al tocarla se subraya esa.
+          -->
+          <button class="navegacion__enlace" type="button" data-accion="inicio" hidden>Inicio</button>
           <button class="navegacion__enlace" type="button" data-vista="reservar">Reservar</button>
           <button class="navegacion__enlace" type="button" data-vista="citas">Mis citas</button>
           <button class="navegacion__enlace" type="button" data-vista="usuario">Usuario</button>
@@ -170,6 +231,98 @@
           </div>
         </section>
 
+        <!--
+          ══ Pantalla del cambio obligatorio de la contraseña temporal (pieza 7, RF-4) ══════════
+
+          Es una **tercera pantalla completa**, al mismo nivel que «entrar» y «la aplicación», y no
+          una tarjeta más adentro de la aplicación. La razón es RF-4: el sistema obliga a cambiar la
+          contraseña «antes de dejarlo hacer nada más», así que acá no hay menú, ni calendario, ni
+          citas. Solo esto y la salida.
+
+          **La obligación no la impone esta pantalla**: la impone el servidor. Mientras la cuenta
+          tenga la contraseña temporal pendiente, todos los endpoints del cliente contestan
+          `403 debe_cambiar_contrasena` (ver `servidor/sesion.js`). Esconder el menú es lo que se ve;
+          lo que manda está del otro lado.
+        -->
+        <section id="pantalla-cambiar-contrasena" class="pantalla" hidden>
+          <!--
+            `tarjeta--sola` le pone un ancho máximo a la tarjeta cuando es la única de la pantalla.
+            Esa clase existe desde la pieza 1 y hasta hoy no la usaba nadie: estaba escrita esperando
+            justamente una pantalla de una sola tarjeta.
+          -->
+          <div>
+            <article class="tarjeta tarjeta--sola">
+              <h2 class="tarjeta__titulo">Tenés que cambiar tu contraseña</h2>
+              <p class="tarjeta__nota">
+                Esta cuenta la creó el negocio con una contraseña temporal. Elegí una tuya para poder
+                seguir: así nadie más que vos la conoce.
+              </p>
+
+              <form id="forma-cambiar-contrasena" class="forma" novalidate>
+                <!--
+                  Este campo aparece **solo si la página se recargó** (decisión de la estudiante del
+                  2026-08-21). Lo normal es que la pantalla se acuerde de la contraseña temporal que
+                  la persona acaba de escribir para entrar, y la mande sola. Pero al recargar, esa
+                  memoria se borra, y entonces no hay más remedio que pedirla.
+                -->
+                <label id="campo-contrasena-temporal" class="campo" hidden>
+                  <span class="campo__etiqueta">Contraseña temporal</span>
+                  <input
+                    class="campo__control"
+                    type="password"
+                    name="contrasenaActual"
+                    autocomplete="current-password"
+                  />
+                </label>
+
+                <label class="campo">
+                  <span class="campo__etiqueta">Contraseña nueva</span>
+                  <input
+                    class="campo__control"
+                    type="password"
+                    name="contrasenaNueva"
+                    autocomplete="new-password"
+                    aria-describedby="requisitos-contrasena-nueva"
+                    required
+                  />
+                </label>
+
+                <!--
+                  Los mismos tres requisitos del registro, con la misma clase y el mismo
+                  `aria-live`. Son un **espejo** de RN-23: el servidor es el que decide.
+                -->
+                <ul id="requisitos-contrasena-nueva" class="requisitos" aria-live="polite">
+                  <li class="requisito" data-requisito="largo">
+                    Al menos 6 caracteres<span class="solo-lectores"></span>
+                  </li>
+                  <li class="requisito" data-requisito="letra-y-numero">
+                    Una letra mayúscula y un número<span class="solo-lectores"></span>
+                  </li>
+                  <li class="requisito" data-requisito="sin-acentos">
+                    No tildes<span class="solo-lectores"></span>
+                  </li>
+                </ul>
+
+                <label class="campo">
+                  <span class="campo__etiqueta">Repetí la contraseña nueva</span>
+                  <input
+                    class="campo__control"
+                    type="password"
+                    name="contrasenaRepetida"
+                    autocomplete="new-password"
+                    required
+                  />
+                </label>
+
+                <button class="boton" type="submit">Guardar mi contraseña</button>
+                <p id="aviso-cambiar-contrasena" class="aviso" role="alert" hidden></p>
+              </form>
+
+              <button class="boton boton--suave" type="button" data-accion="salir">Salir</button>
+            </article>
+          </div>
+        </section>
+
         <!-- Pantalla de quien ya entró: elegir servicio, elegir proveedor, ver el calendario. -->
         <section id="pantalla-dentro" class="pantalla" hidden>
           <div class="saludo">
@@ -238,6 +391,146 @@
             del tipo de servicio **se salta** cuando la categoría tiene uno solo (RN-22), y con un
             número escrito a mano la persona vería «1, 3, 4» y pensaría que se perdió algo.
           -->
+
+          <!--
+            ══ Paso: ¿quién llama? (pieza 7, RF-16 y RF-17) ═══════════════════════════════════
+
+            **Este paso existe solo para la cuenta de Personal**, y es lo único que se le agrega a
+            la pantalla de reservar (decidido por la estudiante el 2026-08-21). Los pasos de abajo
+            son exactamente los mismos que ve el cliente: el mismo calendario, las mismas fichas de
+            horario, la misma tarjeta de confirmar. Un segundo calendario para Personal sería un
+            segundo lugar donde el mismo defecto visual puede aparecer — es el mismo argumento con
+            el que reagendar reusó esta pantalla en la pieza 5.
+
+            Mientras no haya nadie elegido, **los pasos de abajo no se muestran**: Personal no puede
+            llegar al calendario sin saber para quién está reservando.
+          -->
+          <section id="paso-quien-llama" class="paso" hidden>
+            <h3 class="paso__titulo"><span class="paso__numero"></span> ¿Quién llama?</h3>
+
+            <article id="tarjeta-buscar-cliente" class="tarjeta">
+              <label class="campo">
+                <span class="campo__etiqueta">Nombre o correo de quien llama</span>
+                <!--
+                  `type="search"` es un campo de texto normal, pero le dice al navegador y a los
+                  lectores de pantalla que esto es una búsqueda. En un teléfono, además, cambia el
+                  botón del teclado por «buscar».
+                -->
+                <input
+                  id="buscar-cliente"
+                  class="campo__control"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Ana, ana@ejemplo.com…"
+                />
+              </label>
+
+              <p id="ayuda-buscar-cliente" class="campo__ayuda">
+                Escribí al menos 2 letras para buscar.
+              </p>
+
+              <!-- Los resultados. Cada uno es un botón, igual que las opciones de los otros pasos. -->
+              <div id="lista-clientes" class="opciones"></div>
+
+              <button id="boton-cuenta-nueva" class="boton boton--suave" type="button">
+                Crear la cuenta de quien llama
+              </button>
+            </article>
+
+            <!-- El formulario de la cuenta nueva. Dos campos: no se le pide un cuestionario a
+                 alguien que está al teléfono queriendo una cita. El teléfono y la fecha de
+                 nacimiento son opcionales (REG-2) y los completa después, en su sección «Usuario». -->
+            <article id="tarjeta-cuenta-nueva" class="tarjeta" hidden>
+              <h4 class="tarjeta__titulo">La cuenta de quien llama</h4>
+
+              <form id="forma-cuenta-nueva" class="forma" novalidate>
+                <label class="campo">
+                  <span class="campo__etiqueta">Nombre</span>
+                  <input class="campo__control" type="text" name="nombre" autocomplete="off" required />
+                </label>
+
+                <label class="campo">
+                  <span class="campo__etiqueta">Correo</span>
+                  <input
+                    class="campo__control"
+                    type="email"
+                    name="correo"
+                    inputmode="email"
+                    autocomplete="off"
+                    required
+                  />
+                </label>
+
+                <p class="campo__ayuda">
+                  El sistema le va a inventar una contraseña temporal para que se la dictes por
+                  teléfono. La persona está obligada a cambiarla la primera vez que entre.
+                </p>
+
+                <div class="confirmacion__botones">
+                  <button class="boton" type="submit">Crear la cuenta</button>
+                  <button id="boton-cancelar-cuenta-nueva" class="boton boton--suave" type="button">
+                    Cancelar
+                  </button>
+                </div>
+
+                <p id="aviso-cuenta-nueva" class="aviso" role="alert" hidden></p>
+              </form>
+            </article>
+
+            <!--
+              La contraseña temporal recién creada. Se muestra **una sola vez**: en la base queda
+              solo su huella cifrada, así que ni el sistema puede volver a leerla.
+            -->
+            <article id="tarjeta-contrasena-temporal" class="tarjeta" hidden>
+              <h4 class="tarjeta__titulo">Dictale esta contraseña por teléfono</h4>
+              <p id="contrasena-temporal" class="contrasena-temporal"></p>
+              <p class="tarjeta__nota">
+                Anotala antes de seguir: no se puede volver a ver. La persona va a tener que
+                cambiarla la primera vez que entre.
+              </p>
+            </article>
+
+            <!-- A quién se está atendiendo, para no perderlo de vista durante la llamada. -->
+            <article id="atendiendo-a" class="tarjeta" hidden>
+              <dl class="resumen">
+                <div class="resumen__fila">
+                  <dt class="resumen__que">Atendiendo a</dt>
+                  <dd id="atendiendo-nombre" class="resumen__dato"></dd>
+                </div>
+                <div class="resumen__fila">
+                  <dt class="resumen__que">Correo</dt>
+                  <dd id="atendiendo-correo" class="resumen__dato"></dd>
+                </div>
+              </dl>
+
+              <!--
+                Los dos botones de la llamada en curso, uno al lado del otro *(el segundo lo pidió la
+                estudiante el 2026-08-21)*. Están **acá adentro** y no en el menú a propósito: los dos
+                hablan de **esta persona**, así que viven pegados a su nombre. Y por eso mismo
+                aparecen y desaparecen con la tarjeta, sin ninguna línea de código extra — si no hay
+                nadie elegido, no hay nada de lo que hablar.
+
+                Van los dos con el mismo peso visual (`boton--suave`, con borde índigo) porque
+                ninguno es más importante que el otro: uno lleva a mirar, el otro cierra la llamada.
+                Ninguno es una acción que confirme algo, así que ninguno es el botón lleno que
+                `VISUALS.md` reserva para eso.
+
+                `confirmacion__botones` es la clase que ya usan las otras tres filas de dos botones de
+                la aplicación: apilados en teléfono, uno al lado del otro desde tableta. El
+                modificador `--fila-centrada` le cambia dos cosas **solo acá** *(pedido de la
+                estudiante el 2026-08-21)*: pasan a fila **a 476px**, mucho antes que el resto de la
+                aplicación, y van **centrados** en vez de pegados a la izquierda.
+              -->
+              <div class="confirmacion__botones confirmacion__botones--fila-centrada">
+                <button id="boton-ver-citas-del-cliente" class="boton boton--suave" type="button">
+                  Citas del cliente
+                </button>
+                <button id="boton-cambiar-cliente" class="boton boton--suave" type="button">
+                  Otra persona
+                </button>
+              </div>
+            </article>
+          </section>
 
           <!-- Paso: la categoría ──────────────────────────────────────────────────────────── -->
           <!-- Tiene `id` desde la pieza 5: en modo reagendar este paso se esconde, igual que los
@@ -366,12 +659,29 @@
           -->
           <div id="vista-citas" class="vista" hidden>
             <section class="paso">
-              <h3 class="paso__titulo">Tus próximas citas</h3>
+              <!--
+                El título **lo escribe el JavaScript** desde la pieza 7, y **nombra a la persona**
+                cuando mira Personal: «Próximas citas de Marisol Prueba». Un «tus» ahí sería falso, y
+                un «sus» —que es lo que decía hasta el 2026-08-21— no alcanza: el único nombre que
+                quedaba en pantalla era el de la asistente, arriba, así que nada decía de quién eran
+                esas citas. Los tres casos están explicados en `pintarLosTitulosDeLasCitas`.
+              -->
+              <h3 id="titulo-proximas" class="paso__titulo">Tus próximas citas</h3>
 
               <!-- Acá aterriza el aviso de que la reserva quedó hecha, o la cita cancelada. -->
               <p id="aviso-citas" class="aviso aviso--informativo" role="status" hidden></p>
 
-              <article class="tarjeta">
+              <!--
+                Solo para Personal, y solo cuando todavía no eligió a nadie: esta sección muestra las
+                citas de una persona, así que sin persona no hay nada que mostrar. Va en lavanda
+                (`aviso--informativo`) porque no es un error: es una indicación de qué hacer.
+              -->
+              <p id="citas-sin-cliente" class="aviso aviso--informativo" role="status" hidden>
+                Todavía no elegiste a quién estás atendiendo. Andá a «Reservar» y buscalo en el paso
+                «¿Quién llama?».
+              </p>
+
+              <article id="tarjeta-citas" class="tarjeta">
                 <p id="citas-vacio" class="tarjeta__nota" hidden>
                   No tenés ninguna cita próxima. Andá a «Reservar» y elegí un horario.
                 </p>
@@ -397,7 +707,11 @@
               que la lista de abajo ya muestra.
             -->
             <section id="seccion-historial" class="paso paso--titulo-pegado" hidden>
-              <h3 class="paso__titulo">Historial</h3>
+              <!--
+                El título lo escribe el JavaScript desde el 2026-08-21, por lo mismo que el de arriba:
+                cuando mira Personal tiene que decir **de quién** es el historial.
+              -->
+              <h3 id="titulo-historial" class="paso__titulo">Historial</h3>
 
               <article class="tarjeta">
                 <ul id="lista-historial" class="citas"></ul>
@@ -517,6 +831,8 @@
     <footer class="pie">
       <div class="envoltura pie__interior">
         <nav id="menu-pie" class="pie__menu" aria-label="Secciones" hidden>
+          <!-- La misma entrada de Personal que arriba: los dos menús llevan lo mismo. -->
+          <button class="pie__enlace" type="button" data-accion="inicio" hidden>Inicio</button>
           <button class="pie__enlace" type="button" data-vista="reservar">Reservar</button>
           <button class="pie__enlace" type="button" data-vista="citas">Mis citas</button>
           <button class="pie__enlace" type="button" data-vista="usuario">Usuario</button>

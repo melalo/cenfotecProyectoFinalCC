@@ -133,7 +133,12 @@ $radio-tarjeta: 0.75rem;
 // El `rounded.full` de VISUALS.md: un número enorme para que algo cuadrado quede redondo.
 $radio-circulo: 9999px;
 
-// Los dos puntos donde la pantalla cambia. Mobile-first: hasta acá, todo es teléfono.
+// Los puntos donde la pantalla cambia. Mobile-first: hasta acá, todo es teléfono.
+//
+// Los dos primeros son los cortes generales del proyecto, y no se tocan. El tercero es más chico y
+// más específico: lo pidió la estudiante el 2026-08-21 para que **una** fila de dos botones pase a
+// estar lado a lado antes que el resto de la aplicación, sin esperar a la tableta.
+$angosto: 29.75rem; // 476px
 $tableta: 48rem; // 768px
 $escritorio: 64rem; // 1024px
 
@@ -267,6 +272,44 @@ body {
     gap: $stack-sm;
   }
 
+  // La marca entera —la flor **y** el nombre— es el «volver al inicio» desde el 2026-08-21.
+  //
+  // Este enlace es el que ahora reparte el logo y los textos en fila, que es lo que antes hacía
+  // `&__marca`: al envolver a los dos en un solo elemento, la fila tiene que estar acá adentro o los
+  // dos quedarían uno debajo del otro.
+  //
+  // No se ve como un enlace: sin subrayado y con el color que ya tenían los textos. La única señal
+  // de que es tocable es el cursor y lo que pasa al pasarle el mouse.
+  &__inicio {
+    display: flex;
+    align-items: center;
+    gap: $stack-sm;
+    color: inherit;
+    text-decoration: none;
+
+    // Sin dirección no es un enlace: es la marca, quieta. Pasa en la pantalla de entrar y en la del
+    // cambio obligatorio de contraseña. Se ve **exactamente igual** —no se atenúa—, porque sigue
+    // siendo el logo del negocio y uno pálido parecería que algo está mal cargado.
+    &:not([href]) {
+      cursor: default;
+    }
+
+    // Con dirección, la única señal de que es tocable es el cursor. **Nada más: ni subrayado, ni
+    // cambio de color, ni atenuar la marca** *(pedido de la estudiante el 2026-08-21)*. Es el logo y
+    // el nombre del negocio, y cualquier efecto al pasar el mouse los hace parpadear en el lugar más
+    // visible de la pantalla.
+    &[href] {
+      cursor: pointer;
+    }
+
+    // El mismo contorno que usa la hamburguesa, para que el foco del teclado se vea igual en todo
+    // el encabezado. No es un valor nuevo: es el que ya estaba.
+    &:focus-visible {
+      outline: 2px solid $azul-claro;
+      outline-offset: 2px;
+    }
+  }
+
   // El logo del negocio, que la estudiante agregó el 2026-08-19.
   //
   // El PNG tiene fondo transparente, así que la flor apoya directo sobre el azul marino sin ningún
@@ -366,6 +409,11 @@ body {
   @media (min-width: $tableta) {
     display: flex;
     flex-direction: row;
+    // Envuelve si no cabe, igual que el menú del pie. Hizo falta el 2026-08-21, cuando el menú de
+    // Personal pasó de tres entradas a cinco: en 768px justos, cuatro entradas visibles con textos
+    // largos («NUEVA LLAMADA», «CITAS DEL CLIENTE») quedan al borde de desbordar, y una fila que
+    // desborda empuja el contenido fuera de la pantalla en vez de bajar a la línea siguiente.
+    flex-wrap: wrap;
     gap: $stack-sm;
   }
 
@@ -987,6 +1035,61 @@ body {
     letter-spacing: 0.01em;
     color: $texto-suave;
   }
+
+  // ── La variante con acción a la derecha (pieza 7, pedida el 2026-08-21) ────────────────────
+  //
+  // La usan **solo los resultados de buscar a quien llama**: el nombre y el correo a la izquierda, y
+  // «Seleccionar» a la derecha, centrado en vertical. Las otras tres listas de opciones —categorías,
+  // tipos de servicio y terapistas— siguen exactamente como estaban.
+  //
+  // El renglón deja de ser una columna y pasa a ser una fila con los datos apilados adentro. Por eso
+  // hace falta `&__datos`: con el nombre y el correo como hijos directos de la fila quedarían uno al
+  // lado del otro, no uno debajo del otro.
+  &--con-accion {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: $stack-sm;
+  }
+
+  &__datos {
+    @include columna($base);
+
+    // `min-width: 0` es lo que permite que un correo largo se encoja en vez de empujar el
+    // «Seleccionar» fuera de la tarjeta. Es la misma razón por la que el proyecto escribe
+    // `minmax(0, 1fr)` y nunca `1fr` a secas: sin esto, un hijo de una fila se niega a ser más
+    // angosto que su contenido.
+    min-width: 0;
+  }
+
+  // `Seleccionar` **no es un botón de verdad**, y no puede serlo: el renglón entero ya es un
+  // `<button>`, y adentro de un botón no puede haber otro — es HTML inválido, igual que un `<h1>`
+  // adentro de un botón. Es un `<span>` que **se ve** como el botón chico de apoyo del proyecto
+  // (reusa las clases `boton boton--suave boton--chico`, sin inventar ningún valor nuevo), y lo que
+  // hace lo hace el renglón: así se puede tocar el nombre, el correo o el rectangulito, y los tres
+  // funcionan.
+  &__accion {
+    // Que no se encoja: el que cede ancho es el bloque de los datos, no esto.
+    flex: 0 0 auto;
+    // Y que se quede a su ancho, el del texto.
+    width: auto;
+
+    // **Esta línea no es de más, y es la que costó encontrar.** `.boton` trae
+    // `align-self: flex-start` desde tableta —para que un botón suelto no se estire a lo alto de su
+    // columna—, y eso le gana al `align-items: center` de la fila: sin escribirlo, «Seleccionar»
+    // quedaría pegado arriba en cuanto la pantalla pasara los 768px, justo donde nadie lo estaba
+    // mirando. Se encontró leyendo el CSS compilado, no la pantalla.
+    align-self: center;
+  }
+
+  // Al pasar el mouse por **cualquier parte** del renglón, el rectangulito se pinta. Sin esto solo
+  // se pintaría al pasar exactamente por encima de él, y parecería que es lo único tocable — que es
+  // justo lo contrario de como funciona.
+  &:hover &__accion {
+    color: $blanco;
+    background-color: $indigo;
+    border-color: $indigo;
+  }
 }
 
 // ── El calendario ────────────────────────────────────────────────────────────────────────────
@@ -1390,6 +1493,41 @@ body {
     flex-direction: row;
     gap: $stack-sm;
   }
+
+  // ── La variante de la tarjeta «Atendiendo a» ───────────────────────────────────────────────
+  //
+  // Dos diferencias, las dos pedidas por la estudiante el 2026-08-21:
+  //
+  //   1. **Pasa a fila mucho antes**, a 476px en vez de esperar los 768 de la tableta.
+  //   2. **Los dos botones van centrados**, no pegados a la izquierda como en las otras filas.
+  //
+  // Va como modificador y **no cambiando `.confirmacion__botones` a secas**, que es el mismo
+  // criterio con el que la pieza 5 creó `paso--titulo-pegado`: esa clase la usan otras tres filas de
+  // dos botones —confirmar la reserva, guardar los datos del usuario, crear la cuenta de quien
+  // llama—, y todas fueron revisadas y aprobadas como están. Cambiar la clase compartida las movería
+  // a las cuatro. Si algún día se quiere ese cambio para todas, es mover estas líneas adentro de la
+  // clase y borrar el modificador.
+  //
+  // El ancho de cada botón se fija en **48%** *(pedido de la estudiante el 2026-08-21)*. Hay que
+  // escribirlo: `.boton` mide el 100% del ancho hasta la tableta —que es lo cómodo para el pulgar
+  // cuando van apilados— y un botón que quiere medir todo el ancho no se puede centrar, porque ya lo
+  // ocupa.
+  //
+  // 48% y 48% son 96%, y el 4% que sobra es lo que deja aire a los costados de la fila centrada. La
+  // separación de 16px entra en ese sobrante: a 476px son 396px de botones y 16 de separación en 412
+  // disponibles, así que entra justo. Y si algún día no entrara, los botones se encogen en vez de
+  // desbordar — es lo que hace `flex` por defecto.
+  &--fila-centrada {
+    @media (min-width: $angosto) {
+      flex-direction: row;
+      justify-content: center;
+      gap: $stack-sm;
+
+      .boton {
+        width: 48%;
+      }
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════ mis citas (pieza 3)
@@ -1498,4 +1636,36 @@ body {
     line-height: 16px;
     color: $texto-suave;
   }
+}
+
+// ══════════════════════════════════════════════════════ la contraseña temporal (pieza 7)
+//
+// El texto que Personal le dicta por teléfono a quien acaba de crear su cuenta. Es el único texto de
+// toda la aplicación que se lee **letra por letra en voz alta**, y de eso salen sus tres diferencias:
+//
+//   1. **Grande.** 24px, el `headline-md` de `VISUALS.md`: es el mismo tamaño de un título de
+//      tarjeta, porque acá el dato *es* el contenido.
+//   2. **Con las letras separadas.** El `letter-spacing` de 2px no es decoración: dictando
+//      «Girasol472» hay que poder distinguir una letra de la siguiente sin dudar.
+//   3. **En un recuadro lavanda**, el mismo `aviso--informativo` del resto del proyecto: no es una
+//      buena noticia ni un error, es un dato que hay que anotar — que es justo para lo que este
+//      proyecto reserva el lavanda.
+//
+// **No va en la tipografía de ancho fijo** que suele usarse para las contraseñas. Manrope es la
+// tipografía del sistema visual y `VISUALS.md` no nombra ninguna otra: si un valor no está ahí, no
+// se inventa acá (`CLAUDE.md`, «Lo visual»). Y las palabras de esta contraseña son palabras de
+// verdad, no letras al azar, así que la ventaja de la de ancho fijo —distinguir la l del 1— no hace
+// falta: la lista de palabras no tiene ninguna de las dos junto a la otra.
+.contrasena-temporal {
+  margin: 0;
+  padding: $stack-sm;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+  letter-spacing: 2px;
+  // `word-break` es lo que impide que una contraseña larga se salga de la tarjeta en un teléfono.
+  word-break: break-all;
+  color: $indigo-texto;
+  background-color: $indigo-suave;
+  border-radius: $radio-control;
 }

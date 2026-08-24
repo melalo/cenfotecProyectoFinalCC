@@ -120,7 +120,7 @@ test("sin sesión abierta no se pueden ver las citas de nadie", async (t) => {
   assert.equal(respuesta.estado, 401)
 })
 
-test("la cuenta de Personal no reserva por estos endpoints", async (t) => {
+test("Personal no puede reservar sin decir para quién es la cita", async (t) => {
   const entorno = await crearEntornoDePrueba(t, { reloj: relojDetenidoEn(MOMENTO_DE_PRUEBA) })
   const navegadorDeAna = crearNavegador(entorno)
   await entrarComoClienta(navegadorDeAna)
@@ -133,19 +133,30 @@ test("la cuenta de Personal no reserva por estos endpoints", async (t) => {
   const navegadorDePersonal = crearNavegador(entorno)
   await entrarComoPersonal(navegadorDePersonal)
 
-  // Sin este rechazo la cita quedaría guardada con el id de Personal en la columna `cliente_id`,
-  // que es el id de OTRA persona de la tabla `cliente`. Reservar en nombre de quien llama es la
-  // pieza 7, con su propio recorrido (RN-11, RN-12).
+  // ── Esta prueba cambió al construir la pieza 7, el 2026-08-21 ──────────────────────────────
+  //
+  // Hasta entonces decía que este endpoint le contestaba `403 solo_clientes` a la cuenta de
+  // Personal, y su comentario aclaraba «reservar en nombre de quien llama es la pieza 7». Ya llegó:
+  // desde la pieza 7 **Personal sí reserva por acá** (RF-16), mandando además `clienteId`.
+  //
+  // Lo que esta prueba protege sigue siendo exactamente lo mismo, y por eso no se borró: que una
+  // cita **nunca** quede guardada con el id de Personal en la columna `cliente_id`, que es el id de
+  // OTRA persona de la tabla `cliente`. Antes eso se lograba cerrándole la puerta; ahora,
+  // obligándolo a decir para quién. Cambió el número —`422` en vez de `403`— y no cambió el peligro.
   const respuesta = await navegadorDePersonal("/api/citas", {
     method: "POST",
     cuerpo: { servicioId: masaje.id, proveedorId: ana.id, inicio: momento(MANANA, 10) },
   })
 
-  assert.equal(respuesta.estado, 403)
-  assert.equal(respuesta.cuerpo.error, "solo_clientes")
+  assert.equal(respuesta.estado, 422)
+  assert.equal(respuesta.cuerpo.error, "datos_incompletos")
 
+  // Y «mis citas» sí le sigue diciendo que no, porque esa lista es «las citas de quien está en
+  // sesión» y Personal no tiene citas propias: las de un cliente las ve por
+  // `/api/personal/clientes/:clienteId/citas` (pieza 7).
   const citas = await navegadorDePersonal("/api/citas")
   assert.equal(citas.estado, 403)
+  assert.equal(citas.cuerpo.error, "solo_clientes")
 
   // Y nada quedó guardado.
   const cuantas = entorno.base.prepare("SELECT COUNT(*) AS cuantas FROM cita").get()

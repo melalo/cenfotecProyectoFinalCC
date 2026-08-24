@@ -359,6 +359,98 @@ Esta pieza **no crea ninguna tabla nueva** —las columnas `cancelada_en` y `can
 en `cita` desde la pieza 3, vacías, esperando— así que el borrado sigue estando completo. Se
 comprobó, no se supuso.
 
+## Decisiones tomadas al construir la pieza 7
+
+*Construida el 2026-08-21. Es **casi una segunda aplicación**: la misma pantalla, para otro tipo de
+usuario. Trae la **otra mitad de CA-3** —la asistente sí puede cancelar dentro de las 4 horas
+(RN-6)— y es la pieza más larga del plan, con 10 comprobaciones. Su revisión visual **corrigió una
+regla de negocio**, RN-4, con la regla nueva RN-25: hasta ese día Personal tampoco podía agendar para
+hoy.*
+
+**Las cuatro decisiones de la estudiante, tomadas el 2026-08-21 antes de escribir una línea:**
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| Cómo se organiza la pantalla de Personal | Un paso más arriba de los de siempre; una sección nueva con todo adentro; dos secciones separadas | **Un paso más, arriba de los de siempre**: el paso «¿Quién llama?» se agrega antes de «Elegí qué buscás», y la sección de citas muestra las del cliente elegido | Reusa el calendario, las fichas de horario y la tarjeta de confirmar **tal como están**. Es el mismo argumento con el que reagendar reusó la pantalla de reservar en la pieza 5: un segundo calendario sería un segundo lugar donde el mismo defecto visual puede aparecer. Y no cuesta backend: los endpoints del catálogo y del calendario ya aceptaban la sesión de Personal desde la pieza 2, porque piden **que haya sesión**, no que sea de cliente. |
+| Qué forma tiene la contraseña temporal | Ocho letras y números al azar en mayúscula; siempre la misma palabra y cuatro números; una palabra y tres números | **Una palabra de una lista corta, con mayúscula inicial, y tres números al azar**: `Girasol472` | Hay que **dictarla por teléfono** (RN-11), y eso es lo que decide. Ocho caracteres al azar son mucho más difíciles de adivinar pero se dictan mal y con errores. Una palabra fija sería lo más cómodo y lo más débil: quien sepa la palabra solo prueba diez mil números. La palabra variable deja ~200.000 combinaciones, y sobre todo: la persona **está obligada** a cambiarla en cuanto entra (RF-4), sobre una cuenta recién creada que todavía no tiene ninguna cita adentro. |
+| Si el formulario de cambio pide otra vez la temporal | Tres campos, con la temporal escrita de nuevo; dos campos, y la pantalla se acuerda | **Dos campos**: la nueva y su repetición. La temporal viaja sola, desde la memoria de la pantalla | Es un campo menos justo después de haberlo escrito para entrar. **El caso que esto abre está resuelto:** si la persona **recarga la página** antes de cambiarla, la pantalla pierde lo que tenía en memoria — y ahí, **solo ahí**, aparece el tercer campo pidiendo la temporal. La contraseña nunca queda guardada en ningún lado: vive en una variable del navegador que muere al recargar. |
+| Qué muestra el buscador de clientes con el campo vacío | La lista completa de clientes; nada hasta escribir 2 letras | **Nada hasta escribir 2 letras** | Personal siempre sabe con quién está hablando: no necesita elegir de una lista. Y una lista con todos deja los correos de todos los clientes a la vista de cualquiera que pase por atrás del mostrador, y crece para siempre. |
+
+| Qué muestra la pantalla de citas cuando la mira Personal | «Sus próximas citas»; el nombre en un cartel aparte; **el nombre en el título** | **El nombre en los dos títulos de la sección**: «Próximas citas de Marisol Prueba» y «Historial de Marisol Prueba» | Mirando la pantalla el 2026-08-21 apareció que **el único nombre visible era el de la asistente** («Hola, Marta Jiménez»), así que nada decía de quién eran las citas que estaba mirando. «Sus» es un pronombre, y un pronombre necesita que alguien ya haya dicho de quién habla. La solución la propuso la estudiante. Van los **dos** títulos y no solo el primero, porque un título con nombre seguido de un «Historial» pelado deja la duda de si lo de abajo es de la misma persona. |
+
+**Las decisiones técnicas que la construcción obligó a tomar:**
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| Dónde vive la regla de RF-4 («no puede hacer nada más hasta cambiarla») | En cada endpoint de cliente; en la pantalla; en el guardia de la sesión | **En el guardia de cliente de `servidor/sesion.js`** | Es una regla, y una regla se escribe **en un solo lugar**. Escrita ahí la cumplen todos los endpoints del cliente de una sola vez —las citas y `mi-informacion`— y también los que se agreguen mañana, sin que nadie tenga que acordarse. En la pantalla no puede vivir: el frontend no decide reglas de negocio, y quien mande el pedido al API por fuera de la página se la saltearía. El guardia pasó a necesitar la base de datos para poder mirar la columna, y por eso ahora recibe `base`. |
+| Qué endpoints quedan abiertos con la contraseña temporal pendiente | Solo `contrasena/cambiar`; los tres que la pantalla necesita | **`GET /api/yo`, `DELETE /api/sesion` y `POST /api/contrasena/cambiar`** | Son exactamente los tres sin los cuales esa pantalla no podría existir: uno para saber quién entró y que le falta cambiarla, otro para poder cambiarla, y el tercero para poder irse. Ninguno de los tres deja hacer nada de negocio. |
+| Cómo ve Personal las citas del cliente | `GET /api/citas?clienteId=`; una puerta nueva bajo `/api/personal/` | **`GET /api/personal/clientes/:clienteId/citas`** | El plan dejaba a Personal cancelar la cita de un cliente pero **no decía cómo la ve para poder tocarla**. Todas las puertas que solo abre Personal viven en el mismo pasillo `/api/personal/`, con el mismo guardia: así el permiso se lee de un vistazo en la dirección, y no queda la tentación de que un cliente cuele un `clienteId` ajeno en la puerta de siempre. Quedó escrita en el bloque *Produce* de la pieza 7 de `PLAN.md` **antes** de construirse. |
+| Cómo distingue el servidor quién está actuando en reservar, cancelar y reagendar | Endpoints separados para Personal; un guardia que deja pasar a los dos | **Un guardia que deja pasar a los dos** (`crearGuardiaDeClienteOPersonal`) y le deja anotado a la ruta cuál entró | Endpoints separados serían **la misma regla escrita dos veces**: el día que la ventana cambie de 4 a 2 horas habría dos lugares donde acordarse. Con un guardia, `POST`, `DELETE` y `PATCH /api/citas` son los mismos de siempre y lo único que cambia es el valor de `quien` que le pasan a `reservas.js` — que es justo el parámetro que la pieza 5 dejó puesto para esto. |
+| Si `POST /api/contrasena/cambiar` es solo para clientes | Solo clientes; cualquier sesión | **Cualquier sesión** | Es el endpoint genérico de cambiar la contraseña, y Personal también tiene una. La columna `debe_cambiar_contrasena` solo existe para clientes, así que para Personal simplemente no hay nada que apagar. La pieza 9 —restablecer la olvidada— va a reusar la misma comprobación de RN-23 desde `credenciales.js`. |
+
+**La quinta decisión, tomada durante la revisión visual del mismo día:**
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| Si Personal puede reservar para **hoy** | Arreglar solo el texto absurdo y dejar la regla como estaba; cambiar también la regla | **Cambiar también la regla** (RN-25): Personal puede reservar, y mover una cita, a cualquier horario de hoy que **todavía no haya empezado** | La estudiante abrió el día de hoy con la cuenta de Personal y leyó *«No se puede reservar para hoy. Si necesitás una cita hoy, **llamá al negocio** al 2000-0000»* — un cartel diciéndole a la asistente del negocio que llame al negocio. El texto era absurdo **porque la regla detrás tenía un hueco**, y es **el mismo hueco que RN-6 existe para tapar**: la aplicación le dice al cliente «para una cita hoy, llamá al negocio», el cliente llama, y la asistente descubría que ella tampoco podía — así que esa cita se anotaba en un papel, que es exactamente la segunda fuente de verdad que `NEGOCIO.md` dice haber eliminado. **CA-2 no se tocó:** el cliente sigue sin poder, y eso es lo que el curso exige proteger. |
+
+**Las dos decisiones que siguieron, en la misma revisión visual:**
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| Cómo se vuelve a la pantalla principal | Una entrada «Inicio» que mantiene a la persona atendida; una que la suelta; las dos separadas | **Una sola entrada, «Inicio»**, que vuelve al principio **manteniendo** a la persona atendida. Y **la marca del encabezado —el logo y el nombre— lleva al inicio, para las dos cuentas** | Estando en «Citas del cliente» no había ninguna entrada de menú que se leyera como «volver al principio»: había «Reservar» y «Citas del cliente», y ninguna de las dos dice eso. **Se construyeron las dos entradas y la estudiante decidió, viéndolas en pantalla, que con «Inicio» alcanzaba** — y tenía razón por un motivo mejor que el ahorro de espacio: soltar a la persona es una acción que **cambia a quién se le está reservando**, y ese botón vive mejor pegado al nombre de esa persona («Atender a otra persona», en la tarjeta «Atendiendo a») que en un menú, donde se toca por error y borra la llamada en curso. Con «Inicio» se llega justo ahí. **La marca la pidió la estudiante aparte**, y después corrigió el alcance: el logo «es también el texto que dice Bienestar y salud», así que el enlace envuelve los dos. Eso obligó a que sea un `<a>` y no un `<button>`, porque adentro va el `<h1>` del negocio y un `<h1>` dentro de un `<button>` es HTML inválido. |
+| Si el cliente necesita un mínimo de anticipación en horas | No agregar nada; exigirle 4 horas sumadas a «no hoy»; **reemplazar** «no hoy» por 4 horas | **No agregar nada** | La estudiante pidió un mínimo de 4 horas «igual que para cancelar», y al mirarlo apareció que **al reservar las 4 horas serían una apertura, no una restricción**: como la regla es «no hoy», el mínimo real que el sistema ya garantiza es de **poco más de 9 horas** —quien reserva a las 23:59 para las 9:00 del día siguiente—. Sumadas a «no hoy», las 4 horas **nunca podrían rechazar nada**: una protección visible en el código que no existe. Reemplazando a «no hoy», dejarían al cliente reservar el mismo día y **eliminarían CA-2**, uno de los tres criterios de aceptación que el curso exige proteger con pruebas. Con el dato de las 9 horas a la vista, la estudiante decidió no cambiar nada: su criterio ya estaba cumplido con margen. *Decidido el 2026-08-21.* |
+
+**Cómo se construyó esa regla sin escribirla dos veces.** La diferencia entre los dos actores quedó
+en **una sola función** de `servidor/disponibilidad.js`, `estaEnSuTiempo`, que es la que usan las dos
+preguntas del archivo: el calendario del mes y la revisión de un horario suelto. Eso es lo que impide
+el defecto más caro que ese archivo puede tener —que el calendario ofrezca un horario que la reserva
+después rechace—, porque las dos respuestas salen del mismo lugar.
+
+**Y una mudanza que la regla obligó.** `QUIEN_CLIENTE` y `QUIEN_PERSONAL` vivían en
+`servidor/reservas.js` desde la pieza 5. Ahora `servidor/disponibilidad.js` también las necesita, y
+`reservas.js` ya le pedía cosas a `disponibilidad.js`: los dos archivos habrían quedado
+importándose mutuamente, que es un **círculo de importaciones** —JavaScript a veces lo tolera y a
+veces deja una de las dos cosas sin valor, según cuál se cargue primero—. Se sacaron a un tercer
+archivo que no depende de nadie, `servidor/quien-actua.js`, y `reservas.js` las vuelve a exportar para
+que nada de lo que ya las pedía ahí tenga que cambiar. La alternativa era escribir el texto
+`"personal"` a mano dentro de `disponibilidad.js`, que es exactamente lo que `CLAUDE.md` prohíbe.
+
+**Una cosa que se decidió NO cambiar, y queda anotada:** el aviso de RN-14 —«no queda ningún horario
+libre en los próximos 7 días»— se sigue calculando siempre con la vara del **cliente**, empezando
+mañana, incluso cuando lo mira Personal. RN-14 es una regla del cliente («si al entrar **el cliente**
+no encuentra…»), y así Personal ve el mismo aviso que vería la persona con la que está hablando, que
+es la información útil en una llamada. El único caso en que la frase quedaría corta es que hoy tenga
+horarios libres y los 7 días siguientes ninguno.
+
+**Ningún archivo nuevo en la base de datos, y vale decir por qué se comprobó:** la regla del proyecto
+es que **una tabla nueva que apunte a otra hay que agregarla al borrado de
+`guiones/datos-de-prueba.js`, primero de todo**. Esta pieza **no crea ninguna tabla ni ninguna
+columna**: `canal`, `personal_id_creador` y `debe_cambiar_contrasena` ya existían vacías desde las
+piezas 1 y 3, esperando esta pieza. Así que el borrado sigue completo. Se comprobó leyendo el guion,
+no se supuso.
+
+### Las tres decisiones del cierre de la pieza 7 (2026-08-24)
+
+*Tomadas por la estudiante al terminar la revisión visual, con la aplicación levantada y mirando la
+pantalla. Las tres estaban anotadas como abiertas desde el 2026-08-21 y ninguna se resolvió en
+silencio.*
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| La etiqueta del segundo botón de «Atendiendo a», que partía en dos líneas entre 476 y 640px | Dejarla como estaba; ensanchar el botón o mover el corte de 476px; **acortar la etiqueta** | **Acortarla a «Otra persona»** | Entra en una línea desde 476px. Ensanchar el botón o mover el corte tocaría dos medidas que **la estudiante misma eligió mirando la pantalla** (el 48% y el 476px), así que se cambia lo que nadie había decidido a propósito. Y el verbo no se pierde: ya está dicho en el título de la tarjeta que contiene al botón, «Atendiendo a». **Es un cambio de texto en la vista: ninguna función, ningún endpoint, ninguna prueba.** |
+| Si el corte de 476px vale para las cuatro filas de dos botones o solo para esta | Unificarlo moviendo cinco líneas a la clase compartida y borrando el modificador; **dejarlo como modificador** | **Dejarlo como modificador** (`confirmacion__botones--fila-centrada`) | Las otras tres filas —confirmar la reserva, guardar los datos del usuario, crear la cuenta de quien llama— **ya fueron revisadas y aprobadas como están**, y unificar las movería a las cuatro sin que nadie las hubiera vuelto a mirar. Es el mismo criterio con el que la pieza 5 creó `paso--titulo-pegado`. **El costo se asume a propósito y queda escrito:** entre 476 y 767px la aplicación tiene dos comportamientos distintos. |
+| Los botones «Reagendar» y «Cancelar» que le aparecen a Personal sobre una cita que ya pasó | Sacarlos escribiendo una regla nueva; dejarlos y declararlo correcto; **diferir la decisión a la pieza 8** | **Diferirla a la pieza 8**, dejando los botones como están | No es un error del código: sale de leer **RN-6** («Personal no tiene ventana de cancelación») junto con **RN-17** («ninguna cita cambia de estado por el solo paso del tiempo»), y **la especificación no prohíbe** que Personal toque una cita pasada — restringirlo sería **inventar una regla desde el código**, que es justo lo que este proyecto no hace. La pieza 8 es la que trae las herramientas pensadas para las citas pasadas (marcar «completada» o «no asistió»), así que conviene decidirlo con las dos pantallas a la vista. **Si se restringe, la regla se escribe primero en `ESPECIFICACION.md`.** |
+
+**Y una decisión sobre cómo se revisa, no sobre qué se construye.** Ese mismo día se reportó un
+defecto que no existía: el campo de la contraseña temporal «no aparecía» al recargar. Se investigó
+antes de tocar nada —el servidor reproducido con `curl`, el JavaScript servido comparado contra el
+del disco, el CSS compilado y el código—, y **todo estaba correcto**. Lo que había fallado era el
+**recorrido escrito**, que hacía tocar «Salir» a destiempo, en una pantalla que tiene su propio botón
+«Salir». Quedó como convención en `CLAUDE.md`: **un recorrido de revisión tiene que decir qué botones
+no tocar.** Se anota porque una investigación que termina sin defecto **también es trabajo hecho**, y
+porque el reflejo contrario —«arreglar» algo que no estaba roto— habría metido un defecto de verdad.
+
 ## El sistema visual
 
 La apariencia de la aplicación no se inventa en el código: sale de **`VISUALS.md`**, el sistema

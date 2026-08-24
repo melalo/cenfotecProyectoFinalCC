@@ -192,8 +192,8 @@ test("sin sesión abierta no se puede reagendar una cita", async (t) => {
   assert.equal(respuesta.cuerpo.error, "sin_sesion")
 })
 
-test("la cuenta de Personal no cancela desde estos endpoints: eso es la pieza 7", async (t) => {
-  const { entorno, reservar } = await prepararCitas(t)
+test("desde la pieza 7, la cuenta de Personal SÍ cancela desde estos endpoints", async (t) => {
+  const { entorno, reservar, filaDeLaCita } = await prepararCitas(t)
   const reservada = await reservar(momento(MANANA, 10))
 
   const personal = crearNavegador(entorno)
@@ -201,9 +201,18 @@ test("la cuenta de Personal no cancela desde estos endpoints: eso es la pieza 7"
 
   const respuesta = await personal(`/api/citas/${reservada.cuerpo.id}`, { method: "DELETE" })
 
-  // La cuenta es válida, pero estos dos endpoints son «mi cita»: 403, no 401 (ver `sesion.js`).
-  assert.equal(respuesta.estado, 403)
-  assert.equal(respuesta.cuerpo.error, "solo_clientes")
+  // ── Esta prueba cambió al construir la pieza 7, el 2026-08-21 ──────────────────────────────
+  //
+  // Hasta entonces decía `403 solo_clientes`, y su título terminaba en «eso es la pieza 7». Ya
+  // llegó: **es el mismo endpoint**, y lo único que cambia es el `quien` que baja a `reservas.js`
+  // (RF-18, RN-6). No se escribió ninguna puerta aparte para Personal, justamente para no tener la
+  // regla de las 4 horas escrita dos veces.
+  //
+  // Acá se comprueba una cita normal, con días de anticipación. La que importa de verdad —una cita
+  // que empieza dentro de 2 horas, que al cliente se le rechaza y a Personal se le acepta— es
+  // **CA-3**, y vive en `pruebas/personal.test.js` con las otras de esa pieza.
+  assert.equal(respuesta.estado, 204)
+  assert.equal(filaDeLaCita(reservada.cuerpo.id).cancelada_por, "personal")
 })
 
 test("nadie puede cancelar la cita de otra persona, y el sistema no delata que existe", async (t) => {

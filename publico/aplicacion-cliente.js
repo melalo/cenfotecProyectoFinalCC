@@ -21,6 +21,31 @@ const requisitosContrasena = document.getElementById("requisitos-contrasena")
 // porque cada uno se ve en un tamaño de pantalla distinto. Se buscan los dos juntos y los dos hacen
 // lo mismo, así que agregar un «Salir» en otro lado no pide código nuevo.
 const botonesDeSalir = document.querySelectorAll('[data-accion="salir"]')
+// Las dos formas de «volver al inicio» que agregó la revisión visual de la pieza 7, el 2026-08-21.
+// La entrada «Inicio» está en los **dos** menús —el de arriba y el del pie—, y por eso se busca con
+// `querySelectorAll`: agregar un menú en otro lado no pediría código nuevo.
+const botonesDeInicio = document.querySelectorAll('[data-accion="inicio"]')
+// La marca del encabezado —la flor y el nombre— es un enlace, no un botón: adentro lleva el `<h1>`
+// del negocio, y un `<h1>` dentro de un `<button>` es HTML inválido. La razón completa está en el
+// comentario del HTML.
+const enlaceInicio = document.getElementById("enlace-inicio")
+
+/**
+ * Enciende o apaga la marca como «volver al inicio».
+ *
+ * **Se apaga quitándole la dirección, no con `disabled`:** `disabled` solo existe para los botones. Un
+ * enlace sin `href` no se puede tocar ni alcanzar con el tabulador, que es exactamente lo que hace
+ * falta en las dos pantallas donde no hay ningún inicio al que volver.
+ *
+ * La dirección es `#`, que quiere decir «acá mismo», y el click la anula con `preventDefault()` para
+ * que ese `#` no termine pegado en la barra de direcciones. Existe solo para que el navegador lo trate
+ * como un enlace de verdad: enfocable con el tabulador y activable con Enter, sin escribir una línea
+ * de código para eso.
+ */
+function marcaLlevaAlInicio(puede) {
+  if (puede) enlaceInicio.setAttribute("href", "#")
+  else enlaceInicio.removeAttribute("href")
+}
 
 // Los pedazos de la pantalla de reservar (piezas 2 y 11).
 const pasoCategoria = document.getElementById("paso-categoria")
@@ -89,6 +114,40 @@ const tarjetaFormaUsuario = document.getElementById("tarjeta-forma-usuario")
 const formaUsuario = document.getElementById("forma-usuario")
 const botonCancelarUsuario = document.getElementById("boton-cancelar-usuario")
 
+// ─── Los pedazos que agrega la pieza 7: Personal atiende el teléfono ────────────────────────
+//
+// La pantalla del cambio obligatorio de la contraseña temporal (RF-4).
+const pantallaCambiarContrasena = document.getElementById("pantalla-cambiar-contrasena")
+const formaCambiarContrasena = document.getElementById("forma-cambiar-contrasena")
+const campoContrasenaTemporal = document.getElementById("campo-contrasena-temporal")
+const requisitosContrasenaNueva = document.getElementById("requisitos-contrasena-nueva")
+const avisoCambiarContrasena = document.getElementById("aviso-cambiar-contrasena")
+
+// El paso «¿Quién llama?», que solo ve Personal.
+const pasoQuienLlama = document.getElementById("paso-quien-llama")
+const tarjetaBuscarCliente = document.getElementById("tarjeta-buscar-cliente")
+const campoBuscarCliente = document.getElementById("buscar-cliente")
+const ayudaBuscarCliente = document.getElementById("ayuda-buscar-cliente")
+const listaClientes = document.getElementById("lista-clientes")
+const botonCuentaNueva = document.getElementById("boton-cuenta-nueva")
+const tarjetaCuentaNueva = document.getElementById("tarjeta-cuenta-nueva")
+const formaCuentaNueva = document.getElementById("forma-cuenta-nueva")
+const botonCancelarCuentaNueva = document.getElementById("boton-cancelar-cuenta-nueva")
+const avisoCuentaNueva = document.getElementById("aviso-cuenta-nueva")
+const tarjetaContrasenaTemporal = document.getElementById("tarjeta-contrasena-temporal")
+const contrasenaTemporalEscrita = document.getElementById("contrasena-temporal")
+const atendiendoA = document.getElementById("atendiendo-a")
+const atendiendoNombre = document.getElementById("atendiendo-nombre")
+const atendiendoCorreo = document.getElementById("atendiendo-correo")
+const botonVerCitasDelCliente = document.getElementById("boton-ver-citas-del-cliente")
+const botonCambiarCliente = document.getElementById("boton-cambiar-cliente")
+
+// Los pedazos de la vista de citas que cambian de palabra según quién la mire.
+const tituloProximas = document.getElementById("titulo-proximas")
+const tituloHistorial = document.getElementById("titulo-historial")
+const citasSinCliente = document.getElementById("citas-sin-cliente")
+const tarjetaCitas = document.getElementById("tarjeta-citas")
+
 // El pie de página, que muestra los datos del negocio.
 const pieNegocio = document.getElementById("pie-negocio")
 const pieTelefono = document.getElementById("pie-telefono")
@@ -104,10 +163,24 @@ const MENSAJES = {
   horario_no_disponible:
     "Ese horario ya no está disponible: alguien lo tomó antes. Elegí otro del calendario, que ya " +
     "está actualizado.",
+  // Desde la pieza 7 este mensaje ya no dice «todavía no está construida»: la pantalla de Personal
+  // existe. Lo que este rechazo significa hoy es que esa cuenta no tiene citas ni datos propios.
   solo_clientes:
-    "Esta cuenta es del personal del negocio, así que no reserva desde acá. Reservar en nombre de " +
-    "quien llama por teléfono es otra pantalla, que todavía no está construida.",
+    "Esta cuenta es del personal del negocio y no tiene citas propias. Las citas de un cliente se " +
+    "ven eligiéndolo en «¿Quién llama?», dentro de «Reservar».",
   sin_sesion: "Se cerró tu sesión. Volvé a entrar para seguir.",
+  // Los cinco de la pieza 7.
+  solo_personal: "Esto es solo para la cuenta del personal del negocio.",
+  // RN-25: Personal sí agenda para hoy, pero un horario que ya arrancó no es un cupo que exista.
+  // **Este mensaje no manda a llamar al negocio**, y es el punto: quien lo lee trabaja ahí.
+  horario_ya_empezo:
+    "Ese horario ya empezó, así que no se puede tomar. Elegí uno que todavía no haya empezado.",
+  debe_cambiar_contrasena:
+    "Antes de seguir tenés que cambiar la contraseña temporal que te dio el negocio.",
+  cliente_no_encontrado:
+    "No encontramos esa cuenta. Volvé a buscar a la persona en el paso «¿Quién llama?».",
+  contrasena_actual_incorrecta:
+    "Esa contraseña temporal no es la correcta. Revisala con quien te la dictó, letra por letra.",
   // Los tres de la pieza 10. Cada uno dice **qué** dato está mal, no «revisá el formulario».
   nombre_invalido: "El nombre no puede quedar vacío.",
   telefono_invalido:
@@ -161,29 +234,175 @@ function mensajeDelError(cuerpo) {
   return MENSAJES[cuerpo?.error] ?? MENSAJES.desconocido
 }
 
+/**
+ * La cuenta que está en sesión, tal como la devolvió el API. Lo único que la pantalla necesita saber
+ * de ella es su **tipo**: con `personal` aparece el paso «¿Quién llama?» y las citas que se ven son
+ * las de otra persona.
+ */
+let cuentaEnSesion = null
+
+/** ¿Quien está usando la aplicación es la cuenta del negocio? */
+function esPersonal() {
+  return cuentaEnSesion?.tipo === "personal"
+}
+
 function mostrarPantallaDentro(cuenta) {
+  cuentaEnSesion = cuenta
+
+  // **RF-4, antes que cualquier otra cosa.** Si esta cuenta todavía tiene la contraseña temporal que
+  // le puso Personal, no hay aplicación que mostrar: hay una sola pantalla, y es la de cambiarla.
+  // El servidor rechaza igual todo lo demás mientras eso siga pendiente, así que esto no es la
+  // regla: es lo que se ve de ella.
+  if (cuenta.debeCambiarContrasena) {
+    mostrarPantallaDeCambio()
+    return
+  }
+
   nombreDeQuienEntro.textContent = cuenta.nombre
   tipoDeCuenta.textContent = cuenta.tipo === "personal" ? "personal del negocio" : "cliente"
   pantallaEntrada.hidden = true
+  pantallaCambiarContrasena.hidden = true
   pantallaDentro.hidden = false
 
-  // El menú aparece solo acá adentro: las dos secciones que enlaza no existen para quien no entró.
+  // El menú aparece solo acá adentro: las secciones que enlaza no existen para quien no entró.
   navegacion.hidden = false
   botonMenu.hidden = false
   menuPie.hidden = false
 
+  // La marca lleva al inicio solo desde acá adentro: en las otras dos pantallas no hay ningún inicio
+  // al que volver.
+  marcaLlevaAlInicio(true)
+
+  acomodarElMenu(cuenta)
   mostrarVista("reservar")
   empezarAElegir()
 }
 
+/**
+ * Deja el menú como corresponde a quien entró (pieza 7). Toca los **dos** menús a la vez —el de la
+ * hamburguesa y el del pie— buscando por `data-vista`, que es la misma manera en que ya se marcaba
+ * en qué sección se está: agregar un menú en otro lado no pediría código nuevo.
+ *
+ * Dos diferencias para Personal:
+ *
+ *   - «Mis citas» pasa a decir **«Citas del cliente»**: las que se ven ahí son de otra persona, y un
+ *     «mis» ahí sería falso.
+ *   - **«Usuario» no aparece**: esa sección es la información personal de un cliente (RF-22), y el
+ *     API se la rechaza a Personal. Ofrecer un botón que lleva a un error no es ofrecer nada.
+ */
+function acomodarElMenu(cuenta) {
+  const personal = cuenta.tipo === "personal"
+
+  for (const enlace of document.querySelectorAll('[data-vista="citas"]')) {
+    enlace.textContent = personal ? "Citas del cliente" : "Mis citas"
+  }
+
+  for (const enlace of document.querySelectorAll('[data-vista="usuario"]')) {
+    enlace.hidden = personal
+  }
+
+  // «Inicio» es **solo de Personal**, y no porque al cliente le sobre volver al inicio: para él
+  // **«Reservar» ya es la pantalla principal** —es la que ve al entrar—, así que una entrada más que
+  // lleve al mismo lado haría el menú más difícil de leer, no más fácil.
+  //
+  // Al cliente igual le queda la forma que la gente prueba primero: **la marca del encabezado**, que
+  // funciona para las dos cuentas.
+  for (const boton of botonesDeInicio) {
+    boton.hidden = !personal
+  }
+}
+
+/**
+ * Lleva la vista al principio de la página.
+ *
+ * Hace falta porque «volver al inicio» son dos cosas a la vez: cambiar de sección **y** subir. Sin
+ * esto, alguien que estaba abajo mirando el historial de citas tocaría «Inicio», la sección
+ * cambiaría, y en pantalla seguiría viendo la mitad de abajo de la pantalla nueva — que se siente
+ * como que el botón no hizo nada.
+ */
+function subirLaPantalla() {
+  window.scrollTo({ top: 0, behavior: "smooth" })
+}
+
+/**
+ * «Inicio»: vuelve al principio de la pantalla de reservar **sin soltar** a la persona que Personal
+ * está atendiendo *(decidido por la estudiante el 2026-08-21)*.
+ *
+ * Es lo que hace el logo del encabezado, para las dos cuentas, y la entrada «Inicio» del menú, que
+ * solo ve Personal. Los tres botones llaman a esta misma función: si mañana «volver al inicio»
+ * tuviera que hacer algo más, se agrega en un solo lugar.
+ */
+async function volverAlInicio() {
+  esconderAviso(avisoCitas)
+  esconderAviso(avisoUsuario)
+  esconderAviso(avisoReserva)
+
+  // Empieza el catálogo de cero —categoría, servicio, terapista, calendario— y apaga el modo
+  // reagendar, pero **no toca `eleccion.atendiendo`**: la llamada telefónica sigue en curso.
+  await empezarAElegir()
+  mostrarVista("reservar")
+  subirLaPantalla()
+}
+
+/*
+ * ── Hubo una segunda entrada de menú, «Nueva llamada», y se sacó el mismo día ────────────────
+ *
+ * Hacía lo mismo que «Inicio» pero **soltando** a la persona atendida. La estudiante la vio en
+ * pantalla y decidió que con «Inicio» alcanza, y tenía razón por una razón mejor que el ahorro de
+ * espacio: **soltar a la persona es una acción que cambia a quién se le está reservando**, y ese
+ * botón vive mejor pegado al nombre de esa persona —«Otra persona», en la tarjeta
+ * «Atendiendo a»— que en un menú, donde se toca por error y borra la llamada en curso.
+ *
+ * Queda anotado y no borrado en silencio: la función que suelta a la persona sigue existiendo
+ * (`olvidarAQuienAtiendo`), y sigue teniendo un solo lugar desde donde se llama.
+ */
+
+/** La pantalla del cambio obligatorio de la contraseña temporal (pieza 7, RF-4). */
+function mostrarPantallaDeCambio() {
+  pantallaEntrada.hidden = true
+  pantallaDentro.hidden = true
+  pantallaCambiarContrasena.hidden = false
+
+  // Sin menú y sin pie de navegación: RF-4 dice «antes de dejarlo hacer nada más», y las dos únicas
+  // salidas de acá son cambiar la contraseña o irse.
+  navegacion.hidden = true
+  botonMenu.hidden = true
+  menuPie.hidden = true
+  cerrarElMenu()
+
+  // La marca tampoco lleva a ningún lado acá: RF-4 dice «antes de dejarlo hacer nada más», y un logo
+  // que llevara a la aplicación sería una puerta de escape a esa regla.
+  marcaLlevaAlInicio(false)
+
+  // El campo de la contraseña temporal aparece **solo si la pantalla no la tiene en memoria**, y eso
+  // pasa en un caso: que la persona haya recargado la página antes de cambiarla *(decisión de la
+  // estudiante del 2026-08-21: normalmente la pantalla se acuerda de la que acaba de escribir para
+  // entrar y la manda sola, así no la tiene que escribir dos veces)*.
+  campoContrasenaTemporal.hidden = contrasenaRecordada !== null
+  formaCambiarContrasena.elements.contrasenaActual.required = contrasenaRecordada === null
+
+  // Los requisitos arrancan en gris. Acá **se ven siempre**, a diferencia del registro, donde
+  // aparecen al tocar el campo: en esta pantalla la persona no vino a crear una cuenta sino
+  // justamente a elegir una contraseña, así que las condiciones son el contenido, no ruido.
+  repintarRequisitos(requisitosContrasenaNueva, "")
+}
+
 function mostrarPantallaEntrada() {
   pantallaDentro.hidden = true
+  pantallaCambiarContrasena.hidden = true
   pantallaEntrada.hidden = false
 
   navegacion.hidden = true
   botonMenu.hidden = true
   menuPie.hidden = true
+  marcaLlevaAlInicio(false)
   cerrarElMenu()
+
+  // Al salir no queda nada de quien estaba: ni la cuenta, ni la contraseña que la pantalla recordaba,
+  // ni la persona a la que Personal estaba atendiendo.
+  cuentaEnSesion = null
+  contrasenaRecordada = null
+  eleccion.atendiendo = null
 
   olvidarLoElegido()
 }
@@ -308,7 +527,25 @@ const eleccion = {
   // El que agrega la pieza 5: la cita que se está moviendo, o `null` si se está reservando de cero.
   // Es lo único que distingue los dos modos de esta pantalla.
   reagendando: null,
+  // El que agrega la pieza 7: la persona a la que Personal está atendiendo por teléfono, con su
+  // `{id, nombre, correo}`. Para un cliente es siempre `null` — él reserva para sí mismo, y el
+  // servidor lo saca de su sesión.
+  atendiendo: null,
 }
+
+/**
+ * La contraseña con la que alguien acaba de entrar, guardada **solo en memoria y solo si esa cuenta
+ * tiene una contraseña temporal pendiente de cambiar** (pieza 7).
+ *
+ * Existe por la decisión de la estudiante del 2026-08-21: el formulario de cambiarla tiene dos
+ * campos, no tres, así que la temporal viaja desde acá en vez de pedírsela otra vez a alguien que la
+ * acaba de escribir.
+ *
+ * **No se guarda en ningún lado más.** No va a la memoria del navegador ni a ninguna galleta: vive en
+ * esta variable y desaparece al recargar la página, al cambiar la contraseña y al salir. Cuando
+ * desaparece por una recarga, la pantalla se da cuenta y pide la temporal a mano.
+ */
+let contrasenaRecordada = null
 
 /**
  * Devuelve la pantalla de reservar a como está cuando se entra: sin nada elegido, con el paso de las
@@ -328,7 +565,16 @@ function olvidarLoElegido() {
   listaCategorias.replaceChildren()
   listaServicios.replaceChildren()
   listaProveedores.replaceChildren()
-  pasoCategoria.hidden = false
+
+  // El paso «¿Quién llama?» existe solo para Personal (pieza 7). **No se borra a quién está
+  // atendiendo**, a propósito: Personal está en una llamada, y navegar por el menú no la termina.
+  // Eso solo lo hace el botón «Otra persona», o salir de la aplicación.
+  pasoQuienLlama.hidden = !esPersonal()
+
+  // Y mientras Personal no haya elegido a nadie, los pasos de abajo no aparecen: no se puede llegar
+  // al calendario sin saber para quién es la cita.
+  pasoCategoria.hidden = esPersonal() && eleccion.atendiendo === null
+
   cartelReagendar.hidden = true
   pasoServicio.hidden = true
   pasoProveedor.hidden = true
@@ -573,12 +819,17 @@ function mostrarDia(dia) {
   listaHorarios.replaceChildren()
   olvidarElHorario()
 
-  // Ni el día de hoy ni un feriado muestran sus fichas de horario. En los dos casos el día entero
-  // está bloqueado —no se puede reservar para hoy (RN-4), y un feriado no tiene ningún horario
-  // disponible (RN-2)—, así que dibujar ocho fichas tachadas que nadie puede tomar solo estorba:
-  // alcanza con el mensaje de arriba, que además dice el motivo y, si es hoy, a qué número llamar.
-  // Pedido de la estudiante el 2026-08-19.
-  const diaEnteroBloqueado = dia.fecha === eleccion.negocio.hoy || dia.esFeriado
+  // Un día entero bloqueado no muestra sus fichas de horario: dibujar ocho fichas tachadas que nadie
+  // puede tomar solo estorba, y alcanza con el mensaje de arriba, que dice el motivo. Pedido de la
+  // estudiante el 2026-08-19.
+  //
+  // **Quién decide si el día está bloqueado es el servidor**, en su campo `estado` — no la pantalla
+  // comparando fechas. Eso cambió el 2026-08-21 con RN-25: el día de hoy está bloqueado para el
+  // cliente y **no** para Personal, y esa es exactamente la clase de decisión que el frontend no
+  // puede tomar. Para el cliente el resultado es idéntico al de antes: hoy le llega con estado
+  // `hoy_o_pasado`.
+  const esHoy = dia.fecha === eleccion.negocio.hoy
+  const diaEnteroBloqueado = dia.esFeriado || (esHoy && dia.estado === "hoy_o_pasado")
   let hayAlgunoLibre = false
 
   if (!diaEnteroBloqueado) {
@@ -624,18 +875,47 @@ function fichaDeHorario(dia, horario) {
   return ficha
 }
 
+/**
+ * Qué se le explica a quien abre un día del calendario. **El motivo lo decide el servidor**, en el
+ * campo `estado` de cada día; acá solo se traduce a palabras.
+ *
+ * ── Por qué esta función distingue quién está mirando (RN-25) ─────────────────────────────────
+ *
+ * *Corregido el 2026-08-21, en la revisión visual de la pieza 7.* Hasta ese día, Personal abría el
+ * día de hoy y leía **«No se puede reservar para hoy. Si necesitás una cita hoy, llamá al negocio al
+ * 2000-0000»** — un cartel diciéndole a la asistente del negocio que llame al negocio. Lo encontró la
+ * estudiante mirando la pantalla, y ninguna prueba automática podía encontrarlo: el texto aparecía,
+ * y era **falso para quien lo estaba leyendo**.
+ *
+ * El texto era absurdo porque la regla detrás tenía un hueco, así que se arreglaron los dos: ahora
+ * Personal **sí puede agendar para hoy** (RN-25) y el cartel dice lo que corresponde en cada caso.
+ */
 function motivoDelDia(dia) {
   if (dia.estado === "cerrado") return "El negocio no abre este día."
   if (dia.estado === "feriado") return `Feriado: ${dia.nombreFeriado}. El negocio no atiende.`
   if (dia.estado === "lleno") return "No queda ningún horario libre este día."
 
+  const esHoy = dia.fecha === eleccion.negocio.hoy
+
   if (dia.estado === "hoy_o_pasado") {
-    // RN-4: no hay citas para hoy. Ahora el aviso puede decir a qué número llamar, porque el
-    // teléfono es parte de la configuración del negocio (REG-4).
-    if (dia.fecha === eleccion.negocio.hoy) {
-      return `No se puede reservar para hoy. Si necesitás una cita hoy, llamá al negocio al ${eleccion.negocio.telefono}.`
+    if (!esHoy) return "Este día ya pasó."
+
+    // Para Personal, que hoy no ofrezca nada ya no es una regla: es que **se acabó el día**. El
+    // último horario del negocio empieza a las 17:00, así que después de esa hora no queda ninguno
+    // sin empezar. Decirle «llamá al negocio» acá no tendría ningún sentido.
+    if (esPersonal()) {
+      return "Ya no queda ningún horario de hoy sin empezar. La primera fecha posible es mañana."
     }
-    return "Este día ya pasó."
+
+    // Y para el cliente el texto es el mismo de siempre (RN-4), con el teléfono adentro, porque para
+    // él **sí** hay algo que hacer: llamar, y que Personal se lo agende (RN-25).
+    return `No se puede reservar para hoy. Si necesitás una cita hoy, llamá al negocio al ${eleccion.negocio.telefono}.`
+  }
+
+  // Hoy, visto por Personal, sí ofrece horarios. Esta línea explica por qué algunos salen tachados,
+  // sin que la pantalla tenga que calcular cuáles: los tacha el servidor.
+  if (esPersonal() && esHoy) {
+    return "Solo se pueden tomar los horarios de hoy que todavía no empezaron."
   }
 
   return null
@@ -709,25 +989,218 @@ function marcarElegido(lista, nombre) {
   }
 }
 
-function botonDeOpcion(nombre, detalle, alTocar) {
+/**
+ * Uno de los rectángulos que se tocan para elegir algo: una categoría, un tipo de servicio, una
+ * terapista, o una persona en la búsqueda de «¿Quién llama?».
+ *
+ * `opciones.accion` es el texto de un rectangulito a la derecha —hoy «Seleccionar»— y **solo lo usan
+ * los resultados de la búsqueda de clientes** *(pedido de la estudiante el 2026-08-21)*. Sin él, el
+ * botón se arma exactamente como antes: las otras tres listas no cambiaron en nada.
+ *
+ * **Ese «Seleccionar» no es un botón de verdad, y no puede serlo:** este rectángulo entero **ya es un
+ * `<button>`**, y adentro de un botón no puede haber otro — es HTML inválido, el mismo problema que
+ * el `<h1>` adentro del botón del encabezado. Así que es un `<span>` que **se ve** como el botón chico
+ * de apoyo del proyecto, reusando sus clases sin inventar ningún valor nuevo.
+ *
+ * Y esa solución es además la mejor de las dos: **el que responde al toque sigue siendo el renglón
+ * completo**, así que se puede tocar el nombre, el correo o el rectangulito. Si «Seleccionar» fuera
+ * un botón de verdad adentro de un `<div>`, tocar el nombre no haría nada — y el nombre es lo primero
+ * que una persona toca.
+ */
+function botonDeOpcion(nombre, detalle, alTocar, opciones = {}) {
   const boton = document.createElement("button")
   boton.type = "button"
-  boton.className = "opcion"
+  boton.className = opciones.accion ? "opcion opcion--con-accion" : "opcion"
   boton.dataset.nombre = nombre
 
-  const titulo = document.createElement("span")
-  titulo.className = "opcion__nombre"
-  titulo.textContent = nombre
-  boton.appendChild(titulo)
+  const titulo = textoEn("span", "opcion__nombre", nombre)
+  const nota = textoEn("span", "opcion__nota", detalle)
 
-  const nota = document.createElement("span")
-  nota.className = "opcion__nota"
-  nota.textContent = detalle
-  boton.appendChild(nota)
+  if (opciones.accion) {
+    // Con acción, el nombre y el correo van juntos adentro de un bloque: son la parte izquierda de
+    // una fila, y sin el bloque quedarían uno al lado del otro en vez de uno debajo del otro.
+    const datos = document.createElement("span")
+    datos.className = "opcion__datos"
+    datos.appendChild(titulo)
+    datos.appendChild(nota)
+    boton.appendChild(datos)
+
+    boton.appendChild(
+      textoEn("span", "opcion__accion boton boton--suave boton--chico", opciones.accion),
+    )
+  } else {
+    boton.appendChild(titulo)
+    boton.appendChild(nota)
+  }
 
   boton.addEventListener("click", alTocar)
   return boton
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// El paso «¿Quién llama?» (pieza 7, RF-16 y RF-17)
+//
+// Es lo único que se le agrega a la pantalla de reservar para que Personal pueda atender el
+// teléfono. Todo lo de abajo —categoría, servicio, terapista, calendario, tarjeta de confirmar— es
+// exactamente lo mismo que ve el cliente, sin una línea nueva.
+//
+// Esta parte tampoco decide nada: pregunta al API quién tiene cuenta y muestra lo que conteste. La
+// regla de cuántas letras hacen falta para buscar vive en `servidor/personal.js`; acá el número está
+// escrito otra vez **solo para poder decirlo en pantalla**, que es la misma excepción —con la misma
+// razón— que los requisitos de la contraseña: el navegador no puede leer los archivos de `servidor/`,
+// y el servidor es el que decide.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+const LETRAS_MINIMAS_PARA_BUSCAR = 2
+
+const AYUDA_DE_LA_BUSQUEDA = `Escribí al menos ${LETRAS_MINIMAS_PARA_BUSCAR} letras para buscar.`
+
+/**
+ * Cuántas búsquedas se pidieron hasta ahora.
+ *
+ * Sirve para descartar la respuesta de una búsqueda vieja. Escribiendo rápido salen varios pedidos
+ * al API, y **no vuelven necesariamente en orden**: si la respuesta de «an» llegara después de la de
+ * «ana», la pantalla terminaría mostrando los resultados de lo que la persona escribió antes.
+ */
+let ultimaBusqueda = 0
+
+async function buscarAQuienLlama(texto) {
+  const limpio = texto.trim()
+  listaClientes.replaceChildren()
+
+  if (limpio.length < LETRAS_MINIMAS_PARA_BUSCAR) {
+    ayudaBuscarCliente.textContent = AYUDA_DE_LA_BUSQUEDA
+    return
+  }
+
+  const estaBusqueda = ++ultimaBusqueda
+  const respuesta = await pedirAlApi(`/api/personal/clientes?busqueda=${encodeURIComponent(limpio)}`)
+
+  // Llegó tarde: mientras esta viajaba, la persona siguió escribiendo. Se tira.
+  if (estaBusqueda !== ultimaBusqueda) return
+
+  if (respuesta.estado !== 200) {
+    ayudaBuscarCliente.textContent = mensajeDelError(respuesta.cuerpo)
+    return
+  }
+
+  if (respuesta.cuerpo.length === 0) {
+    ayudaBuscarCliente.textContent =
+      "Nadie con ese nombre ni ese correo tiene cuenta. Podés crearla acá abajo."
+    return
+  }
+
+  ayudaBuscarCliente.textContent =
+    respuesta.cuerpo.length === 1 ? "1 cuenta encontrada." : `${respuesta.cuerpo.length} cuentas encontradas.`
+
+  for (const cliente of respuesta.cuerpo) {
+    listaClientes.appendChild(
+      botonDeOpcion(cliente.nombre, cliente.correo, () => elegirAQuienAtiendo(cliente), {
+        accion: "Seleccionar",
+      }),
+    )
+  }
+}
+
+/**
+ * Deja fija a la persona que se está atendiendo y **recién ahí** abre los pasos de abajo.
+ *
+ * Empieza el catálogo de cero a propósito: si Personal venía de otra llamada y ya tenía elegido un
+ * masaje con Ana, esa elección era para la persona anterior.
+ */
+async function elegirAQuienAtiendo(cliente) {
+  eleccion.atendiendo = cliente
+  esconderAviso(avisoCuentaNueva)
+
+  atendiendoNombre.textContent = cliente.nombre
+  atendiendoCorreo.textContent = cliente.correo
+  atendiendoA.hidden = false
+  tarjetaBuscarCliente.hidden = true
+  tarjetaCuentaNueva.hidden = true
+
+  await empezarAElegir()
+}
+
+/** Cierra la llamada: vuelve el buscador y se olvida de todo lo de esa persona. */
+async function olvidarAQuienAtiendo() {
+  eleccion.atendiendo = null
+
+  atendiendoA.hidden = true
+  // La contraseña temporal se va con la persona: era para dictársela a ella.
+  tarjetaContrasenaTemporal.hidden = true
+  contrasenaTemporalEscrita.textContent = ""
+  tarjetaCuentaNueva.hidden = true
+  tarjetaBuscarCliente.hidden = false
+
+  campoBuscarCliente.value = ""
+  listaClientes.replaceChildren()
+  ayudaBuscarCliente.textContent = AYUDA_DE_LA_BUSQUEDA
+
+  await empezarAElegir()
+}
+
+campoBuscarCliente.addEventListener("input", (evento) => {
+  buscarAQuienLlama(evento.target.value)
+})
+
+// «Citas del cliente», al lado del nombre de quien se está atendiendo *(pedido de la estudiante el
+// 2026-08-21)*. Lleva a la misma sección que la entrada del menú con ese nombre, y a propósito se
+// llama igual: dos caminos al mismo lugar tienen que decir lo mismo, o parecen dos lugares.
+//
+// El atajo hace falta porque **el nombre de la persona y sus citas estaban en dos pantallas
+// distintas**: se elegía a alguien acá y había que ir a buscar el menú para ver qué tenía reservado.
+botonVerCitasDelCliente.addEventListener("click", () => {
+  esconderAviso(avisoReserva)
+  mostrarVista("citas")
+})
+
+botonCambiarCliente.addEventListener("click", olvidarAQuienAtiendo)
+
+botonCuentaNueva.addEventListener("click", () => {
+  esconderAviso(avisoCuentaNueva)
+  tarjetaCuentaNueva.hidden = false
+  // Si la persona escribió algo en el buscador que parece un correo, se le adelanta al formulario:
+  // es lo más probable que iba a escribir de nuevo.
+  const escrito = campoBuscarCliente.value.trim()
+  if (escrito.includes("@")) formaCuentaNueva.elements.correo.value = escrito
+  formaCuentaNueva.elements.nombre.focus()
+})
+
+botonCancelarCuentaNueva.addEventListener("click", () => {
+  esconderAviso(avisoCuentaNueva)
+  formaCuentaNueva.reset()
+  tarjetaCuentaNueva.hidden = true
+})
+
+formaCuentaNueva.addEventListener("submit", async (evento) => {
+  evento.preventDefault()
+  esconderAviso(avisoCuentaNueva)
+
+  const respuesta = await pedirAlApi("/api/personal/clientes", {
+    method: "POST",
+    cuerpo: datosDeLaForma(formaCuentaNueva),
+  })
+
+  if (respuesta.estado !== 201) {
+    mostrarAviso(avisoCuentaNueva, mensajeDelError(respuesta.cuerpo))
+    return
+  }
+
+  formaCuentaNueva.reset()
+
+  // **La contraseña temporal se muestra una sola vez.** En la base queda solo su huella cifrada, así
+  // que ni el sistema puede volver a leerla: si Personal no la anota ahora, el camino es
+  // restablecerla (pieza 9).
+  contrasenaTemporalEscrita.textContent = respuesta.cuerpo.contrasenaTemporal
+  tarjetaContrasenaTemporal.hidden = false
+
+  // Y se sigue de largo con la reserva, que es para lo que esa persona llamó.
+  await elegirAQuienAtiendo({
+    id: respuesta.cuerpo.id,
+    nombre: respuesta.cuerpo.nombre,
+    correo: respuesta.cuerpo.correo,
+  })
+})
 
 botonMesAnterior.addEventListener("click", async () => {
   eleccion.mes = moverMes(eleccion.mes, -1)
@@ -828,8 +1301,11 @@ function elegirHorario(dia, horario) {
   // comparar el horario nuevo que acaba de tocar.
   const moviendo = eleccion.reagendando !== null
 
-  confirmacionTitulo.textContent = moviendo ? "Mové tu cita a este horario" : "Confirmá tu reserva"
-  botonConfirmar.textContent = moviendo ? "Mover la cita" : "Confirmar la reserva"
+  // Desde la pieza 7 los textos también dependen de **quién** está reservando. Personal reserva para
+  // otra persona, así que nada de lo que lee puede decir «tu»: sería falso, y en una llamada
+  // telefónica esa palabra es justo la que confunde.
+  confirmacionTitulo.textContent = tituloDeLaConfirmacion(moviendo)
+  botonConfirmar.textContent = moviendo ? "Mover la cita" : textoDelBotonDeReservar()
   resumenQueDia.textContent = moviendo ? "Pasa a" : "Día"
   filaResumenAhora.hidden = !moviendo
 
@@ -843,6 +1319,30 @@ function elegirHorario(dia, horario) {
   // En un teléfono la tarjeta de confirmar puede quedar más abajo de lo que se ve, y si no se la
   // muestra parece que tocar el horario no hizo nada.
   confirmacion.scrollIntoView({ behavior: "smooth", block: "nearest" })
+}
+
+/** El título de la tarjeta de confirmar, que dice cuatro cosas distintas según el modo y quién sea. */
+function tituloDeLaConfirmacion(moviendo) {
+  if (moviendo) return esPersonal() ? "Mové la cita a este horario" : "Mové tu cita a este horario"
+  if (esPersonal()) return `Confirmá la reserva de ${eleccion.atendiendo.nombre}`
+  return "Confirmá tu reserva"
+}
+
+/** «Confirmar la reserva» para el cliente; «Reservar para Ana» cuando reserva Personal. */
+function textoDelBotonDeReservar() {
+  if (!esPersonal()) return "Confirmar la reserva"
+  return `Reservar para ${primerNombre(eleccion.atendiendo.nombre)}`
+}
+
+/**
+ * La primera palabra de un nombre completo: de «Ana Rodríguez» saca «Ana».
+ *
+ * Es para que el botón no diga «Reservar para Ana Rodríguez», que en un teléfono se sale del botón.
+ * El nombre completo sigue estando arriba, en «Atendiendo a» y en el título de la tarjeta, así que no
+ * se pierde nada.
+ */
+function primerNombre(nombre) {
+  return String(nombre).trim().split(/\s+/)[0]
 }
 
 /** Deja marcada la ficha del horario elegido. Con `null` las desmarca todas. */
@@ -868,14 +1368,18 @@ async function confirmarReserva() {
   // Se apaga el botón mientras el pedido viaja: dos toques seguidos mandarían dos reservas.
   botonConfirmar.disabled = true
 
-  const respuesta = await pedirAlApi("/api/citas", {
-    method: "POST",
-    cuerpo: {
-      servicioId: eleccion.servicio.id,
-      proveedorId: eleccion.proveedor.id,
-      inicio: eleccion.horario.inicio,
-    },
-  })
+  const cuerpo = {
+    servicioId: eleccion.servicio.id,
+    proveedorId: eleccion.proveedor.id,
+    inicio: eleccion.horario.inicio,
+  }
+
+  // Personal tiene que decir **para quién** es la cita (RF-16). El cliente no manda nada: el
+  // servidor lo saca de su propia sesión, y un `clienteId` que él mandara ni se mira — si se mirara,
+  // cualquiera podría reservarle una cita a cualquiera.
+  if (esPersonal()) cuerpo.clienteId = eleccion.atendiendo.id
+
+  const respuesta = await pedirAlApi("/api/citas", { method: "POST", cuerpo })
 
   botonConfirmar.disabled = false
 
@@ -895,7 +1399,16 @@ async function confirmarReserva() {
   mostrarVista("citas")
   // Va en verde, no en rojo: es una buena noticia. Hasta la pieza 4 usaba `mostrarAviso` a secas y
   // salía con los colores de error — lo vio la estudiante en su revisión del 2026-08-19.
-  mostrarAvisoDeExito(avisoCitas, "Tu cita quedó reservada. Acá abajo está, con su día y su hora.")
+  //
+  // Cuando reserva Personal el aviso dice **a qué dirección salió el correo** (pieza 7): es el dato
+  // que le hace falta para poder confirmárselo por teléfono a quien está del otro lado.
+  mostrarAvisoDeExito(
+    avisoCitas,
+    esPersonal()
+      ? `La cita de ${eleccion.atendiendo.nombre} quedó reservada. Le mandamos el correo de ` +
+          `confirmación a ${eleccion.atendiendo.correo}.`
+      : "Tu cita quedó reservada. Acá abajo está, con su día y su hora.",
+  )
 }
 
 /** El mensaje de un rechazo al reservar. El de RN-4 lleva el teléfono del negocio adentro. */
@@ -918,14 +1431,36 @@ botonDejarComoEsta.addEventListener("click", salirDelModoReagendar)
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
 async function cargarMisCitas() {
-  const respuesta = await pedirAlApi("/api/citas")
-
   listaCitas.replaceChildren()
   listaHistorial.replaceChildren()
 
+  pintarLosTitulosDeLasCitas()
+
+  // Personal sin nadie elegido no tiene nada que mostrar: esta sección son las citas de una persona.
+  if (esPersonal() && eleccion.atendiendo === null) {
+    citasSinCliente.hidden = false
+    tarjetaCitas.hidden = true
+    citasVacio.hidden = true
+    seccionHistorial.hidden = true
+    return
+  }
+
+  citasSinCliente.hidden = true
+  tarjetaCitas.hidden = false
+
+  citasVacio.textContent = esPersonal()
+    ? `${eleccion.atendiendo.nombre} no tiene ninguna cita próxima. Andá a «Reservar» y elegile un horario.`
+    : "No tenés ninguna cita próxima. Andá a «Reservar» y elegí un horario."
+
+  // **Dos puertas distintas, y la diferencia es real.** «Mis citas» son las de quien está en sesión,
+  // y Personal no tiene citas propias: las de un cliente se piden por su propia puerta, que además
+  // devuelve `sePuedeCambiar` calculado como Personal — por eso una cita de dentro de dos horas sí
+  // le sale con botones (RN-6). Eso es CA-3 visto en pantalla, y lo decide el servidor.
+  const respuesta = await pedirAlApi(
+    esPersonal() ? `/api/personal/clientes/${eleccion.atendiendo.id}/citas` : "/api/citas",
+  )
+
   if (respuesta.estado !== 200) {
-    // El caso normal acá es la cuenta de Personal, que no tiene citas propias: reservar en nombre de
-    // quien llama es otra pantalla, de la pieza 7. El servidor lo dice y acá solo se muestra.
     citasVacio.hidden = true
     seccionHistorial.hidden = true
     mostrarAviso(avisoCitas, mensajeDelError(respuesta.cuerpo))
@@ -951,6 +1486,41 @@ async function cargarMisCitas() {
 
   citasVacio.hidden = proximas.length > 0
   seccionHistorial.hidden = historial.length === 0
+}
+
+/**
+ * Los dos títulos de la sección de citas: el de arriba y el del historial.
+ *
+ * ── Por qué nombran a la persona (corregido el 2026-08-21) ────────────────────────────────────
+ *
+ * Hasta ese día, Personal mirando las citas de alguien leía **«Sus próximas citas»**, y el único
+ * nombre en toda la pantalla era el de la propia asistente, arriba: «Hola, Marta Jiménez». O sea que
+ * **nada en pantalla decía de quién eran esas citas**. Lo encontró la estudiante mirando, y su
+ * propuesta fue la que quedó: que el título diga el nombre.
+ *
+ * Es el mismo defecto de siempre en este proyecto —un texto que no dice lo que hace falta— y tampoco
+ * lo podía encontrar ninguna prueba automática: el título aparecía, y estaba escrito en español
+ * correcto. Lo que fallaba es que **no alcanzaba**.
+ *
+ * Tres formas, una por caso:
+ *
+ *   - **el cliente:** «Tus próximas citas» y «Historial». Son las suyas, no hace falta nombrarlo.
+ *   - **Personal con alguien elegido:** «Próximas citas de Marisol Prueba» y «Historial de Marisol
+ *     Prueba». Nombra a la persona en los dos, no solo en uno: un título con nombre seguido de un
+ *     «Historial» pelado deja la duda de si el de abajo es de la misma persona.
+ *   - **Personal sin nadie elegido:** «Próximas citas» y «Historial», sin dueño — porque todavía no
+ *     hay ninguno. Debajo aparece el aviso que dice que hay que elegir a alguien primero.
+ */
+function pintarLosTitulosDeLasCitas() {
+  if (!esPersonal()) {
+    tituloProximas.textContent = "Tus próximas citas"
+    tituloHistorial.textContent = "Historial"
+    return
+  }
+
+  const deQuien = eleccion.atendiendo ? ` de ${eleccion.atendiendo.nombre}` : ""
+  tituloProximas.textContent = `Próximas citas${deQuien}`
+  tituloHistorial.textContent = `Historial${deQuien}`
 }
 
 function filaDeCita(cita) {
@@ -1098,7 +1668,9 @@ function preguntarSiCancela(cita, fila) {
     textoEn(
       "p",
       "cita__nota",
-      "¿Seguro que querés cancelar esta cita? Ese horario queda libre para otra persona.",
+      esPersonal()
+        ? "¿Seguro que cancelás esta cita? Ese horario queda libre para otra persona."
+        : "¿Seguro que querés cancelar esta cita? Ese horario queda libre para otra persona.",
     ),
   )
 
@@ -1139,7 +1711,9 @@ async function cancelarLaCita(cita, boton) {
   await cargarMisCitas()
   mostrarAvisoDeExito(
     avisoCitas,
-    "Tu cita quedó cancelada, y ese horario vuelve a estar libre. Acá abajo queda anotada.",
+    esPersonal()
+      ? "La cita quedó cancelada, y ese horario vuelve a estar libre. Acá abajo queda anotada."
+      : "Tu cita quedó cancelada, y ese horario vuelve a estar libre. Acá abajo queda anotada.",
   )
 }
 
@@ -1160,15 +1734,20 @@ async function empezarAReagendar(cita) {
   eleccion.servicio = { id: cita.servicioId, nombre: cita.servicio }
   eleccion.proveedor = { id: cita.proveedorId, nombre: cita.proveedor }
 
-  // Los tres primeros pasos no se muestran: reagendar no los puede cambiar.
+  // Los tres primeros pasos no se muestran: reagendar no los puede cambiar. Y el de «¿Quién llama?»
+  // tampoco (pieza 7): la cita que se está moviendo ya dice de quién es, así que volver a preguntar
+  // a quién se atiende ahí solo daría lugar a mover la cita de una persona estando en la de otra.
+  pasoQuienLlama.hidden = true
   pasoCategoria.hidden = true
   pasoServicio.hidden = true
   pasoProveedor.hidden = true
 
   // El cartel dice dos cosas en dos renglones: **qué** cita se está moviendo y **cuándo** es ahora.
-  // Texto pedido por la estudiante el 2026-08-21.
-  reagendarTitulo.textContent =
-    `Estás reagendando tu cita de ${cita.servicio} - Terapista: ${cita.proveedor}`
+  // Texto pedido por la estudiante el 2026-08-21. Cuando la mueve Personal nombra **de quién es**,
+  // en vez de decir «tu cita»: es la cita de la persona que llamó.
+  reagendarTitulo.textContent = esPersonal()
+    ? `Estás reagendando la cita de ${eleccion.atendiendo.nombre}: ${cita.servicio} - Terapista: ${cita.proveedor}`
+    : `Estás reagendando tu cita de ${cita.servicio} - Terapista: ${cita.proveedor}`
   reagendarCual.textContent =
     `${tituloDelDia(cita.inicio.slice(0, 10))} a las ${horaConAmPm(cita.inicio)}.`
 
@@ -1217,7 +1796,9 @@ async function confirmarElMovimiento() {
   mostrarVista("citas")
   mostrarAvisoDeExito(
     avisoCitas,
-    "Tu cita quedó movida. Te mandamos un correo con el día y la hora nuevos.",
+    esPersonal()
+      ? `La cita quedó movida. Le mandamos el correo con el día y la hora nuevos a ${eleccion.atendiendo.correo}.`
+      : "Tu cita quedó movida. Te mandamos un correo con el día y la hora nuevos.",
   )
 }
 
@@ -1362,18 +1943,100 @@ formaEntrar.addEventListener("submit", async (evento) => {
   evento.preventDefault()
   esconderAviso(avisoEntrar)
 
-  const respuesta = await pedirAlApi("/api/sesion", {
-    method: "POST",
-    cuerpo: datosDeLaForma(formaEntrar),
-  })
+  const escrito = datosDeLaForma(formaEntrar)
+
+  const respuesta = await pedirAlApi("/api/sesion", { method: "POST", cuerpo: escrito })
 
   if (respuesta.estado !== 200) {
     mostrarAviso(avisoEntrar, mensajeDelError(respuesta.cuerpo))
     return
   }
 
+  // Si esta cuenta todavía tiene la contraseña temporal pendiente, la pantalla se acuerda de la que
+  // acaba de escribir para no volver a pedírsela *(decisión de la estudiante del 2026-08-21)*. Se
+  // guarda **solo en memoria**, y solo en este caso: para cualquier otra cuenta no hay nada que
+  // recordar y se deja vacío a propósito.
+  contrasenaRecordada = respuesta.cuerpo.debeCambiarContrasena ? escrito.contrasena : null
+
   formaEntrar.reset()
   mostrarPantallaDentro(respuesta.cuerpo)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Cambiar la contraseña temporal (pieza 7, RF-4 y RN-11)
+//
+// Esta pantalla **no impone la obligación**: la impone el servidor, que rechaza todo lo demás
+// mientras la contraseña temporal siga pendiente. Acá solo se le da a la persona la manera de salir
+// de ese estado.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+// Los requisitos se repintan con cada tecla, igual que en el registro. Acá están visibles desde el
+// principio y no aparecen al tocar el campo: en esta pantalla elegir una contraseña **es** la tarea,
+// así que las condiciones son el contenido y no ruido.
+formaCambiarContrasena.elements.contrasenaNueva.addEventListener("input", (evento) => {
+  repintarRequisitos(requisitosContrasenaNueva, evento.target.value)
+})
+
+formaCambiarContrasena.addEventListener("submit", async (evento) => {
+  evento.preventDefault()
+  esconderAviso(avisoCambiarContrasena)
+
+  const campos = formaCambiarContrasena.elements
+  const nueva = campos.contrasenaNueva.value
+  const repetida = campos.contrasenaRepetida.value
+
+  // Que las dos coincidan **no es una regla de negocio**, y por eso se comprueba acá y no en el
+  // servidor: el servidor recibe una sola contraseña y no tiene con qué compararla. Es un colador de
+  // dedazos, y su lugar natural es el único sitio donde las dos existen.
+  if (nueva !== repetida) {
+    mostrarAviso(
+      avisoCambiarContrasena,
+      "Las dos contraseñas nuevas no son iguales. Revisalas —podés usar el ojito para verlas.",
+    )
+    return
+  }
+
+  const actual = contrasenaRecordada ?? campos.contrasenaActual.value
+
+  const respuesta = await pedirAlApi("/api/contrasena/cambiar", {
+    method: "POST",
+    cuerpo: { contrasenaActual: actual, contrasenaNueva: nueva },
+  })
+
+  if (respuesta.estado !== 204) {
+    // La contraseña tiene su propio mensaje porque nombra qué condición falta; el resto sale de la
+    // lista de siempre. Es la misma función que usa el registro (pieza 12).
+    mostrarAviso(
+      avisoCambiarContrasena,
+      respuesta.cuerpo?.error === "contrasena_invalida"
+        ? mensajeDeLaContrasena(respuesta.cuerpo)
+        : mensajeDelError(respuesta.cuerpo),
+    )
+
+    // Si la temporal que la pantalla recordaba no era la correcta, se deja de insistir con ella y se
+    // pide a mano: sin esto, la persona apretaría un botón que nunca va a funcionar.
+    if (respuesta.cuerpo?.error === "contrasena_actual_incorrecta") {
+      contrasenaRecordada = null
+      campoContrasenaTemporal.hidden = false
+      campos.contrasenaActual.required = true
+    }
+    return
+  }
+
+  formaCambiarContrasena.reset()
+  repintarRequisitos(requisitosContrasenaNueva, "")
+  // La temporal ya no sirve para nada: se olvida.
+  contrasenaRecordada = null
+
+  // Se le vuelve a preguntar al servidor quién soy en vez de suponerlo: así la pantalla se pinta con
+  // lo que hay ahora, que es una cuenta sin nada pendiente.
+  const yo = await pedirAlApi("/api/yo")
+  if (yo.estado !== 200) {
+    mostrarPantallaEntrada()
+    return
+  }
+
+  mostrarPantallaDentro(yo.cuerpo)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -1428,11 +2091,15 @@ const REQUISITOS = {
  * íconos ✓ y ✗ que había antes). Pero el color solo no le llega a quien no ve la pantalla, ni a
  * quien no distingue el rojo del verde, así que el mismo dato va además en un texto **invisible**
  * que solo leen los lectores de pantalla. Cuesta una línea y no cambia nada de lo que se ve.
+ *
+ * Recibe **cuál** lista de requisitos repintar desde la pieza 7, porque ahora hay dos pantallas donde
+ * alguien elige una contraseña: crear la cuenta y cambiar la temporal. La comprobación es una sola,
+ * escrita acá; lo único que cambia es a qué renglones se los pinta.
  */
-function repintarRequisitos(contrasena) {
+function repintarRequisitos(contenedor, contrasena) {
   const todaviaNoEscribioNada = contrasena === ""
 
-  for (const renglon of requisitosContrasena.querySelectorAll(".requisito")) {
+  for (const renglon of contenedor.querySelectorAll(".requisito")) {
     const cumple = REQUISITOS[renglon.dataset.requisito](contrasena)
 
     renglon.classList.toggle("requisito--cumplido", !todaviaNoEscribioNada && cumple)
@@ -1505,7 +2172,7 @@ campoContrasenaRegistro.addEventListener("blur", () => {
 
 // Se repinta con cada tecla, que es lo que pide RF-23: «mientras la persona la escribe».
 campoContrasenaRegistro.addEventListener("input", (evento) => {
-  repintarRequisitos(evento.target.value)
+  repintarRequisitos(requisitosContrasena, evento.target.value)
 })
 
 // El correo se comprueba **al salir del campo**, no en cada tecla. Escribir un correo pasa por
@@ -1549,9 +2216,22 @@ formaRegistro.addEventListener("submit", async (evento) => {
   // `reset()` vacía los campos pero no avisa nada, así que los renglones quedarían verdes sobre un
   // campo vacío. Se vuelven a pintar a mano para que arranquen en gris la próxima vez, y se
   // esconden de nuevo: el formulario tiene que quedar como estaba antes de que nadie lo tocara.
-  repintarRequisitos("")
+  repintarRequisitos(requisitosContrasena, "")
   requisitosContrasena.hidden = true
   mostrarPantallaDentro(respuesta.cuerpo)
+})
+
+for (const boton of botonesDeInicio) {
+  boton.addEventListener("click", volverAlInicio)
+}
+
+// La marca del encabezado hace lo mismo que «Inicio», y sirve para las dos cuentas. El
+// `preventDefault()` es lo que impide que el `#` de su dirección quede pegado en la barra del
+// navegador y que la página salte de golpe hacia arriba: acá el subir lo hace `subirLaPantalla()`,
+// suave.
+enlaceInicio.addEventListener("click", (evento) => {
+  evento.preventDefault()
+  volverAlInicio()
 })
 
 for (const boton of botonesDeSalir) {

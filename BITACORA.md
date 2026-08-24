@@ -1559,3 +1559,567 @@ mirando la pantalla y preguntando «¿por qué esto dice esto?».
 Es la mejor evidencia que el proyecto tiene a favor de su propia regla: **una pieza no se cierra sin que
 una persona abra el navegador y mire.** Con la pieza 5, los defectos visuales del proyecto llegan a
 **doce**, y **ninguno** de los doce salió de una prueba.
+
+---
+
+### 2026-08-21 — construcción de la pieza 7: Personal atiende el teléfono
+
+**Qué se construyó.** La pieza más larga del plan, con diez comprobaciones. Personal entra con su
+cuenta precargada, busca o crea la cuenta de quien llama, le reserva una cita en su nombre, y puede
+cancelarla o moverla **sin la ventana de las 4 horas** (RF-16, RF-17, RF-18, RN-6, RN-11, RN-12,
+RN-13). Y la persona a la que le crearon la cuenta está obligada a cambiar su contraseña temporal la
+primera vez que entra (RF-4).
+
+**64 pruebas nuevas; `npm test` da 238 de 238.** Dos archivos nuevos en el servidor
+(`servidor/personal.js` y `servidor/rutas/personal.js`), **ninguna tabla ni columna nueva** y
+**ninguna dependencia nueva**.
+
+**CA-3 quedó entero.** Con esto los tres criterios de aceptación que el curso exige proteger están
+cubiertos por pruebas que corren en cada push. Y lo que conviene poder defender es **cómo**: no hay
+ninguna regla nueva escrita para Personal. `revisarSiSePuedeCambiar` de `servidor/reservas.js` recibe
+un parámetro `quien`, y con `QUIEN_PERSONAL` la ventana de 4 horas se saltea sola. La pieza 5 dejó ese
+parámetro puesto sin saber cómo se iba a construir la 7 — igual que la pieza 3 dejó el índice único
+*parcial* que hizo que cancelar libere el horario sin una línea de código que libere nada.
+
+---
+
+**Las cuatro decisiones de la estudiante, todas tomadas antes de escribir código.**
+
+| Decisión | Qué eligió | Lo que hizo la diferencia |
+|---|---|---|
+| La pantalla de Personal | **Un paso más («¿Quién llama?») arriba de los de siempre**, en vez de una sección aparte con todo adentro | Reusa el calendario, las fichas de horario y la tarjeta de confirmar tal como están. El mismo argumento con el que reagendar reusó esta pantalla en la pieza 5: **un segundo calendario sería un segundo lugar donde el mismo defecto puede aparecer** |
+| La contraseña temporal | **Una palabra y tres números** (`Girasol472`), en vez de ocho caracteres al azar o una palabra fija | Hay que **dictarla por teléfono**. Ocho caracteres al azar son más difíciles de adivinar pero se dictan mal; una palabra fija sería lo más cómodo y lo más débil |
+| El formulario de cambio | **Dos campos**, y la pantalla se acuerda de la temporal | Un campo menos justo después de haberlo escrito para entrar |
+| El buscador de clientes | **Nada hasta escribir 2 letras**, en vez de la lista completa | Personal siempre sabe con quién habla, y una lista con todos deja los correos de todos a la vista de quien pase por el mostrador |
+
+**Y el caso que la tercera decisión abrió, resuelto en el momento en vez de después:** si la persona
+**recarga la página** antes de cambiar la contraseña, la pantalla pierde de la memoria la temporal que
+recordaba y no tiene qué mandar. La salida quedó escrita como decisión: en ese caso —y solo en ese—
+aparece el tercer campo pidiéndola. Es el tipo de agujero que aparece semanas después, cuando ya nadie
+se acuerda de por qué la pantalla se acordaba de nada.
+
+---
+
+**Dos cosas que el plan no decía, y que se escribieron en `PLAN.md` antes de construirse.**
+
+Esto es la regla del proyecto funcionando: *lo que la construcción revela que falta en el plan se
+corrige primero ahí, y después en el código.*
+
+1. **Cómo ve Personal las citas del cliente.** El plan lo dejaba cancelar la cita de un cliente pero
+   **no decía cómo la ve para poder tocarla**: `GET /api/citas` devuelve las citas *de quien está en
+   sesión*, y Personal no tiene citas propias. Se agregó
+   `GET /api/personal/clientes/:clienteId/citas`, bajo el mismo pasillo `/api/personal/` que las otras
+   dos puertas de Personal, con su razón escrita: así el permiso se lee de un vistazo en la dirección
+   y no queda la tentación de que un cliente cuele un `clienteId` ajeno en la puerta de siempre.
+2. **Dónde vive la obligación de RF-4.** El plan pedía que el sistema exija cambiar la contraseña
+   «antes de dejarlo hacer nada más», pero no decía dónde se cumple eso. Quedó en el **guardia de la
+   sesión** (`servidor/sesion.js`), no en la pantalla: escrita ahí la cumplen todos los endpoints del
+   cliente de una sola vez, y también los que se agreguen mañana. Esconder el menú es lo que se ve; lo
+   que manda está del otro lado — una pantalla que esconde botones no sirve de nada contra quien le
+   manda el pedido al API sin abrir el navegador.
+
+---
+
+**Dos pruebas viejas se reescribieron, y vale la pena entender por qué eso no es aflojar una prueba.**
+
+Las piezas 3 y 5 tenían una prueba cada una que decía que la cuenta de Personal recibía
+`403 solo_clientes` al intentar reservar y al intentar cancelar. Los comentarios de las dos avisaban
+literalmente «eso es la pieza 7». Llegó, y ahora Personal **sí** hace las dos cosas por esos mismos
+endpoints.
+
+Podrían haberse borrado. No se borraron, y la de reservar explica por qué: **lo que protegía sigue
+protegiendo exactamente lo mismo** —que una cita nunca quede guardada con el id de Personal en la
+columna `cliente_id`, que es el id de otra persona de la tabla `cliente`—. Antes eso se lograba
+cerrándole la puerta; ahora, obligándolo a decir para quién es la cita. Cambió el número que devuelve
+—`422` en vez de `403`— y no cambió el peligro. Las dos quedaron con la fecha del cambio y la razón
+histórica escritas adentro.
+
+---
+
+**Cómo se comprobó, y por qué no alcanzaba con `npm test`.**
+
+Las 238 pruebas pasan, pero la regla del proyecto es que los comandos también hay que correrlos y que
+ninguna prueba mira la página dibujada. Así que además:
+
+- **`npm run datos`** se corrió, y funciona: no había ninguna tabla nueva que agregar a su borrado
+  —`canal`, `personal_id_creador` y `debe_cambiar_contrasena` ya existían vacías desde las piezas 1 y
+  3—, y eso se comprobó leyendo el guion, no suponiéndolo.
+- **`npm start`** levanta sin ningún aviso, y sobre la aplicación de verdad se recorrió la pieza
+  entera: crear la cuenta (dio `Puente146`), reservarle una cita (quedó con canal asistida y la cuenta
+  de Personal anotada), entrar con la temporal y chocar con el `403 debe_cambiar_contrasena`,
+  cambiarla, y ver que la vieja quedó rechazada.
+- **Y CA-3 sobre la misma cita:** una que empieza dentro de dos horas, insertada a mano porque el API
+  no deja crear citas para hoy (RN-4). Al cliente `422 ventana_de_cancelacion`; a Personal `204`, y la
+  fila quedó cancelada por Personal, con su fecha. Las dos mitades del criterio, una al lado de la
+  otra, en la aplicación de verdad.
+
+**La revisión visual queda pendiente**, y con ella el cierre de la pieza.
+
+---
+
+**Un punto abierto que la construcción destapó, para que lo decida la estudiante.**
+
+Para Personal, una cita que **ya pasó y que nadie cerró todavía** llega con `sePuedeCambiar: true`, así
+que le aparecen los botones de «Reagendar» y «Cancelar» sobre una cita del mes pasado. Eso **no es un
+error del código**: sale de leer RN-6 («Personal no tiene ventana de cancelación») junto con RN-17
+(«ninguna cita cambia de estado por el solo paso del tiempo»), y la especificación no dice en ningún
+lado que Personal no pueda tocar una cita pasada. Restringirlo sería **inventar una regla**, y este
+proyecto no inventa reglas desde el código.
+
+Puede además ser lo correcto: alguien que no llegó a su cita llama al día siguiente y la asistente le
+mueve la fecha. Pero la pieza 8 —«Personal cierra las citas pasadas»— es la que trae las herramientas
+pensadas para ese caso (marcar «completada» o «no asistió»), así que conviene decidir a la vista de las
+dos si esos botones se quedan ahí. Queda anotado como pregunta, no resuelto en silencio.
+
+---
+
+### 2026-08-21 — la revisión visual de la pieza 7 corrige una regla de negocio (RN-25)
+
+**Qué se vio.** La estudiante entró con la cuenta de Personal, abrió el día de hoy en el calendario, y
+leyó esto:
+
+> **Viernes 21 de agosto de 2026**
+> No se puede reservar para hoy. Si necesitás una cita hoy, **llamá al negocio al 2000-0000**.
+
+Un cartel diciéndole a la asistente del negocio que llame al negocio. Sus palabras: *«esto no tiene
+sentido si soy parte de la gente que trabaja ahí»*.
+
+**Por qué esto es más que un texto mal escrito.** El agente encontró el texto en tres lugares y podría
+haberlos arreglado ahí mismo. Pero al buscar la regla en `ESPECIFICACION.md` apareció que el texto era
+absurdo **porque la regla detrás tenía un hueco**, y que era **exactamente el mismo hueco que RN-6
+existe para tapar**. RN-6 dice, con sus propias palabras, sobre las cancelaciones:
+
+> *Sin esta regla, el mensaje «llame al negocio» de RN-5 no resolvería nada: la asistente atendería la
+> llamada y descubriría que ella tampoco puede hacerlo, y esa cancelación de último momento quedaría
+> sin registrar — que es exactamente la segunda fuente de verdad que `NEGOCIO.md` dice haber
+> eliminado.*
+
+Cambiando «cancelación» por «cita de hoy», ese párrafo describe palabra por palabra lo que pasaba con
+RN-4: la aplicación le dice al cliente «para una cita hoy, llamá al negocio», el cliente llama, y
+Marta descubría que **ella tampoco podía** — así que esa cita se anotaba en un papel. La segunda
+fuente de verdad, otra vez, por la otra puerta.
+
+**La decisión.** Se le presentaron dos caminos —arreglar solo el texto, o arreglar también la regla— y
+la estudiante eligió **también la regla**, con su propio argumento: *«las condiciones para el personal
+del negocio no son las mismas que para un usuario normal; ellos tendrían que poder agendar citas para
+las próximas horas o para el mismo momento, si hay disponibilidad»*.
+
+Nació **RN-25**: Personal puede reservar, y mover una cita, a cualquier horario de hoy que **todavía
+no haya empezado** y esté libre. **Sin ninguna ventana de anticipación**: a las 16:30 puede tomar las
+17:00. Lo único que no puede es tomar un horario que ya arrancó, y eso no es una restricción de
+política — ese cupo ya no existe.
+
+**Lo que NO se tocó, y es lo importante:** **CA-2**. El cliente sigue sin poder reservar para hoy, a
+ninguna hora, y eso está comprobado con pruebas que corren en cada push. La regla nueva **agrega un
+actor, no debilita al cliente**, y las pruebas de las dos mitades quedaron escritas una al lado de la
+otra para que se lean juntas.
+
+---
+
+**El orden en que se hizo, que es la regla del proyecto y esta vez se ve entera.**
+
+1. **`ESPECIFICACION.md` primero:** nació RN-25, y se corrigieron **RN-4** (que decía «no existen las
+   citas para hoy», sin más), **RN-13** (que decía que Personal «tampoco puede reservar para el mismo
+   día»), la línea de **«Fuera de alcance»**, el recorrido de la reserva asistida, el recorrido
+   «Intento de reservar para hoy» y **RF-16**.
+2. **`PLAN.md` después:** la restricción global de la primera página, el «Qué tiene que ser cierto» de
+   la pieza 7, el bloque *Produce* con los dos cambios de contrato, y **la comprobación 8, que pedía
+   literalmente lo contrario** («Como Personal, intentar reservar para hoy: lo rechaza igual que al
+   cliente»).
+3. **Las pruebas, y se vieron fallar:** 12 nuevas, 8 en rojo antes de escribir una línea de código.
+   Las otras 4 son del lado del cliente y pasaban desde el principio a propósito — están ahí para que
+   CA-2 no se rompa sin que nadie se entere.
+4. **Y al final el código.**
+
+---
+
+**Cómo quedó escrita la regla, que es lo que conviene poder defender.**
+
+La diferencia entre los dos actores está en **una sola función** de `servidor/disponibilidad.js`, que
+se llama `estaEnSuTiempo` y tiene tres líneas:
+
+- un **cliente** alcanza de mañana en adelante (RN-4);
+- **Personal** alcanza cualquier horario que todavía no haya empezado (RN-25).
+
+Esa función la usan **las dos preguntas** de ese archivo: el calendario del mes y la revisión de un
+horario suelto antes de guardar la cita. Que salgan del mismo lugar es lo que impide el defecto más
+caro que ese archivo puede tener: **que el calendario ofrezca un horario que la reserva después
+rechace**. Si la regla estuviera escrita dos veces, ese defecto aparecería el día que una de las dos
+copias cambiara.
+
+**Una mudanza que la regla obligó, y que vale como ejemplo.** `QUIEN_CLIENTE` y `QUIEN_PERSONAL`
+vivían en `servidor/reservas.js` desde la pieza 5. Ahora `servidor/disponibilidad.js` también las
+necesita — y `reservas.js` ya le pedía cosas a `disponibilidad.js`. Los dos archivos habrían quedado
+**importándose mutuamente**, que es un *círculo de importaciones*: JavaScript a veces lo tolera y a
+veces deja una de las dos cosas sin valor, según cuál se cargue primero, y cuando falla, falla de una
+forma difícil de entender. La salida fue la de siempre: **lo que dos archivos comparten se saca a un
+tercero que no depende de nadie** (`servidor/quien-actua.js`). La alternativa —escribir el texto
+`"personal"` a mano dentro de `disponibilidad.js`— es exactamente lo que `CLAUDE.md` prohíbe.
+
+---
+
+**Los tres textos que se arreglaron, y el criterio que dejaron.**
+
+| Dónde | Qué decía | Qué dice ahora, para Personal |
+|---|---|---|
+| Al abrir el día de hoy | «llamá al negocio al 2000-0000» | «Solo se pueden tomar los horarios de hoy que todavía no empezaron» — y cuando ya no queda ninguno, «Ya no queda ningún horario de hoy sin empezar. La primera fecha posible es mañana» |
+| Al reservar un horario ya empezado | «No se puede reservar para hoy… llamá al negocio» | «Ese horario ya empezó, así que no se puede tomar. Elegí uno que todavía no haya empezado» |
+| Al mover una cita a un horario ya empezado | lo mismo | lo mismo |
+
+**Para el cliente los tres textos quedaron idénticos a como estaban**, con el teléfono adentro, porque
+para él sí hay algo que hacer: llamar, y que Personal se lo agende. El mensaje «llamá al negocio»
+recién ahora es verdad de punta a punta.
+
+**El criterio que queda escrito en `CLAUDE.md`:** cuando un mensaje mande a hacer algo, hay que
+preguntarse **quién lo va a leer**. Es el tercer defecto de esta clase en el proyecto —después de
+«faltan menos de 4 horas» debajo de una cita que ya había pasado, y de «ACTIVA» en una cita del mes
+pasado— y los tres los encontró una persona mirando la pantalla, con todas las pruebas en verde.
+
+**`npm test` pasó de 238 a 250, todas en verde.** Y esta vez la revisión visual no corrigió un texto:
+corrigió **una regla de negocio**.
+
+---
+
+### 2026-08-21 — la misma revisión: cómo se vuelve al inicio, y una regla que se decidió NO agregar
+
+**Lo que se vio.** Estando en «Citas del cliente», mirando las citas de la persona que llamó, la
+estudiante notó que **ninguna entrada del menú se leía como «volver al principio»**. El menú estaba y
+funcionaba —«Reservar» y «Citas del cliente», en el encabezado y en el pie—, pero ninguna de las dos
+palabras dice «inicio».
+
+**Lo que quedó, después de dos correcciones de la estudiante en la misma tarde.**
+
+| Qué | Qué hace | Quién lo ve |
+|---|---|---|
+| **«Inicio»** en los dos menús | Vuelve al principio de la pantalla de reservar **manteniendo** a la persona que se está atendiendo | solo Personal |
+| **La marca del encabezado** (el logo **y** el nombre) | Lo mismo que «Inicio» | **las dos cuentas** |
+
+**La primera corrección: se construyeron dos entradas y quedó una.** Además de «Inicio» se hizo
+«Nueva llamada», que volvía al principio **soltando** a la persona. La estudiante las vio en pantalla
+y dijo que con «Inicio» alcanzaba. Tenía razón, y por un motivo mejor que el ahorro de espacio:
+**soltar a la persona es una acción que cambia a quién se le está reservando**, y ese botón vive mejor
+pegado al nombre de esa persona —«Atender a otra persona», en la tarjeta «Atendiendo a»— que en un
+menú, donde se toca por error y borra la llamada en curso. Con «Inicio» se llega justo ahí, arriba,
+con la tarjeta a la vista. **Queda como criterio: un menú es para ir a lugares, no para deshacer
+trabajo en curso.**
+
+**La segunda corrección: la marca es el logo Y el nombre.** El primer pedido fue «el logo», y se hizo
+la flor sola. La estudiante lo corrigió: el logo es también el texto que dice «Bienestar y salud». Y
+ese cambio, que parecía solo agrandar el área tocable, obligó a algo más:
+
+> **Dejó de poder ser un `<button>`.** Adentro va el `<h1>` con el nombre del negocio, y **un `<h1>`
+> dentro de un `<button>` es HTML inválido**: un botón solo puede contener texto y cosas de texto. Los
+> navegadores lo dibujan igual, así que es de los errores que no se ven. Sacar el `<h1>` no era la
+> salida —es el **único encabezado principal de la página**, y quien usa un lector de pantalla se
+> orienta saltando de encabezado en encabezado—, así que pasó a ser un `<a>`, que **sí** puede
+> envolver un `<h1>` sin dejar de ser válido.
+
+*Vale anotar cómo se detectó, porque no lo detectó nadie mirando la pantalla: se detectó escribiendo
+una comprobación. La primera versión de esa comprobación dio un **falso positivo** — encontró un
+`<h1>` dentro de un `<button>` que en realidad estaba **dentro de un comentario**, porque los
+comentarios de este proyecto mencionan las etiquetas por su nombre. Hubo que sacar los comentarios
+antes de mirar. Una comprobación que se cree a sí misma sin revisar qué encontró es peor que no
+tenerla.*
+
+**Tres detalles más.**
+
+1. **La marca se apaga donde no hay inicio al que volver:** la pantalla de entrar, y la del cambio
+   obligatorio de la contraseña temporal. En esa segunda no es un detalle estético: RF-4 dice «antes
+   de dejarlo hacer nada más», y un logo que llevara a la aplicación sería **una puerta de escape a
+   esa regla**. Y **se apaga quitándole el `href`**, no con `disabled` —que solo existe para los
+   botones—: un enlace sin dirección no se puede tocar ni alcanzar con el tabulador.
+2. **No lleva `aria-label`, y el `alt` de la imagen sigue vacío.** El nombre del enlace sale del texto
+   que ya tiene adentro. Un `aria-label` **reemplaza** lo que se ve, así que quien usa un lector oiría
+   algo distinto de lo que hay en pantalla — y con `alt` y texto a la vez, oiría dos veces lo mismo.
+3. **«Volver al inicio» son dos cosas a la vez:** cambiar de sección **y** subir la pantalla. Sin lo
+   segundo, alguien que estaba abajo mirando el historial tocaría «Inicio», la sección cambiaría, y
+   en pantalla seguiría viendo la mitad de abajo — que se siente como que el botón no hizo nada.
+
+**Y el menú de arriba pasó a envolver.** Con cinco entradas, el menú de Personal quedaba al borde de
+desbordar a 768px justos. El del pie ya envolvía desde la pieza 3; ahora los dos hacen lo mismo. Una
+fila que desborda empuja el contenido fuera de la pantalla en vez de bajar a la línea siguiente.
+
+---
+
+**La regla que se decidió NO agregar, que es la parte más interesante de esta entrada.**
+
+La estudiante probó reservar como clienta y pudo tomar **mañana a las 9 de la mañana**, y lo reportó
+como un error: *«esto debería ser solo permiso de la cuenta del personal»*.
+
+**No era un error**, y se comprobó antes de contestar, contra la aplicación levantada: como cliente,
+reservar **hoy** se rechaza con `mismo_dia` y el día de hoy llega con cero horarios libres; reservar
+**mañana** se acepta. RN-4 dice «a partir del **día siguiente**», así que mañana a las 9:00 es
+exactamente el primer horario que un cliente puede tomar, y lo es desde la pieza 2.
+
+Lo que estaba mezclado eran **dos reglas distintas que las dos hablan de tiempo**: las 4 horas de RN-5
+son para **cancelar o mover** una cita que ya existe, no para reservar. Al reservar nunca jugaron.
+
+Después pidió un mínimo de 4 horas para reservar, *«que es lo mismo que para cancelar o reagendar»*. Y
+ahí apareció lo que había que decirle antes de escribir nada: **al reservar, las 4 horas serían una
+apertura y no una restricción.**
+
+- Como la regla es «no hoy», **el mínimo real que el sistema ya garantiza es de poco más de 9 horas**
+  — el caso extremo es reservar a las 23:59 para el primer horario del día siguiente, que son las
+  9:00, porque el negocio nunca abre antes.
+- **Sumadas a «no hoy», las 4 horas nunca podrían rechazar nada.** Sería una protección que se ve en
+  el código y no existe.
+- **Reemplazando a «no hoy», eliminarían CA-2**, uno de los tres criterios de aceptación que
+  `PROYECTO.md` §7.4 exige proteger con pruebas que corren en cada push. Y le sacarían sentido a RN-25,
+  que se acababa de construir justamente porque el cliente no puede reservar para hoy y entonces llama.
+
+Con el dato de las 9 horas a la vista, la estudiante decidió **no cambiar nada**: su criterio de 4
+horas ya estaba cumplido con margen. **Queda escrito como decisión, no como olvido.**
+
+*Vale anotar el patrón, porque se repitió dos veces en la misma tarde: la primera vez —el cartel de
+«llamá al negocio»— lo que parecía un problema de texto era un hueco en una regla, y la regla cambió.
+La segunda —«pude reservar para mañana»— lo que parecía un hueco en una regla era una confusión entre
+dos reglas, y no cambió nada. Las dos veces la salida fue la misma: **buscar qué dice la
+especificación antes de tocar el código**, y comprobarlo contra la aplicación de verdad antes de
+afirmarlo.*
+
+---
+
+### 2026-08-21 — la misma revisión, cuarto hallazgo: la pantalla no decía de quién eran las citas
+
+**Lo que se vio.** Marta entra como Personal, elige a Marisol, va a «Citas del cliente» y mira la
+pantalla. Arriba dice **«Hola, Marta Jiménez»** — su propio nombre. El título de la sección dice
+**«Sus próximas citas»**. Y ahí termina: **en toda la pantalla no había un solo lugar que dijera de
+quién eran esas citas.**
+
+Palabras de la estudiante: *«no hay ningún lado donde la persona del personal pueda ver el nombre de
+Marisol Prueba, las citas que está viendo»*. Y trajo la solución con el pedido: que el título diga el
+nombre.
+
+**Qué se cambió.** Los **dos** títulos de la sección, no solo el de arriba:
+
+| Quién mira | Título de arriba | Título del historial |
+|---|---|---|
+| El cliente | «Tus próximas citas» | «Historial» |
+| Personal, con alguien elegido | **«Próximas citas de Marisol Prueba»** | **«Historial de Marisol Prueba»** |
+| Personal, sin nadie elegido | «Próximas citas» | «Historial» |
+
+**Por qué los dos y no solo el primero:** un título con nombre seguido de un «Historial» pelado deja
+la duda de si lo de abajo es de la misma persona. Y **por qué el tercer caso existe:** sin nadie
+elegido no hay dueño que nombrar, y poner uno inventado sería peor que no poner ninguno.
+
+**Por qué ninguna prueba automática podía encontrar esto.** El título **aparecía**, estaba escrito en
+español correcto, y no decía nada falso. Lo que fallaba es que **no alcanzaba**: «sus» es un pronombre
+y un pronombre necesita que alguien ya haya dicho de quién habla. Nadie lo había dicho.
+
+*Es el cuarto hallazgo de esta revisión y el tercero de la misma familia: **un texto correcto que no
+dice lo que hace falta**. Los otros dos fueron «llamá al negocio» dicho a la asistente del negocio, y
+«faltan menos de 4 horas» debajo de una cita que ya había pasado. La conclusión, escrita como
+convención en `CLAUDE.md`: **cuando una pantalla muestra los datos de una tercera persona, el nombre
+de esa persona tiene que estar a la vista.***
+
+---
+
+### 2026-08-21 — la misma revisión, quinto ajuste: los dos botones de la llamada en curso
+
+**Lo que se vio.** Con una persona ya elegida, la tarjeta «Atendiendo a» mostraba su nombre y su
+correo, y un solo botón: «Atender a otra persona». Para ver **qué tenía reservado** había que ir a
+buscar el menú. O sea que **el nombre de la persona y sus citas estaban en dos pantallas distintas**,
+y el camino entre las dos pasaba por un menú.
+
+**Qué se agregó.** Un segundo botón al lado, **«Citas del cliente»**, que lleva a esa sección. La
+tarjeta queda con los dos:
+
+    Atendiendo a                    melalo
+    Correo             melalo9@gmail.com
+    ─────────────────────────────────────
+    [ Citas del cliente ] [ Atender a otra persona ]
+
+**Tres cosas que se decidieron y por qué.**
+
+1. **Los dos van adentro de la tarjeta, no en el menú.** Los dos hablan de **esta persona**, así que
+   viven pegados a su nombre — y por eso mismo aparecen y desaparecen con la tarjeta, sin una línea de
+   código extra: si no hay nadie elegido, no hay nada de lo que hablar.
+2. **Los dos con el mismo peso visual** (`boton--suave`, con borde índigo). Ninguno es más importante
+   que el otro: uno lleva a mirar, el otro cierra la llamada. Y ninguno confirma nada, así que
+   ninguno es el botón lleno que `VISUALS.md` reserva para las acciones que confirman.
+3. **El botón se llama igual que la entrada del menú**, «Citas del cliente». Es a propósito: dos
+   caminos al mismo lugar tienen que decir lo mismo, o parecen dos lugares distintos.
+
+**Nada de HTML ni de CSS nuevo:** la fila de dos botones usa `confirmacion__botones`, la clase que ya
+usaban las otras tres filas de dos botones de la aplicación —apilados en teléfono, uno al lado del
+otro desde tableta—.
+
+---
+
+### 2026-08-21 — la fila de botones de «Atendiendo a»: un corte de pantalla nuevo
+
+**Lo que se pidió**, en tres mensajes seguidos de la estudiante: que los dos botones de la tarjeta
+pasen a estar lado a lado **desde 476px** —mucho antes que los 768px del resto de la aplicación—, que
+vayan **centrados** en vez de pegados a la izquierda, y que cada uno mida **48%** del ancho
+disponible.
+
+**Cómo quedó hecho, y las dos decisiones que hubo que tomar.**
+
+1. **El 476px se agregó como variable** (`$angosto: 29.75rem`), al lado de los dos cortes generales
+   del proyecto, con su medida en píxeles anotada. La convención del proyecto es que un corte de
+   pantalla nunca se escribe a mano adentro de un `@media`.
+2. **Va como modificador y no cambiando la clase compartida.** `confirmacion__botones` la usan otras
+   **tres** filas de dos botones —confirmar la reserva, guardar los datos del usuario, crear la cuenta
+   de quien llama—, y las tres fueron revisadas y aprobadas como están. Cambiar la clase las movería a
+   las cuatro. Es el mismo criterio con el que la pieza 5 creó `paso--titulo-pegado`.
+
+**Un detalle que no era obvio:** hubo que escribir `width: 48%` en los botones, y no alcanzaba con
+centrar la fila. `.boton` mide **el 100% del ancho** hasta la tableta —que es lo cómodo para el pulgar
+cuando van apilados—, y **un botón que quiere ocupar todo el ancho no se puede centrar, porque ya lo
+ocupa**.
+
+**Y una consecuencia que la cuenta anticipó, anotada antes de que nadie la vea:** a 476px cada botón
+mide 198px y le quedan 148px para el texto, así que **«Atender a otra persona» no entra en una línea y
+parte en dos**. Según la cuenta entra en una línea a partir de unos 640px, y «Citas del cliente» a
+partir de unos 568px. No está roto —los dos botones mantienen la misma altura, porque en una fila se
+estiran al más alto— pero se ve. Queda anotado con la salida más simple si molesta: **acortar la
+etiqueta**; «Otra persona» entra en una línea incluso a 476px.
+
+---
+
+### 2026-08-21 — «Seleccionar» en los resultados de la búsqueda, y un botón que no puede ser un botón
+
+**Lo que se pidió:** que cada resultado de buscar a quien llama —el renglón con el nombre y el
+correo— tenga a la derecha, centrado en vertical, un botón que diga **«Seleccionar»**.
+
+**El problema, y por qué no se resolvió como se pidió literalmente.** Cada resultado **ya es un
+`<button>`**: el renglón entero se toca para elegir a esa persona. Y **adentro de un botón no puede
+haber otro botón** — es HTML inválido, exactamente el mismo problema que el `<h1>` adentro del botón
+del encabezado, unas horas antes.
+
+Había dos salidas:
+
+1. **Convertir el renglón en un `<div>`** y poner un `<button>Seleccionar</button>` de verdad adentro.
+   Válido, pero **tocar el nombre dejaría de hacer nada** — y el nombre es lo primero que una persona
+   toca.
+2. **Dejar el renglón como botón** y poner un `<span>` que *se vea* como el botón chico de apoyo del
+   proyecto, reusando sus clases sin inventar valores.
+
+Se eligió la segunda: **se ve exactamente lo que se pidió**, y encima el área tocable sigue siendo el
+renglón completo — el nombre, el correo y el rectangulito, los tres funcionan. Para un lector de
+pantalla es un solo control que se llama «ana torres ana@ejemplo.com Seleccionar», que se lee bien.
+
+**Y una trampa que apareció después, que vale más que el pedido en sí.** Reusar las clases de `.boton`
+en un `<span>` trae también lo que `.boton` decide sobre su propio tamaño y su posición:
+`width: 100%` en teléfono y **`align-self: flex-start` desde tableta**. Esa segunda le gana al
+`align-items: center` de la fila, así que **«Seleccionar» se hubiera ido a la esquina de arriba en
+cuanto la pantalla pasara los 768px** — justo el tamaño en el que nadie estaba mirando.
+
+Se encontró **leyendo el CSS compilado**, no la pantalla. Y ahí está lo aprendible: dos reglas que
+pesan lo mismo se resuelven por **cuál está más abajo en el archivo**, y eso en el `.scss` —donde todo
+está anidado— no se ve. Se comprobó a mano: `.boton { align-self: flex-start }` está en la posición
+8148 del CSS y `.opcion__accion { align-self: center }` en la 11746, así que gana el centrado. Queda
+como convención en `CLAUDE.md`: **al reusar las clases de `.boton` en algo que no es un botón, hay que
+mirar el CSS compilado.**
+
+**Las otras tres listas de opciones no cambiaron en nada** —categorías, tipos de servicio y
+terapistas—: el «Seleccionar» es un parámetro opcional de `botonDeOpcion`, y solo lo pasa la búsqueda
+de clientes.
+
+---
+
+### 2026-08-23 — pausa con la pieza 7 construida y sin cerrar
+
+**Por qué esta entrada existe.** La estudiante pausó para trabajar en otra cosa y pidió dejar el hilo
+atado, de modo de poder retomar en otra sesión preguntando «¿por dónde íbamos en la pieza 7?». La hoja
+para retomar es `PROXIMA-SESION.md`, reescrita el mismo día; acá queda el estado, fechado, para el
+historial.
+
+**El estado, comprobado y no supuesto:**
+
+- **La pieza 7 está construida y NO está cerrada.** Sus diez comprobaciones pasan; la revisión visual
+  quedó a medias.
+- **`npm test` da 250 de 250.** Eran 174 antes de esta pieza: **76 pruebas nuevas**.
+- **CA-3 quedó completo**, y con eso los tres criterios de aceptación del curso están cubiertos por
+  pruebas que corren en cada push.
+- **Nació una regla de negocio nueva, RN-25**, salida de la revisión visual. **CA-2 quedó intacto.**
+- **Nada está subido a Git:** 25 archivos, 20 modificados y 5 nuevos. **La integración continua no
+  corrió con estos cambios**, así que las 250 pruebas todavía no se probaron en Node 20 — solo en la
+  máquina de la estudiante.
+
+**Las cinco decisiones que quedaron esperando**, todas escritas con su contexto en
+`PROXIMA-SESION.md`:
+
+1. **Las citas que ya pasaron:** a Personal le aparecen «Reagendar» y «Cancelar» sobre una cita del
+   mes pasado. No es un error —sale de RN-6 junto con RN-17, y la especificación no lo prohíbe—, y
+   restringirlo sería inventar una regla. Conviene decidirlo a la vista de la pieza 8.
+2. **Una etiqueta que parte en dos líneas** a 476px: «Atender a otra persona».
+3. **Si el corte de 476px vale para las otras tres filas de dos botones** o se queda como modificador.
+4. **Si se termina la revisión visual** —faltan tres cosas— o se cierra la pieza dejándolas anotadas
+   como no verificadas.
+5. **Si se sube a Git** ahora o después de cerrar la revisión.
+
+**Lo que la revisión visual de esta pieza dejó como saldo, que es lo más citable del proyecto:** de
+**seis** cambios, **ninguno** lo podía encontrar una prueba automática, y **tres no eran de
+apariencia — eran de lo que la aplicación decía**. Uno de esos tres no terminó en un cambio de texto
+sino en **una regla de negocio nueva**: el cartel que le decía «llamá al negocio» a la asistente del
+negocio era absurdo *porque la regla detrás tenía un hueco*.
+
+---
+
+### 2026-08-24 — la pieza 7 queda CERRADA: la revisión visual terminada y las cinco decisiones resueltas
+
+**Se retomó la pieza 7 donde había quedado el 2026-08-23**, con la hoja `PROXIMA-SESION.md` como
+única entrada: las cinco preguntas se contestaron una por una, y **la revisión visual se terminó en
+el navegador** en vez de darse por cerrada sin mirar.
+
+**Las cinco decisiones, con lo que se eligió y por qué:**
+
+1. **Las citas que ya pasaron → se difiere a la pieza 8, a propósito.** A Personal le siguen
+   apareciendo «Reagendar» y «Cancelar» sobre una cita del mes pasado. **No se tocó nada**, y esa es
+   la decisión: sale de leer RN-6 junto con RN-17, y **la especificación no lo prohíbe**, así que
+   restringirlo sería inventar una regla desde el código. La pieza 8 es la que trae las herramientas
+   pensadas para ese caso, y conviene decidirlo con las dos pantallas a la vista. Queda como el
+   **único punto abierto** del proyecto, escrito en `SEGUIMIENTO.md` y en `DISENO.md`.
+2. **La etiqueta que partía en dos líneas → se acortó a «Otra persona».** Entraba en dos líneas entre
+   476 y 640px de ancho, justo en el tramo donde el modificador pone los dos botones lado a lado al
+   48%. Se eligió **acortar la etiqueta y no ensanchar el botón ni mover el corte**, porque esas dos
+   medidas las pidió la estudiante mirando la pantalla el 21: se cambia lo que nadie había decidido a
+   propósito. Y el verbo no se perdió — ya está dicho en el título de la tarjeta que contiene al
+   botón, «Atendiendo a». **Es un cambio de texto en la vista: ninguna función, ningún endpoint,
+   ninguna prueba.**
+3. **El corte de 476px → se queda como modificador de una sola fila.** No se unificó para las cuatro
+   filas de dos botones. Las otras tres ya estaban revisadas y aprobadas, y unificarlas las movería
+   sin que nadie las hubiera vuelto a mirar — el mismo criterio con el que la pieza 5 creó
+   `paso--titulo-pegado`. **El costo se asume por escrito:** entre 476 y 767px la aplicación tiene
+   dos comportamientos distintos.
+4. **La revisión visual → se terminó.** Las tres cosas que faltaban se miraron con `npm start`
+   levantado: la contraseña temporal en grande (se lee de un vistazo, las letras separadas cumplen su
+   función), el caso de recargar la página en el cambio obligatorio (**aparecen los tres campos**,
+   cada uno con su ojito) y la pantalla angosta (nada se sale ni se pisa). **Ningún defecto nuevo.**
+5. **Subir a Git → sí**, con los documentos actualizados primero.
+
+**El hallazgo de gobernanza del día: una investigación que terminó sin defecto.**
+
+Durante el recorrido se reportó que el tercer campo —el de la contraseña temporal— **no aparecía** al
+recargar la página. Antes de tocar una línea se investigó, y las cuatro comprobaciones dieron bien:
+
+| Qué se revisó | Cómo | Resultado |
+|---|---|---|
+| ¿El servidor avisa de la contraseña pendiente al recargar? | Se **reprodujo el pedido del navegador con `curl`**, creando una cuenta de prueba desde el API de Personal | ✅ `GET /api/yo` devolvía `debeCambiarContrasena: true` |
+| ¿El navegador usaba una versión vieja del código? | Se descargó el JavaScript servido y se comparó contra el del disco | ✅ Idénticos, y `Cache-Control: max-age=0` |
+| ¿La regla que esconde y muestra funciona? | Se leyó el **CSS compilado**, no el `.scss` | ✅ `[hidden] { display: none !important }` estaba puesta |
+| ¿El código lee bien la condición? | Se siguió el camino desde `arrancar()` hasta la línea que muestra el campo | ✅ Correcto |
+
+**No había defecto. Lo que había fallado era el recorrido escrito**, que hacía tocar «Salir» a
+destiempo — y la pantalla que se estaba probando **tiene su propio botón «Salir» justo abajo**, así
+que los dos pasos se confundían. Al repetirlo con una cuenta preparada y la instrucción explícita de
+no tocar ese botón, los tres campos aparecieron.
+
+**Vale anotarlo por dos razones.** La primera es que **el reflejo contrario habría metido un defecto
+de verdad**: «arreglar» una línea que estaba bien, para explicar un síntoma que no existía. La
+segunda es que el error estaba en un lugar que no se suele revisar — **el guion de la prueba
+manual**, no el código. Quedó como convención en `CLAUDE.md`: *un recorrido de revisión tiene que
+decir qué botones **no** tocar.*
+
+**Y una corrección de rumbo sobre los números.** `CLAUDE.md` decía **doce** defectos visuales cuando
+ya iban dieciocho: se había quedado viejo por segunda vez, las dos porque la revisión visual siguió
+encontrando cosas después de que alguien anotó el número. Ahora dice **dieciocho**, más el
+decimonoveno hallazgo —la etiqueta, que no estaba rota pero se veía—, **con la cuenta desglosada** y
+una nota que manda a mirar el final de esta bitácora antes de volver a tocarlo.
+
+**El saldo de la pieza 7 completa: siete hallazgos de la revisión visual, ninguno de una prueba
+automática.** Tres de ellos no eran de apariencia sino **de lo que la aplicación decía**, y uno de
+esos tres no terminó en un cambio de texto sino en **una regla de negocio nueva** (RN-25). Es el
+argumento más citable del proyecto a favor de que **una pieza no se cierra sin que una persona abra
+el navegador y mire**.

@@ -23,14 +23,14 @@
 | Comando | Qué hace |
 |---|---|
 | `npm install` | Instala las dependencias. |
-| `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita ni ningún correo registrado: esos se crean desde la aplicación, a partir de las piezas 3 y 4. |
+| `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita, ninguna cuenta de cliente y ningún correo registrado: esos se crean desde la aplicación, a partir de las piezas 3, 4 y 7. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
-| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **174**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4, 26 de la pieza 12 y 39 de la pieza 5. **Los tres criterios de aceptación están cubiertos**: CA-1 y CA-2 desde la pieza 3, y **CA-3 (parte cliente) desde la pieza 5** — la parte de Personal es de la pieza 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
+| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **250**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4, 26 de la pieza 12, 39 de la pieza 5 y **76 de la pieza 7** (58 en `personal.test.js` y 18 en `cambio-de-contrasena.test.js`). **Los tres criterios de aceptación están cubiertos por completo**: CA-1 y CA-2 desde la pieza 3, y **CA-3 entero desde la pieza 7** — la parte del cliente la trajo la 5, la de Personal la 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
 `PORT` y `SESION_SECRETO` (desde la pieza 1), `RESEND_API_KEY` y `CORREO_REMITENTE` (desde la 4), y
-`RECORDATORIOS_SECRETO` (desde la 6). Sin `RESEND_API_KEY` la aplicación tiene que levantar igual:
+`RECORDATORIOS_SECRETO` (previsto para la 6, que todavía no está construida). Sin `RESEND_API_KEY` la aplicación tiene que levantar igual:
 los correos fallan y quedan registrados como fallidos, pero las citas se siguen creando (RF-19).
 
 ## Convenciones
@@ -52,6 +52,10 @@ proyectoFinal/
 │   ├── tiempo.js          fechas y horas, siempre en la hora del negocio (Costa Rica)
 │   ├── catalogo.js        preguntas al catálogo: si un servicio existe, quién lo atiende
 │   ├── clientes.js        los datos del cliente: leerlos, comprobarlos y guardarlos
+│   ├── personal.js        lo que solo Personal hace: crearle la cuenta a quien llama con
+│   │                      una contraseña temporal, y buscar clientes
+│   ├── quien-actua.js     los dos actores del sistema, cliente y personal. No depende de nada,
+│   │                      y por eso puede ser compartido sin armar un círculo de importaciones
 │   ├── disponibilidad.js  qué horarios están libres — la regla, en un solo lugar
 │   ├── reservas.js        crear, cancelar y mover una cita — el único que toca su estado,
 │   │                      y donde vive la regla de la ventana de 4 horas (RN-5)
@@ -111,6 +115,39 @@ cada pieza en `PLAN.md`, y se copian de ahí tal cual.
   de quien mira, un navegador con la hora mal puesta le mostraría un botón que el servidor va a
   rechazar — o le esconderá uno que sí podía usar, que es peor.
 
+### Los permisos
+
+Quedaron fijados al construir la pieza 7, que es la primera con **dos tipos de usuario** usando las
+mismas pantallas.
+
+- **Un permiso es una regla, y va en un solo lugar: `servidor/sesion.js`.** Ahí viven los tres
+  guardias, uno al lado del otro: `crearGuardiaDeCliente`, `crearGuardiaDePersonal` y
+  `crearGuardiaDeClienteOPersonal`. Un archivo de rutas nunca comprueba un permiso por su cuenta.
+- **Los números tienen un criterio y no se eligen caso por caso.** Sin sesión es `401` («no sé quién
+  sos»); con la sesión equivocada es `403` («sé quién sos y esto no te toca»); y cuando el problema
+  no es el permiso sino el dato que se mandó, es `422`, aunque suene a permiso — es por eso que la
+  ventana de cancelación y la contraseña actual equivocada son `422`.
+- **Todo lo que solo abre Personal vive bajo `/api/personal/`.** Así el permiso se lee de un vistazo
+  en la dirección. La alternativa —agregarle un `clienteId` a las puertas del cliente— sería la
+  manera de que un día alguien pudiera ver las citas de otra persona.
+- **La obligación de cambiar la contraseña temporal (RF-4) también es un permiso**, y por eso vive en
+  el guardia del cliente y no en la pantalla: escrita ahí la cumplen todos los endpoints del cliente
+  a la vez, y también los que se agreguen mañana. Quedan abiertos solo los tres sin los cuales esa
+  pantalla no podría existir: `GET /api/yo`, `DELETE /api/sesion` y `POST /api/contrasena/cambiar`.
+- **Un `clienteId` que venga en el cuerpo del pedido se mira solo si quien pide es Personal.** Para
+  un cliente el número sale de su propia sesión y el del cuerpo ni se lee: si se leyera, cualquiera
+  podría reservarle una cita a cualquiera. Hay una prueba que lo comprueba.
+- **Personal tiene exactamente dos excepciones, y las dos son sobre el tiempo:** puede cancelar y
+  mover dentro de las 4 horas (RN-6) y puede agendar para hoy (RN-25). **Todo lo demás lo alcanza
+  igual que al cliente** (RN-13): horario ocupado, feriado, domingo, almuerzo. Las dos excepciones
+  están escritas **una sola vez cada una** —`revisarSiSePuedeCambiar` en `servidor/reservas.js` y
+  `estaEnSuTiempo` en `servidor/disponibilidad.js`— y lo único que cambia es el `quien` que reciben.
+  Si aparece una tercera excepción, va en el mismo lugar que la que le corresponda, no en un `if`
+  suelto en un archivo de rutas.
+- **Ningún texto de la pantalla de Personal la manda a llamar al negocio.** Suena obvio escrito, y
+  fue un defecto de verdad: el día de hoy le decía «llamá al negocio al 2000-0000» a la asistente del
+  negocio. Cuando un mensaje mande a hacer algo, hay que preguntarse **quién lo va a leer**.
+
 ### Fechas y horas
 
 Quedaron fijadas al construir la pieza 2, que es la que trae el calendario. Son la fuente de casi
@@ -130,6 +167,11 @@ todos los errores posibles de este proyecto, así que las reglas son estrictas:
   devuelve el momento actual— y lo va pasando hacia adentro. En `npm start` es el reloj de verdad;
   en las pruebas es un reloj parado en una fecha fija. Sin eso, una prueba del calendario diría
   cosas distintas según el día en que se corra, y una prueba así no comprueba nada.
+- **Dos reglas del proyecto dependen de la hora y no de la fecha, y las dos salen de la misma
+  cuenta:** la ventana de 4 horas (RN-5, `horasHasta`) y «este horario todavía no empezó» (RN-25,
+  `todaviaNoEmpezo`, que le pregunta a `horasHasta`). Las dos viven en `servidor/tiempo.js` y las dos
+  tienen su **borde escrito a propósito**: a 4 horas justas se permite cancelar, y un horario que
+  arranca en este mismo instante ya empezó.
 - **Un momento se convierte con `new Date()` en un solo lugar de todo el proyecto**: la función
   `horasHasta` de `servidor/tiempo.js`, que es la que mide cuántas horas faltan para una cita (la
   ventana de 4 horas de RN-5, desde la pieza 5). Ahí es seguro **por** la regla del formato: el
@@ -187,7 +229,28 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   espaciado. Si un valor no está ahí, **no se inventa en el `.scss`**: se pregunta.
 - **Los estilos se escriben mobile-first.** Primero cómo se ve en un teléfono; las pantallas más
   grandes solo agregan, más abajo, dentro de bloques `@media (min-width: …)`. **Nunca
-  `max-width`.** Los dos cortes son 48rem (768px) y 64rem (1024px).
+  `max-width`.** Los dos cortes generales son 48rem (768px) y 64rem (1024px), y **desde el 2026-08-21
+  hay un tercero, 29.75rem (476px), que es específico y no general**: lo usa una sola cosa, la fila de
+  dos botones de la tarjeta «Atendiendo a», que la estudiante pidió que pase a estar lado a lado antes
+  que el resto de la aplicación. Un corte nuevo se agrega a la lista de variables de arriba del
+  `.scss`, con su medida en píxeles anotada al lado, **nunca escrito a mano adentro de un `@media`**.
+- **Adentro de un botón no puede haber otro botón**, igual que no puede haber un `<h1>`. Cuando un
+  renglón entero es un botón y hace falta que muestre algo con **cara** de botón —el «Seleccionar» de
+  los resultados de buscar a quien llama—, se pone un `<span>` que reusa las clases
+  `boton boton--suave boton--chico`, y **lo que responde al toque sigue siendo el renglón completo**.
+  Eso además es lo mejor de las dos opciones: si el «Seleccionar» fuera un botón de verdad adentro de
+  un `<div>`, tocar el nombre no haría nada — y el nombre es lo primero que una persona toca.
+- **Al reusar las clases de `.boton` en algo que no es un botón, hay que mirar el CSS compilado.**
+  `.boton` trae `width: 100%` en teléfono y `align-self: flex-start` desde tableta, y las dos cosas
+  pisan lo que la fila que lo contiene haya decidido. Pasó de verdad el 2026-08-21: el «Seleccionar»
+  se hubiera ido a la esquina de arriba en cuanto la pantalla pasara los 768px. **Se encontró leyendo
+  el CSS compilado, no la pantalla**, y por eso vale la pena leerlo: dos reglas que pesan lo mismo se
+  resuelven por cuál está más abajo en el archivo, y eso en el `.scss` no se ve.
+- **Un cambio visual que vale para una sola pantalla va como modificador, no cambiando la clase
+  compartida.** La pieza 5 creó `paso--titulo-pegado` para no mover los otros cinco títulos, y la 7
+  creó `confirmacion__botones--fila-centrada` para no mover las otras tres filas de dos botones —que
+  ya fueron revisadas y aprobadas como están—. Si algún día el cambio tiene que valer para todas, es
+  mover esas líneas adentro de la clase y borrar el modificador.
 - **Toda cuadrícula de ancho repartido se escribe `minmax(0, 1fr)`, nunca `1fr` a secas.** Parecen
   lo mismo, pero `1fr` promete además que una columna no se encoge más allá de lo que su contenido
   necesita, y eso desborda el contenedor en pantalla angosta apenas las casillas tengan alto mínimo
@@ -203,6 +266,59 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   (`.forma__ayuda`) y los requisitos de la contraseña (`.requisito`). *Decisión de la estudiante del
   2026-08-19: ese tipo de texto tiene que distinguirse de un vistazo del contenido de verdad, sin
   tener que leerlo.* Si una pantalla nueva agrega otro texto de guía, va con este mismo tamaño.
+- **La marca del encabezado —el logo Y el nombre— es el «volver al inicio»**, para las dos cuentas.
+  *Pedido de la estudiante el 2026-08-21: es lo primero que una persona prueba cuando quiere volver
+  al principio, y el logo «es también el texto que dice Bienestar y salud».* Tres cosas que hay que
+  respetar si algún día se toca:
+  - **Es un `<a>` y no un `<button>`**, aunque el menú use botones. Adentro va el `<h1>` del negocio,
+    y **un `<h1>` dentro de un `<button>` es HTML inválido** — los navegadores lo dibujan igual, pero
+    está mal escrito. Sacar el `<h1>` no es la salida: es el único encabezado principal de la página,
+    y quien usa un lector de pantalla se orienta saltando de encabezado en encabezado.
+  - **Se apaga quitándole el `href`, no con `disabled`**, que solo existe para los botones. Un enlace
+    sin dirección no se puede tocar ni alcanzar con el tabulador. Se apaga en la pantalla de entrar y
+    en la del cambio obligatorio de la contraseña — ahí RF-4 dice que no se puede hacer nada más, y
+    un logo que llevara a la aplicación sería una puerta de escape a esa regla.
+  - **No lleva `aria-label`**: su nombre sale del texto que ya tiene adentro. Un `aria-label`
+    *reemplaza* lo que se ve, así que quien usa un lector oiría algo distinto de lo que hay en
+    pantalla. El `alt` de la imagen sigue vacío, por lo mismo de siempre.
+- **Una entrada de menú que es una acción, y no una sección, va con `data-accion` y no con
+  `data-vista`.** Las de `data-vista` se subrayan cuando se está en esa sección; las de `data-accion`
+  hacen algo y no marcan nada. Es lo que distingue «Inicio» —que lleva a «Reservar»— de «Reservar»
+  mismo. Los dos menús, el de arriba y el del pie, se buscan siempre juntos con `querySelectorAll`,
+  así que agregar un menú en otro lado no pide código nuevo.
+- **Lo que habla de la persona que se está atendiendo va pegado a su nombre, no en el menú.** La
+  tarjeta «Atendiendo a» lleva sus dos botones: **«Citas del cliente»** y **«Otra persona»**. Y
+  aparecen y desaparecen con la tarjeta sin una línea de código extra — si no hay nadie elegido, no
+  hay nada de lo que hablar. De ahí salen tres criterios:
+  - **Un menú es para ir a lugares, no para deshacer trabajo en curso.** Por eso «Otra persona» no
+    está en el menú, y por eso la entrada «Nueva llamada» que se construyó ese día **se sacó el mismo
+    día**: una entrada de menú tocada por error no puede borrar la llamada en curso. *(2026-08-21.)*
+  - **Dos caminos al mismo lugar se llaman igual.** «Citas del cliente» es el nombre del botón **y**
+    el de la entrada del menú, a propósito: si se llamaran distinto parecerían dos lugares.
+    *(2026-08-21.)*
+  - **Una etiqueta que no entra en su botón se acorta; el botón no se ensancha.** El segundo botón
+    decía «Atender a otra persona» y partía en dos líneas entre 476 y 640px de ancho, que es
+    justamente donde el modificador los pone lado a lado al 48%. Se acortó a **«Otra persona»**, que
+    entra en una línea desde 476px. **Se eligió acortar y no tocar el ancho ni el corte** porque el
+    48% y el 476px los pidió la estudiante mirando la pantalla, y porque el verbo ya está dicho en el
+    título de la tarjeta que lo contiene —«Atendiendo a»—, así que la etiqueta no perdió sentido.
+    *(Decidido por la estudiante el 2026-08-24, al cerrar la revisión visual de la pieza 7.)*
+- **En la pantalla de Personal, lo que se está mirando lleva el nombre de su dueño.** No alcanza con
+  cambiar «tus» por «sus»: los títulos de la sección de citas dicen **«Próximas citas de Marisol
+  Prueba»** y **«Historial de Marisol Prueba»**, con nombre. La razón es concreta y salió de mirar la
+  pantalla el 2026-08-21: el único nombre que había era el de la asistente («Hola, Marta Jiménez»),
+  así que **nada decía de quién eran esas citas**. Cuando una pantalla muestra los datos de una
+  tercera persona, el nombre de esa persona tiene que estar a la vista. *Y los dos títulos lo llevan,
+  no solo el de arriba: un título con nombre seguido de un «Historial» pelado deja la duda de si el de
+  abajo es de la misma persona.*
+- **En la pantalla de Personal ningún texto dice «tu» ni «tus».** Personal reserva, cancela y mueve
+  citas **de otra persona**, así que «tu cita» sería falso — y en una llamada telefónica esa palabra
+  es justo la que confunde. Los textos que cambian están todos en un solo lugar del JavaScript del
+  navegador, decididos con `esPersonal()`: el título de la tarjeta de confirmar, el botón grande, el
+  los dos títulos de la sección de citas, la pregunta antes de cancelar y los avisos verdes. *Convención
+  fijada al construir la pieza 7, el 2026-08-21.*
+- **Cuando Personal reserva o mueve una cita, el aviso verde dice a qué dirección salió el correo.**
+  Es el dato que le hace falta para poder confirmárselo por teléfono a quien está del otro lado.
 - Todas las medidas son múltiplos de **4px**, la unidad base del sistema.
 - **Las etiquetas de los campos siempre visibles**, nunca flotando dentro del campo: lo pide el
   sistema por accesibilidad.
@@ -280,11 +396,23 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   frase dice algo falso**: en la pieza 5 el texto «faltan menos de 4 horas» salía debajo de una cita
   que ya había ocurrido, y las pruebas estaban todas en verde, porque comprobaban la regla y la regla
   estaba bien. Por eso **una pieza no se cierra sin que una persona abra el navegador y mire.** Los
-  **ocho** defectos visuales encontrados hasta hoy salieron todos de ahí, ninguno de una prueba.
+  **dieciocho** defectos visuales encontrados hasta hoy salieron todos de ahí, ninguno de una prueba,
+  **más un decimonoveno hallazgo que no estaba roto pero se veía** —la etiqueta que partía en dos
+  líneas—, cerrado el 2026-08-24. La cuenta: **doce** hasta la pieza 5, **seis** de la revisión de la
+  pieza 7, y ese último. *(Este número decía «ocho» hasta el 2026-08-21 y «doce» hasta el 2026-08-24:
+  se quedó viejo dos veces, las dos porque la revisión visual siguió encontrando cosas después de que
+  alguien anotó el número. Si volvés a tocarlo, mirá primero el final de `BITACORA.md`.)*
+- **Y una revisión visual también puede terminar sin defecto, y eso también se anota.** El 2026-08-24
+  se reportó que el campo de la contraseña temporal no aparecía al recargar. Se investigó el servidor
+  (reproducido con `curl`), la caché del navegador, el CSS compilado y el código: **todo estaba
+  bien**. Lo que había fallado era **el recorrido escrito**, que hacía tocar «Salir» a destiempo. La
+  lección quedó en el guion, no en el código: **un recorrido de revisión tiene que decir qué botones
+  NO tocar**, sobre todo cuando la pantalla que se está probando tiene un botón con el mismo nombre
+  que el del paso anterior.
 
 ### Integración continua
 
-Existe desde la pieza 3. Las 174 pruebas corren solas en **cada push y cada pull request**, en
+Existe desde la pieza 3. Las 250 pruebas corren solas en **cada push y cada pull request**, en
 **Node 20 y Node 24**, configuradas en `.github/workflows/pruebas.yml`.
 
 - **Ese archivo vive en la raíz del repositorio, no en esta carpeta.** Es la única excepción a la
@@ -321,7 +449,9 @@ confidenciales), este proyecto tiene estas:
 - **Sin panel de administración.** Servicios, proveedores, horarios, feriados, ubicación, logo y
   colores se cargan como configuración, no por pantalla.
 - **Las tres reglas de CA-1, CA-2 y CA-3 tienen que estar cubiertas por pruebas que corran en cada
-  push** (`PROYECTO.md` sección 7, punto 4). **Cumplido:** CA-1 y CA-2 en la pieza 3, y CA-3 (parte
-  cliente) en la pieza 5. La parte de Personal de CA-3 —que la asistente **sí** puede cancelar dentro
-  de las 4 horas (RN-6)— es de la pieza 7, y la función que la hace posible ya está escrita:
-  `revisarSiSePuedeCambiar` de `servidor/reservas.js`, llamada con `QUIEN_PERSONAL`.
+  push** (`PROYECTO.md` sección 7, punto 4). **Cumplido y completo desde el 2026-08-21:** CA-1 y CA-2
+  en la pieza 3, CA-3 parte cliente en la pieza 5, y **CA-3 parte Personal en la pieza 7** — la misma
+  cita que empieza dentro de 2 horas se le rechaza al cliente con `422` y se le acepta a Personal con
+  `204`. Las dos mitades salen de la **misma** función, `revisarSiSePuedeCambiar` de
+  `servidor/reservas.js`, llamada con `QUIEN_CLIENTE` o con `QUIEN_PERSONAL`: la regla no está escrita
+  dos veces, y por eso las dos mitades no se pueden desincronizar.

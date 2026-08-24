@@ -132,6 +132,23 @@ export function horasHasta(momentoDelProyecto, ahora) {
 }
 
 /**
+ * ¿Este momento **todavía no llegó**? Es la cuenta que necesita RN-25: Personal puede agendar una
+ * cita para hoy, en cualquier horario que no haya empezado.
+ *
+ * Está escrita acá y no en `disponibilidad.js` por la convención del proyecto: **todo lo que tenga
+ * que ver con fechas se escribe en este archivo**. Y no vuelve a convertir nada con `new Date()`: le
+ * pregunta a `horasHasta`, que sigue siendo el único lugar donde eso pasa.
+ *
+ * **El borde es estricto: un momento que empieza en este mismo instante ya empezó**, así que
+ * devuelve `false`. Es `> 0` y no `>= 0`, y la razón es la misma por la que la ventana de 4 horas usa
+ * `<` en vez de `<=`: el borde se decide una vez, se escribe, y no se deja al azar de quién lea el
+ * código después. Un horario que arranca justo ahora no es un cupo que se pueda ofrecer.
+ */
+export function todaviaNoEmpezo(momentoDelProyecto, ahora) {
+  return horasHasta(momentoDelProyecto, ahora) > 0
+}
+
+/**
  * Los nombres de los días y de los meses, para escribir una fecha en palabras.
  *
  * Sí, la misma lista existe también en `publico/aplicacion-cliente.js`, y eso es a propósito: ese

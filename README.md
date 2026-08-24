@@ -17,7 +17,7 @@ CENFOTEC).
 > se reserva un horario, **llega el correo de confirmación**, y la cita se puede **cancelar o mover a
 > otro horario**.
 >
-> Estado de las piezas de `PLAN.md` al 2026-08-20:
+> Estado de las piezas de `PLAN.md` al 2026-08-24:
 >
 > | Pieza | Estado |
 > |---|---|
@@ -25,16 +25,21 @@ CENFOTEC).
 > | 2 — Elegir servicio y proveedor, y ver el calendario | **cerrada** el 2026-08-19 |
 > | 3 — Reservar un horario | **cerrada** el 2026-08-19 |
 > | 4 — Correo de confirmación | **cerrada** el 2026-08-19 |
-> | 5 — Cancelar y reagendar | **construida** el 2026-08-20, falta la revisión visual |
+> | 5 — Cancelar y reagendar | **cerrada** el 2026-08-20 |
+> | 7 — Personal atiende el teléfono | **cerrada** el 2026-08-24 (construida el 2026-08-21) |
 > | 10 — La información del cliente | **cerrada** el 2026-08-19, fuera de orden |
 > | 11 — Categorías de servicio | **cerrada** el 2026-08-19, fuera de orden |
 > | 12 — Reglas de contraseña y correo | **cerrada** el 2026-08-19, pedida fuera del plan |
-> | 6, 7, 8, 9 | pendientes |
+> | 6, 8, 9 | pendientes |
 >
-> Con la pieza 5 **el núcleo comprometido en `FICHA-APROBACION.md` está completo**, y **los tres
-> criterios de aceptación (CA-1, CA-2 y CA-3) están cubiertos por pruebas que corren en cada push**.
-> Lo que falta es lo de Personal (piezas 7 y 8), restablecer la contraseña (9) y el recordatorio de
-> 24 horas (6). **Si venís a construir, te toca la pieza 7.**
+> *(Esta tabla decía «al 2026-08-20» y se había quedado atrás en dos filas: la 5 seguía figurando sin
+> revisión visual cuando `PLAN.md` ya la daba por cerrada ese mismo día, y la 7 no tenía fila. Se
+> sincronizó contra `PLAN.md`, que es la autoridad sobre el estado de las piezas.)*
+>
+> Con la pieza 5 **el núcleo comprometido en `FICHA-APROBACION.md` está completo**, y con la pieza 7
+> **los tres criterios de aceptación (CA-1, CA-2 y CA-3) están cubiertos por pruebas que corren en
+> cada push**. Lo que falta es que Personal cierre las citas pasadas (pieza 8), restablecer la
+> contraseña (9) y el recordatorio de 24 horas (6). **Si venís a construir, te toca la pieza 8.**
 
 ---
 
@@ -225,16 +230,20 @@ haga falta: borra lo anterior y vuelve a empezar.
 > **Y ojo:** borrar la base se lleva también las cuentas que hayas creado desde la pantalla. Después
 > de correrlo hay que volver a registrarse; la de Personal sí vuelve sola, porque es precargada.
 
-Lo que carga hoy, con las piezas 1 y 2 construidas. El comando lo lista en pantalla al terminar:
+Lo que carga hoy. El comando lo lista en pantalla al terminar:
 
 - **El negocio:** «Belleza y Bienestar», tel. `2000-0000`, en «Avenida Central, San José — edificio
   Girasol, local 3». **Todo inventado, el teléfono también:** no es el número de nadie. El logo y
   los colores de la marca del negocio se guardan porque REG-4 pide registrarlos, pero **la
   aplicación no los aplica**: su apariencia sale de `VISUALS.md`, que es otra cosa.
-- **Servicios:** «Masaje relajante» y «Limpieza facial», los dos de una hora.
-- **Proveedores:** «Ana», «Carlos» y «Luisa». Ana atiende los dos servicios; Carlos solo el masaje;
-  Luisa solo la limpieza facial. Así los dos servicios tienen más de un proveedor y el cliente
-  siempre puede elegir con quién (RN-8).
+- **Dos categorías con cuatro servicios adentro**, todos de una hora *(desde la pieza 11: hasta
+  entonces eran dos servicios sueltos, sin categorías)*: **Masaje** contiene «Masaje relajante»,
+  «Masaje descontracturante» y «Masaje con piedras calientes»; **Facial** contiene «Limpieza
+  facial», que es el único de su categoría y por eso ese paso no se muestra (RN-22).
+- **Proveedores:** «Ana», «Carlos» y «Luisa». Ana atiende el masaje relajante, el de piedras
+  calientes y la limpieza facial; Carlos el relajante y el descontracturante; Luisa solo la limpieza
+  facial. Así los servicios que importan tienen más de un proveedor y el cliente puede elegir con
+  quién (RN-8).
 - **Horario del negocio:** lunes a viernes de 9:00 a 18:00 con el almuerzo bloqueado de 12:00 a
   13:00, y sábados de 9:00 a 13:00. Domingo cerrado. Cada cita dura una hora, así que entre semana
   los horarios son 9, 10, 11, 13, 14, 15, 16 y 17, y el sábado 9, 10, 11 y 12.
@@ -246,7 +255,9 @@ Lo que carga hoy, con las piezas 1 y 2 construidas. El comando lo lista en panta
   registrarla. Entra con **`personal@ejemplo.com`** y la contraseña **`Personal123`**. Es una cuenta de prueba
   inventada, y como está escrita acá a la vista de todos, **no sirve para nada real**: si el
   proyecto algún día se usara de verdad, lo primero es cambiarla.
-- **Ninguna cita.** Las citas se crean desde la aplicación a partir de la pieza 3.
+- **Ninguna cita y ninguna cuenta de cliente.** Las citas se crean desde la aplicación a partir de
+  la pieza 3, y las cuentas de cliente se crean desde «Crear mi cuenta» — o desde la pantalla de
+  Personal, que le crea la cuenta a quien llama por teléfono con una contraseña temporal (pieza 7).
 
 ## Pruebas
 
@@ -254,7 +265,7 @@ Lo que carga hoy, con las piezas 1 y 2 construidas. El comando lo lista en panta
 npm test
 ```
 
-**Hoy corre 174 pruebas**, todas en `pruebas/`:
+**Hoy corre 250 pruebas**, todas en `pruebas/`:
 
 - **14 de la pieza 1** (`autenticacion.test.js`): registrarse, entrar, el mensaje idéntico cuando el
   correo no existe y cuando la contraseña está mal, la contraseña cifrada, el correo repetido, la
@@ -292,6 +303,20 @@ npm test
   (RN-18), que el correo del reagendamiento diga la fecha **nueva**, **CA-3 (parte cliente)** —una
   cita a menos de 4 horas se rechaza al cancelar y al mover—, el borde exacto de la ventana a los dos
   lados (a 4 horas justas sí, a 3 h 59 min no), y que nadie pueda tocar la cita de otra persona.
+- **58 de la pieza 7** (`personal.test.js`): que Personal reserve en nombre de quien llama y la cita
+  quede con canal `asistida` y con la cuenta que la creó (RN-12), que **el correo le llegue al
+  cliente y no a Personal**, que le cree la cuenta con una contraseña temporal que cumple RN-23 y es
+  distinta cada vez, que la búsqueda encuentre por pedazos del nombre y del correo pero **no devuelva
+  nada con menos de 2 letras**, que Personal cumpla **las mismas reglas** que el cliente al reservar
+  —horario ocupado, hoy, feriado, domingo, almuerzo (RN-13)—, y **CA-3 (parte Personal)**: la misma
+  cita que empieza dentro de 2 horas se le rechaza al cliente con `422` y se le acepta a Personal con
+  `204`, quedando `cancelada_por = personal`. Y **RN-25**: que Personal pueda agendar para **hoy** en
+  un horario que todavía no empezó, con su borde exacto —el horario que arranca en este mismo instante
+  ya empezó— y con **CA-2 comprobado al lado**, porque el cliente sigue sin poder.
+- **18 de la pieza 7** (`cambio-de-contrasena.test.js`): que una cuenta con la contraseña temporal
+  pendiente **no pueda hacer nada** —ni ver citas, ni reservar, ni ver ni guardar sus datos—, que las
+  tres puertas que esa pantalla necesita sigan abiertas, que al cambiarla quede libre sin volver a
+  entrar, que la temporal vieja quede rechazada, y que la nueva tenga que cumplir RN-23.
 
 Las del calendario **paran el reloj** en una fecha fija (martes 1 de setiembre de 2026, 8 de la
 mañana en Costa Rica). Sin eso dirían cosas distintas según el día en que se corran: «mañana hay
@@ -304,11 +329,11 @@ tres reglas que el curso exige proteger:
 |---|---|---|
 | **CA-1** | Dos intentos de reservar el mismo horario del mismo proveedor: exactamente uno lo consigue. | 3 — **ya cubierto** |
 | **CA-2** | Un intento de reservar un horario de hoy se rechaza, a cualquier hora que se intente. | 3 — **ya cubierto** |
-| **CA-3** | Cancelar o reagendar faltando menos de 4 horas: el cliente es rechazado, Personal es aceptado. | 5 — **la parte del cliente ya cubierta**; la de Personal es de la pieza 7 |
+| **CA-3** | Cancelar o reagendar faltando menos de 4 horas: el cliente es rechazado, Personal es aceptado. | 5 la parte del cliente y 7 la de Personal — **las dos cubiertas** |
 
 ### Corren solas en cada push
 
-Desde la pieza 3, **estas 174 pruebas se corren automáticamente en cada `push` y en cada pull
+Desde la pieza 3, **estas 250 pruebas se corren automáticamente en cada `push` y en cada pull
 request**, sin que nadie escriba `npm test`. Lo hace GitHub Actions, configurado en
 `.github/workflows/pruebas.yml`.
 
@@ -317,8 +342,9 @@ distracción: GitHub solo ejecuta los archivos que están en `.github/workflows/
 única cosa de este proyecto que vive afuera de su carpeta, y está autorizada y explicada en
 `DISENO.md`.
 
-Para ver el resultado: en GitHub, pestaña **Actions**. Verde es que las 95 pasaron, en las dos
-versiones de Node.
+Para ver el resultado: en GitHub, pestaña **Actions**. Verde es que las 250 pasaron, en las dos
+versiones de Node. *(Este número decía «95» hasta el 2026-08-21: se había quedado viejo mientras las
+pruebas crecían pieza a pieza.)*
 
 ## Qué no está en el repositorio
 

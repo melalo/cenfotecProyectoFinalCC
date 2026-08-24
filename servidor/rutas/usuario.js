@@ -23,7 +23,9 @@ const NUMERO_DE_CADA_RECHAZO = {
 
 export function crearRutasDeUsuario({ base, sesiones, reloj }) {
   const rutas = Router()
-  const exigirCliente = crearGuardiaDeCliente(sesiones)
+  // Desde la pieza 7 el guardia recibe la base: es donde va a mirar si esa cuenta todavía tiene la
+  // contraseña temporal pendiente de cambiar (RF-4).
+  const exigirCliente = crearGuardiaDeCliente(sesiones, base)
 
   // RF-22: lo que la sección «Usuario» muestra.
   rutas.get("/mi-informacion", exigirCliente, (pedido, respuesta) => {

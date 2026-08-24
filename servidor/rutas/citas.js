@@ -11,14 +11,16 @@
 import { Router } from "express"
 
 import { eseProveedorAtiendeEseServicio } from "../catalogo.js"
+import { eseClienteExiste } from "../personal.js"
 import {
   cancelarCita,
   citasDelCliente,
   crearCitaYConfirmar,
   reagendarCitaYConfirmar,
   QUIEN_CLIENTE,
+  QUIEN_PERSONAL,
 } from "../reservas.js"
-import { crearGuardiaDeCliente } from "../sesion.js"
+import { crearGuardiaDeCliente, crearGuardiaDeClienteOPersonal } from "../sesion.js"
 import { inicioEstaBienEscrito } from "../tiempo.js"
 
 /**
@@ -33,6 +35,10 @@ const NUMERO_DE_CADA_RECHAZO = {
   cita_no_activa: 409,
   // 422 es «entendí el pedido pero no lo puedo procesar»: la fecha misma es la que no sirve.
   mismo_dia: 422,
+  // Lo mismo, con el otro motivo: Personal sí puede agendar para hoy (RN-25), pero no un horario que
+  // ya arrancó. Es un motivo aparte de `mismo_dia` porque el mensaje tiene que ser otro — a Personal
+  // no se le puede decir «llamá al negocio».
+  horario_ya_empezo: 422,
   // La ventana de las 4 horas (RN-5, CA-3). Es 422 y no 403 porque no es un problema de permisos:
   // la cita es suya y la cuenta es la correcta — lo que no sirve es **el momento** en que lo pide.
   ventana_de_cancelacion: 422,
@@ -43,20 +49,37 @@ const NUMERO_DE_CADA_RECHAZO = {
 export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
   const rutas = Router()
 
-  // El guardia vive en `servidor/sesion.js`: desde la pieza 10 lo usan dos grupos de endpoints, y
-  // una regla escrita dos veces es una regla que se puede desincronizar.
-  const exigirCliente = crearGuardiaDeCliente(sesiones)
+  // Los guardias viven en `servidor/sesion.js`: desde la pieza 10 los usan varios grupos de
+  // endpoints, y una regla escrita dos veces es una regla que se puede desincronizar.
+  //
+  // Son dos distintos y la diferencia importa. **«Mis citas» es solo del cliente**: devuelve las
+  // citas de quien está en sesión, y Personal no tiene citas propias — las de un cliente las ve por
+  // `/api/personal/clientes/:clienteId/citas`. **Reservar, cancelar y mover las abren los dos**,
+  // porque son las mismas tres acciones y la única diferencia es quién las pide (RN-6, RN-13).
+  const exigirCliente = crearGuardiaDeCliente(sesiones, base)
+  const exigirClienteOPersonal = crearGuardiaDeClienteOPersonal(sesiones, base)
 
-  // RF-8 y RF-9: reservar un horario disponible.
-  rutas.post("/citas", exigirCliente, async (pedido, respuesta) => {
+  /** Quién está pidiendo, en el vocabulario de `reservas.js`. */
+  function quienPide(pedido) {
+    return pedido.esPersonal ? QUIEN_PERSONAL : QUIEN_CLIENTE
+  }
+
+  // RF-8 y RF-9: reservar un horario disponible. Desde la pieza 7 también RF-16: Personal reserva en
+  // nombre de quien llama, y entonces el pedido trae además `clienteId`.
+  rutas.post("/citas", exigirClienteOPersonal, async (pedido, respuesta) => {
     const servicioId = Number(pedido.body?.servicioId)
     const proveedorId = Number(pedido.body?.proveedorId)
     const inicio = pedido.body?.inicio
 
+    // **Para quién es la cita.** Un cliente reserva para sí mismo, y el `clienteId` que venga en el
+    // pedido **ni se mira**: si se mirara, cualquiera podría reservarle una cita a cualquiera. Solo
+    // Personal dice para quién, y está obligado a decirlo.
+    const clienteId = pedido.esPersonal ? Number(pedido.body?.clienteId) : pedido.clienteId
+
     // El momento tiene que venir escrito exactamente como lo escribe el proyecto
     // (`2026-09-02T10:00:00-06:00`). Nada se interpreta: lo que no calce se rechaza acá, antes de
     // que llegue a tocar la base.
-    if (!servicioId || !proveedorId || !inicioEstaBienEscrito(inicio)) {
+    if (!servicioId || !proveedorId || !inicioEstaBienEscrito(inicio) || !clienteId) {
       return respuesta.status(422).json({ error: "datos_incompletos" })
     }
 
@@ -64,19 +87,31 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
       return respuesta.status(404).json({ error: "servicio_o_proveedor_no_encontrado" })
     }
 
+    // Solo hace falta preguntarlo cuando reserva Personal: el `clienteId` de un cliente sale de su
+    // propia sesión, y esa cuenta existe por definición.
+    if (pedido.esPersonal && !eseClienteExiste(base, clienteId)) {
+      return respuesta.status(404).json({ error: "cliente_no_encontrado" })
+    }
+
     // Se espera a que el correo salga antes de contestar (decisión de la estudiante el
     // 2026-08-19). La cita ya está guardada para cuando el envío empieza, así que RF-19 se cumple
     // igual: si el correo falla, queda registrado como fallido y la cita sigue siendo válida. Lo
     // que se gana esperando es que el resultado del envío se pueda comprobar; contestando primero,
     // toda prueba del correo tendría que adivinar cuánto esperar, y una prueba así falla sola.
+    //
+    // El correo le llega **al cliente**, no a Personal, y eso no hay que pedirlo: `crearCitaYConfirmar`
+    // lo arma leyendo la cita ya guardada, y la cita es del cliente (comprobación 2 del plan).
     const resultado = await crearCitaYConfirmar({
       base,
       enviador,
-      clienteId: pedido.clienteId,
+      clienteId,
       servicioId,
       proveedorId,
       inicio,
       ahora: reloj(),
+      // Lo único que hace que la cita quede con canal `asistida` (RN-12). Vacío cuando reserva el
+      // cliente por su cuenta.
+      personalIdCreador: pedido.esPersonal ? pedido.personalId : null,
     })
 
     if (!resultado.ok) {
@@ -96,9 +131,13 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
       .json(citasDelCliente({ base, clienteId: pedido.clienteId, ahora: reloj() }))
   })
 
-  // RF-13: cancelar mi cita. El horario queda libre en el mismo instante (RN-7), y la cita no se
+  // RF-13: cancelar una cita. El horario queda libre en el mismo instante (RN-7), y la cita no se
   // borra: cambia de estado (RN-15).
-  rutas.delete("/citas/:citaId", exigirCliente, (pedido, respuesta) => {
+  //
+  // Desde la pieza 7 también RF-18: **con la sesión de Personal la ventana de las 4 horas no
+  // aplica** (RN-6). Acá no hay ningún `if` que diga eso: lo único que cambia es el `quien` que baja
+  // a `reservas.js`, y la regla vive allá, escrita una sola vez. Eso es CA-3.
+  rutas.delete("/citas/:citaId", exigirClienteOPersonal, (pedido, respuesta) => {
     const citaId = Number(pedido.params.citaId)
 
     // Un `:citaId` que no es un número no es una cita que exista: se contesta lo mismo que para una
@@ -110,10 +149,11 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
     const resultado = cancelarCita({
       base,
       citaId,
+      // Vacío cuando cancela Personal, y eso es lo que le dice a `buscarCitaParaCambiar` que puede
+      // tocar la cita de cualquiera. Para un cliente es su propio número, y la cita de otra persona
+      // ni se encuentra.
       clienteId: pedido.clienteId,
-      // Quien llega por acá es siempre un cliente: el guardia no deja pasar a nadie más. Personal
-      // cancela por su propia pantalla, que es la pieza 7, y ahí este valor va a ser el otro.
-      quien: QUIEN_CLIENTE,
+      quien: quienPide(pedido),
       ahora: reloj(),
     })
 
@@ -126,10 +166,15 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
     return respuesta.status(204).end()
   })
 
-  // RF-14: mover mi cita a otro horario. **Lo único que se lee del cuerpo es `inicio`**: el servicio
+  // RF-14: mover una cita a otro horario. **Lo único que se lee del cuerpo es `inicio`**: el servicio
   // y el proveedor no se pueden cambiar reagendando (RN-18), y la manera de garantizarlo es no
   // mirarlos siquiera. Aunque el pedido los traiga, acá no existen.
-  rutas.patch("/citas/:citaId", exigirCliente, async (pedido, respuesta) => {
+  //
+  // Desde la pieza 7 la abren los dos, con la misma diferencia que cancelar: Personal no tiene
+  // ventana de 4 horas (RF-18, RN-6), pero **sí tiene todas las demás reglas** — el horario nuevo se
+  // comprueba con `revisarHorario`, que no sabe quién pregunta, así que tampoco puede aterrizar en un
+  // feriado, un domingo, el almuerzo ni el día de hoy (RN-13).
+  rutas.patch("/citas/:citaId", exigirClienteOPersonal, async (pedido, respuesta) => {
     const citaId = Number(pedido.params.citaId)
     const inicio = pedido.body?.inicio
 
@@ -151,7 +196,7 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
       enviador,
       citaId,
       clienteId: pedido.clienteId,
-      quien: QUIEN_CLIENTE,
+      quien: quienPide(pedido),
       inicio,
       ahora: reloj(),
     })

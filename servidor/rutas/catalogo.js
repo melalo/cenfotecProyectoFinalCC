@@ -6,6 +6,8 @@
 
 import { Router } from "express"
 
+import { QUIEN_CLIENTE, QUIEN_PERSONAL } from "../quien-actua.js"
+
 import {
   existeElServicio,
   existeLaCategoria,
@@ -27,7 +29,13 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
    * (RN-9), así que un calendario que se pudiera mirar sin entrar no llevaría a ninguna parte.
    */
   function exigirSesion(pedido, respuesta, seguir) {
-    if (!sesiones.leer(pedido)) return respuesta.status(401).json({ error: "sin_sesion" })
+    const sesion = sesiones.leer(pedido)
+    if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })
+
+    // Desde la pieza 7 el catálogo también necesita saber **de qué tipo** es la sesión, no solo que
+    // exista: el calendario se ve distinto según quién lo pida (RN-25). Se deja anotado acá para que
+    // ninguna ruta tenga que volver a leer la galleta.
+    pedido.esPersonal = sesion.tipo === "personal"
     return seguir()
   }
 
@@ -99,7 +107,16 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
       return respuesta.status(404).json({ error: "servicio_o_proveedor_no_encontrado" })
     }
 
-    const calendario = calcularDisponibilidad({ base, proveedorId, mes, ahora: reloj() })
+    // **El mismo mes se ve distinto según quién pregunte** (RN-25): para el cliente el día de hoy no
+    // ofrece nada (RN-4, CA-2), y para Personal ofrece los horarios que todavía no empezaron. Quién
+    // decide eso es `servidor/disponibilidad.js`; acá solo se le dice quién está preguntando.
+    const calendario = calcularDisponibilidad({
+      base,
+      proveedorId,
+      mes,
+      ahora: reloj(),
+      quien: pedido.esPersonal ? QUIEN_PERSONAL : QUIEN_CLIENTE,
+    })
     return respuesta.status(200).json(calendario)
   })
 

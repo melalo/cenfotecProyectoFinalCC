@@ -13,6 +13,7 @@ import { crearSesiones } from "./sesion.js"
 import { crearRutasDeAutenticacion } from "./rutas/autenticacion.js"
 import { crearRutasDeCatalogo } from "./rutas/catalogo.js"
 import { crearRutasDeCitas } from "./rutas/citas.js"
+import { crearRutasDePersonal } from "./rutas/personal.js"
 import { crearRutasDeUsuario } from "./rutas/usuario.js"
 
 const CARPETA_DE_ESTE_ARCHIVO = dirname(fileURLToPath(import.meta.url))
@@ -49,6 +50,7 @@ export function crearAplicacion({
   aplicacion.use("/api", crearRutasDeCatalogo({ base, sesiones, reloj }))
   aplicacion.use("/api", crearRutasDeCitas({ base, sesiones, reloj, enviador }))
   aplicacion.use("/api", crearRutasDeUsuario({ base, sesiones, reloj }))
+  aplicacion.use("/api", crearRutasDePersonal({ base, sesiones, reloj }))
 
   // Todo lo que hay en `publico/` se sirve tal cual: el HTML, el CSS ya compilado y el JavaScript
   // que corre en el navegador.

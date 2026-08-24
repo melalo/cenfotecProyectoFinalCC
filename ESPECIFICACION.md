@@ -44,7 +44,11 @@ solo calendario y no dos agendas que se puedan desincronizar.
 
 ## Fuera de alcance
 
-- **Citas para el mismo día.** El cliente que las necesita llama al negocio.
+- **Citas para el mismo día, para el cliente.** El cliente que las necesita llama al negocio, y
+  **Personal sí puede agendarlas** desde la aplicación cuando atiende esa llamada (RN-25). Lo que
+  queda fuera de alcance es que el cliente las reserve solo. *(Corregido el 2026-08-21: hasta entonces
+  esta línea decía que no existían las citas para el mismo día, sin más, y eso dejaba la llamada del
+  cliente sin ningún lugar donde terminar.)*
 - **Reservar sin cuenta (modo invitado).** Se consideró en esta sesión de especificación y se
   descartó: toda reserva exige una cuenta de cliente (RN-9). La razón es que sin cuenta el cliente
   no puede volver a entrar a cancelar ni reagendar, que es justo lo que el sistema busca darle.
@@ -70,7 +74,10 @@ solo calendario y no dos agendas que se puedan desincronizar.
    hora, la última cita de un día entre semana inicia a las 17:00 y la del sábado a las 12:00.
    Esto da 8 horarios por día entre semana y 4 el sábado: **44 horarios por semana por proveedor**,
    que es de dónde sale la capacidad declarada en `PROYECTO.md`.
-4. **RN-4:** Solo se puede reservar a partir del día siguiente. No existen las citas para hoy.
+4. **RN-4:** El cliente solo puede reservar a partir del día siguiente. Para él no existen las citas
+   para hoy. *(Es **CA-2**, uno de los tres criterios de aceptación. **Personal sí puede reservar para
+   hoy**, en un horario que todavía no haya empezado: ver RN-25 — corregido el 2026-08-21, y es la
+   misma clase de excepción que RN-6 hace con RN-5.)*
 5. **RN-5:** El cliente no puede cancelar ni reagendar una cita dentro de la ventana de
    cancelación (menos de 4 horas antes). El sistema se lo informa y le pide llamar al negocio.
 6. **RN-6:** Personal **sí** puede cancelar y reagendar dentro de la ventana de cancelación. La
@@ -91,9 +98,15 @@ solo calendario y no dos agendas que se puedan desincronizar.
     primera vez que entra, de modo que Personal deja de conocerla. *(Decidido en la sesión de
     especificación.)*
 12. **RN-12:** Toda cita queda registrada con su canal: en línea o asistida.
-13. **RN-13:** Al crear una cita, Personal cumple exactamente las mismas reglas que el cliente
-    (RN-1 a RN-4): tampoco puede reservar un horario ocupado, ni un feriado, ni fuera del horario
-    del negocio, ni para el mismo día. La única regla que no lo alcanza es RN-5, según RN-6.
+13. **RN-13:** Al crear una cita, Personal cumple las mismas reglas que el cliente en todo lo que
+    tiene que ver con **la agenda**: tampoco puede reservar un horario ocupado (RN-1), ni un feriado
+    (RN-2), ni fuera del horario de atención ni en el almuerzo (RN-3). Las **dos** reglas que no lo
+    alcanzan son las que tienen que ver con **el tiempo**: RN-4 según RN-25 (sí puede reservar para
+    hoy) y RN-5 según RN-6 (sí puede cancelar y mover dentro de las 4 horas).
+    *(Corregido el 2026-08-21: hasta entonces esta regla decía que Personal «tampoco puede reservar
+    para el mismo día», y eso dejaba el hueco que RN-25 explica. La distinción que quedó es la que
+    tiene sentido: lo que protege la agenda alcanza a los dos, y lo que protege al cliente de sí mismo
+    no alcanza a quien atiende el teléfono.)*
 14. **RN-14:** Si al entrar el cliente no encuentra ningún horario disponible en los próximos 7
     días, el sistema se lo avisa y le sugiere volver a revisar más adelante, por si se libera
     alguno.
@@ -203,6 +216,43 @@ solo calendario y no dos agendas que se puedan desincronizar.
     información que el cliente quiere tener incluso cuando no hay nada que elegir; saber que la
     categoría «Facial» contiene un solo servicio no le aporta nada, y le cuesta un toque de más.
 
+25. **RN-25:** Personal **sí** puede reservar una cita para **el mismo día**, y mover una cita a un
+    horario de hoy, siempre que ese horario **todavía no haya empezado** y esté libre. La restricción
+    de RN-4 es solo para el cliente actuando por su cuenta, igual que la de RN-5.
+
+    *(Decidido por la estudiante el 2026-08-21, durante la revisión visual de la pieza 7, y por la
+    misma razón exacta que RN-6 — es el mismo hueco, en la otra regla.* Mirá lo que dice RN-6 sobre
+    las cancelaciones: *«sin esta regla, el mensaje "llame al negocio" de RN-5 no resolvería nada: la
+    asistente atendería la llamada y descubriría que ella tampoco puede hacerlo»*. Con RN-4 pasaba
+    literalmente lo mismo: la aplicación le dice al cliente «para una cita hoy, llamá al negocio», el
+    cliente llama, y la asistente descubría que **ella tampoco podía** — así que esa cita se anotaba
+    en un papel, que es exactamente **la segunda fuente de verdad que `NEGOCIO.md` dice haber
+    eliminado**.
+
+    **Lo que se descubrió mirando la pantalla** fue el síntoma, no la causa: al abrir el día de hoy,
+    Personal leía «No se puede reservar para hoy. Si necesitás una cita hoy, **llamá al negocio**» —
+    un cartel diciéndole a la asistente del negocio que llame al negocio. El texto era absurdo porque
+    la regla detrás tenía un hueco.
+
+    **Por qué el horario tiene que no haber empezado, y por qué eso no es una ventana de
+    anticipación.** Personal **no tiene ninguna ventana**: si son las 16:30 puede tomar las 17:00, y
+    nada le exige avisar con horas de antelación. Lo único que no puede es tomar un horario que **ya
+    empezó** —las 9:00 de la mañana siendo las 16:30—, y eso no es una restricción de política: ese
+    cupo ya no existe. Anotar una cita que ya ocurrió es otra cosa, y está fuera de alcance de esta
+    entrega.
+
+    **El borde exacto:** un horario que empieza **en este mismo instante** ya empezó, así que no se
+    puede tomar. Se mide con la hora del negocio (Costa Rica), como todo en este sistema, y **no se
+    redondea** — el mismo criterio que la ventana de 4 horas de RN-5.
+
+    **RN-4 sigue valiendo entera para el cliente, y eso no es negociable:** es **CA-2**, uno de los
+    tres criterios de aceptación que el curso exige proteger con pruebas que corren en cada push. Esta
+    regla no lo toca ni lo debilita: agrega un actor, no cambia el del cliente.
+
+    **Y las demás reglas siguen alcanzando a Personal** (RN-13): no puede tomar un horario ocupado, ni
+    un feriado, ni un domingo, ni el almuerzo, ni una hora fuera del horario de atención. Las únicas
+    dos reglas que no lo alcanzan son RN-4 y RN-5.
+
 ## Qué queda registrado
 
 1. **REG-1:** De cada cita: el cliente, el servicio, el proveedor, la fecha y hora de inicio, su
@@ -266,7 +316,9 @@ solo calendario y no dos agendas que se puedan desincronizar.
    RN-11 y el cliente elige: registrarse él mismo, o que Personal le cree la cuenta con una
    contraseña temporal que él cambiará al entrar por primera vez.
 4. Personal elige el servicio, el proveedor y el horario junto con el cliente, aplicando las
-   mismas reglas que aplicarían en línea (RN-13).
+   mismas reglas de agenda que aplicarían en línea (RN-13). **Puede agendarla para hoy mismo**, en
+   cualquier horario que todavía no haya empezado y esté libre (RN-25) — que es justamente el caso
+   que trae la llamada telefónica, porque el cliente que quiere una cita hoy no la puede reservar solo.
 5. La cita queda registrada con canal "asistida" y con la cuenta de Personal que la creó.
 6. El cliente recibe el mismo correo de confirmación que recibiría si hubiera reservado él.
 
@@ -312,7 +364,11 @@ y se le muestra el calendario actualizado para que elija otro.
 ### Intento de reservar para hoy
 
 El cliente busca una cita para el mismo día. El calendario simplemente no le ofrece horarios de hoy
-(RN-4). Si de algún modo lo intenta, el sistema lo rechaza y le indica llamar al negocio.
+(RN-4). Si de algún modo lo intenta, el sistema lo rechaza y le indica llamar al negocio. **Cuando
+llama, Personal sí puede agendarla desde la aplicación** (RN-25) en cualquier horario de hoy que
+todavía no haya empezado, y esa cita queda registrada como cualquier otra — con canal "asistida". Es
+el mismo cierre que tiene el intento de cancelar dentro de la ventana, y por la misma razón: un aviso
+que manda a llamar tiene que terminar en algún lado.
 
 ### Intento de cancelar o reagendar dentro de la ventana
 
@@ -387,7 +443,8 @@ igual a las cuentas de Personal.
 15. **RF-15:** El sistema rechaza la cancelación y el reagendamiento del cliente dentro de la
     ventana de cancelación, con un mensaje que le indica llamar al negocio (RN-5).
 16. **RF-16:** El sistema permite que Personal, con su cuenta, cree una cita en nombre de un
-    cliente, cumpliendo las mismas reglas que el cliente (RN-13), y la registra con canal
+    cliente, cumpliendo las mismas reglas de agenda que el cliente (RN-13) **y pudiendo agendarla
+    para hoy mismo** en un horario que todavía no haya empezado (RN-25), y la registra con canal
     "asistida" y con la cuenta que la creó (RN-12).
 17. **RF-17:** El sistema permite que Personal cree la cuenta de un cliente con una contraseña
     temporal (RN-11).
