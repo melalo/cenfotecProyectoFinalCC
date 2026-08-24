@@ -1,16 +1,16 @@
-# Próxima sesión — arrancar la pieza 8
+# Próxima sesión — arrancar la pieza 9
 
-*Escrito el 2026-08-24, al cerrar la pieza 7. **La pieza 7 está cerrada y subida a Git.** No queda
-nada suelto de ella salvo un punto que se difirió a propósito, y que la pieza 8 es la que tiene que
-resolver. Esta es la hoja para retomar sin releer nada.*
+*Escrito el 2026-08-24, al cerrar la pieza 8. **La pieza 8 está cerrada.** No quedó nada suelto de
+ella: el único punto que la pieza 7 había diferido se resolvió, y trajo una regla de negocio nueva.
+Esta es la hoja para retomar sin releer nada.*
 
 ---
 
 ## Lo que hay que decir al abrir la conversación
 
-> La carpeta del día es `proyectoFinal`. Arrancamos la pieza 8. Leé `PROXIMA-SESION.md`.
+> La carpeta del día es `proyectoFinal`. Arrancamos la pieza 9. Leé `PROXIMA-SESION.md`.
 
-Con eso alcanza. El agente tiene que leer por su cuenta `ESPECIFICACION.md`, `DISENO.md`, la pieza 8
+Con eso alcanza. El agente tiene que leer por su cuenta `ESPECIFICACION.md`, `DISENO.md`, la pieza 9
 de `PLAN.md`, `VISUALS.md` y el `CLAUDE.md` de la carpeta.
 
 ---
@@ -19,56 +19,88 @@ de `PLAN.md`, `VISUALS.md` y el `CLAUDE.md` de la carpeta.
 
 | | |
 |---|---|
-| **La pieza 7** | **CERRADA el 2026-08-24.** Sus diez comprobaciones pasan y la revisión visual está terminada: una persona abrió el navegador y miró las tres cosas que faltaban |
-| **Pruebas** | `npm test` da **250 de 250** |
+| **La pieza 8** | **CERRADA el 2026-08-24.** Sus diez comprobaciones se corrieron y la revisión visual está terminada |
+| **Pruebas** | `npm test` da **277 de 277** |
 | **CA-1, CA-2 y CA-3** | **Los tres completos**, cubiertos por pruebas que corren en cada push, en Node 20 y Node 24 |
-| **Git** | **Todo subido**, con los documentos actualizados antes del commit |
-| **Piezas hechas** | 1, 2, 3, 4, 5, 7, 10, 11 y 12 |
-| **Piezas que faltan** | **8** (la de ahora), **9**, y la **6** (trabada por una decisión, no por tiempo) |
+| **Git** | ⚠️ **La pieza 8 todavía NO está subida.** Es lo primero que hay que hacer, o pedirlo |
+| **Piezas hechas** | 1, 2, 3, 4, 5, 7, 8, 10, 11 y 12 |
+| **Piezas que faltan** | **9** (la de ahora) y la **6** (trabada por una decisión, no por tiempo) |
 | **Tiempo** | Hasta la entrega del **8 de setiembre** |
 
 ---
 
-## LA PIEZA 8: «Personal cierra las citas pasadas»
+## LA PIEZA 9: «Restablecer la contraseña olvidada»
 
-**~2 horas, y es corta porque la pieza 7 ya construyó su pantalla.** Personal ya entra, ya busca al
-cliente y ya ve sus citas: lo que falta es poder **cerrarlas**.
+**~3 horas, y es corta porque el correo ya está resuelto desde la pieza 4.** Reusa
+`servidor/correo.js` para enviar y `servidor/credenciales.js` para las reglas de la contraseña nueva
+(RN-23).
 
-**Lo que tiene que ser cierto** (está completo en `PLAN.md`, pieza 8):
+**Lo que tiene que ser cierto** (está completo en `PLAN.md`, pieza 9):
 
-- Personal ve las citas activas cuya hora ya pasó (RF-21).
-- Puede marcar cada una como **completada** (asistió) o **no asistió**.
-- En los dos casos queda registrado **qué cuenta de Personal la marcó y cuándo** (REG-1).
-- **Ningún estado se alcanza solo por el paso del tiempo** (RN-17): una cita cuya hora pasó sigue
-  activa hasta que alguien la marque.
-- El cliente no puede cerrar sus propias citas.
-- Una cita ya cerrada no se puede volver a cerrar con otro estado.
+- Quien olvidó su contraseña la pide desde la pantalla de entrar, con su correo (RF-3).
+- Le llega un correo con un enlace **de un solo uso** y con vencimiento.
+- Con ese enlace define una contraseña nueva y entra con ella; la vieja queda rechazada.
+- Un enlace ya usado no sirve una segunda vez. Un enlace vencido tampoco.
+- Vale igual para las cuentas de **Cliente y de Personal**.
+- **Pedir el enlace con un correo que no existe responde exactamente lo mismo** que con uno que sí
+  existe, para no revelar qué correos están registrados. Es el mismo criterio del mensaje de login de
+  la pieza 1.
+- El envío queda registrado con tipo `recuperacion` y **sin cita asociada** (REG-3).
 
 **Lo que produce** (los nombres se copian tal cual de `PLAN.md`, no se eligen de nuevo):
 
-- `GET /api/personal/citas-por-cerrar`
-- `PATCH /api/citas/:citaId/cierre`, que recibe `{estado}` con `"completada"` o `"no_asistio"`
-- Los campos `cerrada_en` y `cerrada_por` de la tabla `cita`, **que ya existen vacíos**
+- Tabla `token_recuperacion` (`id`, `cliente_id`, `personal_id`, `codigo`, `vence_en`, `usado_en`).
+  **Solo uno de los dos identificadores viene lleno.**
+- `POST /api/contrasena/olvide` — recibe `{correo}`; devuelve **siempre `204`**, exista o no la cuenta.
+- `POST /api/contrasena/restablecer` — recibe `{codigo, contrasena}`; devuelve `204`; devuelve `422`
+  con `{error: "token_invalido"}` si el código no existe, ya se usó o venció.
 
-### ⚠️ El punto abierto que esta pieza hereda, y hay que decidir ANTES de construirla
+### Dos cosas que el plan no dice y hay que decidir ANTES de construir
 
-Para Personal, una cita **que ya pasó y que nadie cerró** llega con `sePuedeCambiar: true`, así que le
-aparecen **«Reagendar»** y **«Cancelar»** sobre una cita del mes pasado.
+1. **Cuánto dura el enlace.** El plan dice «con vencimiento» y no da el número. No lo inventes:
+   preguntá.
+2. **Dónde apunta el enlace.** La aplicación es una sola página (`index.html`), así que el enlace tiene
+   que llegar a algo que esa página sepa leer. **Ojo con una trampa real:** la aplicación corre en
+   `http://localhost:3000`, que quiere decir «esta computadora», así que un enlace mandado por correo
+   **solo funciona si quien lo abre está en la misma máquina**. Para la demostración eso alcanza, pero
+   **hay que decirlo en voz alta antes de construir**, no descubrirlo al final — es el mismo problema
+   que tiene trabada la pieza 6.
 
-**No es un error del código.** Sale de leer **RN-6** («Personal no tiene ventana de cancelación»)
-junto con **RN-17** («ninguna cita cambia de estado por el solo paso del tiempo»), y la especificación
-**no prohíbe** que Personal toque una cita pasada. Restringirlo sería **inventar una regla desde el
-código**, y este proyecto no hace eso.
+### Y una decisión abierta que la estudiante dejó planteada el 2026-08-24
 
-Se difirió a esta pieza el 2026-08-24 **a propósito**, porque es la que trae los botones pensados para
-ese caso. La pregunta, con las dos pantallas a la vista:
+**Un «Recordarme» debajo del correo y la contraseña, en la pantalla de entrar.** Lo propuso al cerrar
+la pieza 8 y **eligió no meterlo ahí** —esa pieza es de citas, no de sesión, y ya estaba cerrada— sino
+decidirlo en la 9. **Encaja bien acá:** la pieza 9 pone un enlace «¿Olvidaste tu contraseña?» en esa
+misma pantalla, así que se toca el HTML de entrar una sola vez y se revisa visualmente una sola vez.
 
-> Sobre una cita pasada sin cerrar, ¿Personal ve **cuatro** botones (Reagendar, Cancelar, Completada,
-> No asistió), o los dos primeros desaparecen y quedan solo los de cerrar?
+**No está en `ESPECIFICACION.md`: no hay ningún RF que lo pida.** Si se hace, **el requisito se
+escribe primero ahí**, como se hizo con RN-25 y RN-26.
 
-Hay un argumento a favor de dejarlos: alguien que no llegó llama al día siguiente y la asistente le
-mueve la fecha. **Si se decide restringir, la regla se escribe primero en `ESPECIFICACION.md`**, y
-recién después se toca el código.
+Cuatro cosas que hay que resolver antes de construirlo:
+
+1. **Cuál de las dos cosas es**, porque las dos se llaman igual y no son la misma:
+   - **Recordar la sesión** — al volver, ya estás adentro. ⚠️ **Esto ya existe y está siempre
+     encendido:** la sesión dura **7 días** (`SEGUNDOS_QUE_DURA` en `servidor/sesion.js`, decidido en
+     `DISENO.md` → «Duración de la sesión de login»). Así que un check no agregaría el recuerdo:
+     **agregaría la opción de NO ser recordado**, y sin marcar la sesión moriría al cerrar el
+     navegador. Es lo contrario de lo que la etiqueta sugiere.
+   - **Recordar el correo** — al volver, el campo del correo viene lleno y solo se escribe la
+     contraseña. **Esto no existe hoy**, y es lo que de verdad ahorra tiempo.
+2. **Si vale igual para las dos cuentas.** La cuenta de Personal vive en **la computadora del
+   mostrador**, que puede usar más de una persona: un «Recordarme» marcado ahí deja la sesión del
+   negocio abierta para quien se siente después. Quizá la respuesta correcta sea distinta para el
+   cliente que para Personal — y eso se escribe como decisión, no se resuelve en silencio.
+3. **Cuánto dura**, si se elige la primera. Hoy son 7 días para todos.
+4. **Si viene marcado o desmarcado** la primera vez.
+
+**Costo estimado si se hace: ~1 hora**, contando el requisito escrito, las pruebas y la revisión
+visual. La mitad de ese tiempo es escribir la regla, no el código.
+
+### Y una cosa que sí está resuelta y conviene reusar
+
+`POST /api/contrasena/cambiar` ya existe desde la pieza 7, y la regla de qué contraseña se acepta vive
+en `servidor/credenciales.js` (RN-23: 6 caracteres, una mayúscula, un número, sin vocales acentuadas —
+la ñ sí). **La pieza 9 no vuelve a escribir esa regla: la llama.**
 
 ---
 
@@ -92,28 +124,34 @@ npm start       # levanta la aplicación
 |---|---|---|
 | **Personal** | `personal@ejemplo.com` / `Personal123` | Toda la pieza 7 y toda la 8 |
 | **Marisol Prueba** | `marisol@ejemplo.com` / `Marisol99` | Ver el lado del cliente. Tiene varias citas |
-| **melalo** | `melalo9@gmail.com` / *(la que puso la estudiante)* | La única a la que **le llegan los correos de verdad** |
-| **Test Recarga** | `test-recarga@ejemplo.com` / `Tortuga381` | **La contraseña temporal SIGUE SIN CAMBIAR**, así que sirve para volver a probar el cambio obligatorio (RF-4) cuando haga falta |
-| **maria** | `mp@gmail.com` / *(temporal, perdida)* | Tiene la obligación encendida pero **su contraseña temporal no se puede recuperar** — para probar RF-4 usá la de arriba |
+| **melalo** | `melalo9@gmail.com` / *(la que puso la estudiante)* | La única a la que **le llegan los correos de verdad**. **Es con la que hay que probar la pieza 9** |
+| **Test Recarga** | `test-recarga@ejemplo.com` / `Tortuga381` | **La contraseña temporal SIGUE SIN CAMBIAR**, así que sirve para volver a probar el cambio obligatorio (RF-4) |
+| **maria** | `mp@gmail.com` / *(temporal, perdida)* | Tiene la obligación encendida pero su temporal no se puede recuperar |
 | **ana torres** | `ana@ejemplo.com` / *(temporal, perdida)* | Lo mismo que `maria` |
+| **test** | `prueba-cierre@ejemplo.com` / *(temporal, perdida)* | **Creada el 2026-08-24 durante la revisión de la pieza 8**, para comprobar que la contraseña temporal ya no sobrevive al logout. No sirve para nada más: se puede ignorar |
 
-**Diez citas**, cinco de ellas con canal `asistida`.
+**Diez citas.** Su estado después de la pieza 8:
+
+- **Tres cerradas, y son la evidencia de la pieza**, las tres con `cerrada_en` y `cerrada_por`
+  llenos: la del **18 de agosto** de Marisol quedó `completada`, y las del **22 a las 9** de ana torres
+  y **22 a las 11** de Marisol quedaron `no_asistio`.
+- **Dos esperando en «Citas por cerrar»**, las dos de Marisol: **22 de agosto a las 10** y **24 de
+  agosto a las 10**. **Se dejaron sin cerrar a propósito**, por si hay que volver a mostrar la pieza.
+- **Una futura**: la de **melalo el 27 de agosto**. Es la única, y es la que sirve para comprobar que
+  «Reagendar» y «Cancelar» siguen apareciendo donde corresponde. **No la canceles.**
+- El resto, canceladas.
 
 **Sobre los correos:** con la dirección de pruebas que regala Resend solo llegan a la casilla con la
 que se registró la cuenta de Resend. A los `@ejemplo.com` **fallan a propósito** y quedan registrados
-como fallidos; la cita se crea igual (RF-19).
-
-> Para la pieza 8 vas a necesitar **citas activas cuya hora ya pasó**. La aplicación no deja crearlas
-> (RN-4), así que **se insertan a mano en la base**, igual que hacen las pruebas. Eso está permitido y
-> escrito en `CLAUDE.md`: es la única manera de llegar a ese estado.
+como fallidos; la cita se crea igual (RF-19). **Para la pieza 9 esto importa mucho:** el enlace de
+recuperación solo va a llegar de verdad a `melalo9@gmail.com`.
 
 ---
 
-## Lo que sigue, después de la pieza 8
+## Lo que sigue, después de la pieza 9
 
 | | |
 |---|---|
-| **Pieza 9** | «Restablecer la contraseña». ~3 h, corta porque el correo ya está resuelto. Va a reusar `POST /api/contrasena/cambiar` y las reglas de `credenciales.js` |
 | **Pieza 6** | «Recordatorio de 24 h». **Sigue trabada por una decisión, no por tiempo** — ver abajo |
 | **Del curso** | La **skill propia de arranque** que pide la rúbrica, y **preparar la presentación** de la sesión 8 |
 
@@ -139,50 +177,74 @@ estudiante:
 
 ## Las convenciones que hay que seguir respetando
 
-Están completas en el `CLAUDE.md` de la carpeta. Las que más se olvidan:
+Están completas en el `CLAUDE.md` de la carpeta. Las que más se olvidan, **con las cuatro que la
+pieza 8 agregó marcadas**:
 
 - **`VISUALS.md` manda sobre la apariencia.** Si un color o una medida no está ahí, no se inventa.
+- 🆕 **Ningún tamaño de letra se escribe en píxeles.** Van todos en `rem` —el píxel de `VISUALS.md`
+  dividido entre 16— y los títulos con `clamp()`. La tabla de conversión está arriba del `.scss`.
+- 🆕 **`html` lleva un `font-size: 80%` y no se toca.** Achica toda la tipografía de una sola vez.
+  **No se reemplaza por un tamaño en píxeles**, porque dejaría el `rem` clavado y quien agranda la
+  letra de su navegador dejaría de poder hacerlo. *(El costo está asumido y escrito en tres lados: el
+  texto normal queda en 12.8px, por debajo de los 16px que `VISUALS.md` llama mínimo accesible.)*
+- 🆕 **La hora se escribe con `am`/`pm`, menos en las fichas de horario del calendario**, que siguen
+  en hora de 24 porque `10:00am` no entra en esa caja. La cuenta está escrita dos veces a propósito —
+  en el navegador y en el servidor— porque el navegador no puede leer nada de `servidor/`.
 - **Mobile-first**, y es verificable: todos los `@media` son `min-width`, ninguno `max-width`. Los
   cortes son 476px *(específico, de una sola fila de botones)*, 768px y 1024px, **siempre como
   variable**, nunca escritos a mano adentro de un `@media`.
 - **Un permiso es una regla, y va en un solo lugar: `servidor/sesion.js`**, donde viven los tres
   guardias. Un archivo de rutas nunca comprueba un permiso por su cuenta.
-- **Todo lo que solo abre Personal vive bajo `/api/personal/`.**
+- **Todo lo que solo abre Personal vive bajo `/api/personal/`.** *(La pieza 8 corrigió el plan por
+  esto: el endpoint del cierre estaba escrito fuera de ese pasillo.)*
 - **Personal tiene exactamente dos excepciones, y las dos son sobre el tiempo:** la ventana de 4 horas
-  (RN-6) y la cita de hoy (RN-25). Todo lo demás lo alcanza igual que al cliente (RN-13).
+  (RN-6) y la cita de hoy (RN-25). Todo lo demás lo alcanza igual que al cliente (RN-13) — **y RN-26,
+  que es de la pieza 8, va para el otro lado: lo alcanza igual, no lo exime.**
+- 🆕 **Si borrar algo pide tocar el dato y la pantalla, las dos cosas van en la misma función.** Es la
+  regla de siempre —una regla, un lugar— aplicada al frontend, y salió del hallazgo número 20.
 - **En la pantalla de Personal ningún texto dice «tu», y lo que se está mirando lleva el nombre de su
   dueño.** Cuando un mensaje mande a hacer algo, hay que preguntarse **quién lo va a leer**.
+- **Todo campo de contraseña lleva el «ojito».** Sin excepción — y la pieza 9 trae una pantalla nueva
+  con contraseña, así que esto le aplica directo. **No hay que agregarlo campo por campo:** una
+  función recorre la página y se lo pone a todos los `input[type="password"]`.
 - **Un cambio visual que vale para una sola pantalla va como modificador**, no cambiando la clase
   compartida.
 - **La hora del negocio es la de Costa Rica**, escrita en `servidor/tiempo.js`, nunca la de la
   máquina. Y un momento se escribe siempre `2026-09-02T10:00:00-06:00`.
 - **Toda cuadrícula de ancho repartido se escribe `minmax(0, 1fr)`, nunca `1fr` a secas.**
 - **Los comandos también hay que correrlos.** `npm test` no ejecuta `npm run datos` ni `npm start`.
-- **Una etiqueta de estado aparece solo cuando algo le pasó a la cita.** Esto le importa mucho a la
-  pieza 8: hoy una cita pasada sin cerrar **no lleva ninguna etiqueta**, y va a empezar a llevar
-  COMPLETADA o NO ASISTIÓ. Así la etiqueta **nunca se desdice**.
+- **Una tabla nueva que apunte a otra hay que agregarla al borrado de `guiones/datos-de-prueba.js`, y
+  primero de todo.** **Esto le aplica directo a la pieza 9**, que crea `token_recuperacion` apuntando
+  a `cliente` y a `personal`: si no se agrega, `npm run datos` se rompe y **ninguna prueba lo
+  detecta**. Ya pasó en la pieza 4 con `correo_enviado`.
 
 ---
 
-## Lo que la pieza 7 dejó, para poder defenderla
+## Lo que la pieza 8 dejó, para poder defenderla
 
 **Las tres ideas:**
 
-1. **CA-3 no tiene ninguna regla nueva escrita.** `revisarSiSePuedeCambiar` de `servidor/reservas.js`
-   recibe un parámetro `quien`, y con `QUIEN_PERSONAL` la ventana de 4 horas se saltea sola. La pieza
-   5 dejó ese parámetro puesto sin saber cómo se iba a construir la 7.
-2. **La obligación de cambiar la contraseña no vive en la pantalla, vive en el guardia de la sesión.**
-   Esconder el menú es lo que se ve; lo que manda está del otro lado — una pantalla que esconde
-   botones no sirve de nada contra quien le manda el pedido al API sin abrir el navegador.
-3. **RN-25 nació de un texto absurdo.** El cartel del día de hoy le decía a la asistente del negocio
-   «llamá al negocio». El texto era absurdo **porque la regla detrás tenía un hueco**, y era el mismo
-   hueco que RN-6 existe para tapar. Se arreglaron los dos.
+1. **La regla nueva se escribió antes que el código, y su lugar en la función *es* la regla.** RN-26
+   —una cita que ya pasó no se cancela ni se reagenda, tampoco Personal— vive en
+   `revisarSiSePuedeCambiar` **antes** de la línea que le da el pase a Personal. Puesta una línea más
+   abajo no haría absolutamente nada, porque Personal no tiene ventana de cancelación.
+2. **Meterle una regla nueva a la función de CA-3 obliga a demostrar que no se rompió nada.** Por eso
+   hay **dos pruebas que existen solo para eso**: la misma cita que empieza dentro de 2 horas se le
+   sigue aceptando a Personal (`204`) y rechazando al cliente (`422 ventana_de_cancelacion`).
+3. **Un parche viejo desapareció solo.** Desde el 2026-08-20 había una función que traducía
+   `ventana_de_cancelacion` a `ya_paso` **solo para la pantalla**, porque la frase «faltan menos de 4
+   horas» debajo de una cita del mes pasado era falsa. Con RN-26, `ya_paso` **es la regla**. Lección,
+   y es la segunda vez en este proyecto: **cuando un mensaje suena falso, casi siempre la regla detrás
+   tiene un hueco.** La primera fue RN-25.
 
-**El saldo de su revisión visual: siete hallazgos, ninguno de una prueba automática.** Tres no eran de
-apariencia sino **de lo que la aplicación decía**, y uno terminó en una regla de negocio nueva. Con
-estos, los hallazgos visuales del proyecto llegan a **diecinueve**, y ninguno salió de una prueba.
+**El saldo de su revisión: ocho hallazgos, ninguno de una prueba automática.** Uno era un defecto de
+comportamiento con dos consecuencias escondidas —**Personal quedaba sin buscador**, y **la contraseña
+temporal de un cliente sobrevivía al logout en pantalla**—, dos eran textos, y cinco cambiaron cómo se
+escribe la apariencia en todo el proyecto. Con estos, los hallazgos visuales del proyecto llegan a
+**veinte**, y **ninguno salió de `npm test`**.
 
-**Y un hallazgo que no fue defecto**, del 2026-08-24: se reportó que un campo no aparecía al recargar,
-se investigaron el servidor, la caché, el CSS compilado y el código, y **todo estaba bien** — lo que
-había fallado era el recorrido escrito, que hacía tocar «Salir» a destiempo. Quedó la convención: **un
-recorrido de revisión tiene que decir qué botones no tocar.** Está contado entero en `BITACORA.md`.
+**Y un error de razonamiento que quedó anotado a propósito**, porque es fácil repetirlo: se esperaba
+que pasar la tipografía a `rem` y `clamp` arreglara una ficha que se desbordaba, **y no tenía por
+qué**. `rem` y `clamp` hacen que la letra **se adapte a quien mira**; no hacen que un texto **entre en
+su caja**. Son dos problemas distintos y se arreglan con cosas distintas — el segundo se arregla
+acortando el texto o dándole más lugar, que fue lo que terminó resolviéndolo.

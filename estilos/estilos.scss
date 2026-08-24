@@ -133,6 +133,102 @@ $radio-tarjeta: 0.75rem;
 // El `rounded.full` de VISUALS.md: un número enorme para que algo cuadrado quede redondo.
 $radio-circulo: 9999px;
 
+// ══════════════════════════════════════════════════════ la letra (VISUALS.md → Typography)
+//
+// **Los tamaños de letra y los interlineados se escriben en `rem`, no en píxeles**, y todos salen de
+// la escala tipográfica de `VISUALS.md`. *Decidido por la estudiante el 2026-08-24.*
+//
+// **Qué es un `rem`.** Es «cuánto mide la letra de la raíz de la página». La diferencia con los
+// píxeles aparece cuando **la persona que usa la aplicación agranda la letra** desde la configuración
+// de su navegador, cosa que hace mucha gente que ve poco: con píxeles la aplicación la ignora y sigue
+// igual de chica; con `rem` **todo crece junto** y proporcionado.
+//
+// **Ojo con la cuenta, que cambió el mismo día:** más abajo, en `html`, hay un `font-size: 80%` que
+// achica toda la tipografía de la aplicación de una sola vez *(decisión de la estudiante del
+// 2026-08-24)*. Así que en un navegador sin tocar, **`1rem` se dibuja a 12.8px, no a 16**. La tabla de
+// acá abajo sigue diciendo de dónde salió cada valor —la escala de `VISUALS.md`, que está en
+// píxeles— y **las proporciones entre un tamaño y otro no cambiaron**: todo bajó un 20% junto. Para
+// saber cómo se ve algo en pantalla, se multiplica su columna de píxeles por 0,8.
+//
+// **La tabla, de dónde salió cada valor:** el píxel de `VISUALS.md` dividido entre 16.
+//
+//   | píxeles | rem       | dónde |
+//   |---------|-----------|-------|
+//   | 12px    | 0.75rem   | label-sm: avisos, textos de ayuda, requisitos, etiquetas de estado |
+//   | 14px    | 0.875rem  | label-md: etiquetas de campo, la fecha de una cita |
+//   | 16px    | 1rem      | body-md: el texto normal |
+//   | 18px    | 1.125rem  | body-lg |
+//   | 20px    | 1.25rem   | (interlineado de 14px) |
+//   | 24px    | 1.5rem    | headline-md: títulos de sección, la hora de una cita |
+//   | 28px    | 1.75rem   | headline-lg-mobile |
+//   | 32px    | 2rem      | headline-lg |
+//   | 36px    | 2.25rem   | (interlineado de 28px) |
+//   | 40px    | 2.5rem    | (interlineado de 32px) |
+//
+// **Lo que NO se convirtió, a propósito:**
+//
+//   - **Los espaciados** (`$base`, `$stack-*`, `$gutter`, los márgenes): siguen en píxeles. Son la
+//     retícula de 4px de `VISUALS.md`, que es una decisión de **layout** y no de letra, y mezclarlas
+//     habría hecho que agrandar la letra desarmara la grilla en vez de solo agrandar el texto.
+//   - **El correo** (`servidor/plantillas-de-correo.js`): sigue en píxeles y tiene que seguir. Los
+//     programas de correo no son navegadores y muchos no entienden `rem`. Es la misma razón por la
+//     que ese archivo usa `<table>` y estilos pegados en cada etiqueta.
+//
+// **Los comentarios de más abajo siguen nombrando los tamaños en píxeles** —«label-sm: 12px»— y eso
+// es a propósito: así los nombra `VISUALS.md`, que es la autoridad sobre la apariencia y habla en
+// píxeles. La tabla de acá arriba es la traducción, y está en un solo lugar para no repetirla en cada
+// regla.
+//
+// **Y `html` no lleva `font-size` escrito, y no es un olvido:** ponerle `font-size: 16px` dejaría el
+// `rem` clavado en 16 y toda esta conversión no serviría de nada — sería volver a los píxeles con más
+// pasos. La letra base la decide el navegador de quien mira, que es justamente el punto.
+
+// ── Los títulos, con `clamp()` ──────────────────────────────────────────────────────────────────
+//
+// *Pedido de la estudiante el 2026-08-24.* **Los títulos no tienen un tamaño fijo: crecen con el
+// ancho de la pantalla**, entre un mínimo y un máximo. El resto del texto no — un párrafo de 16px se
+// lee igual de bien en un teléfono que en un monitor, y los 16px son el mínimo accesible.
+//
+// **Qué es `clamp(mínimo, ideal, máximo)`.** Son tres valores y el navegador elige el del medio,
+// **salvo** que se pase de alguno de los bordes. Se lee así: «quiero este tamaño, pero nunca menos
+// que esto ni más que aquello». Sin `clamp` habría que escribir un `@media` por cada corte de
+// pantalla y el título saltaría de golpe al cruzarlo; con `clamp` sube de a poco.
+//
+// **Qué es `vw`.** Es «uno por ciento del ancho de la ventana». En una pantalla de 400px, `1vw` son
+// 4px. Es lo que hace que el tamaño siga al ancho. Va **sumado a un `rem`** y nunca solo: con `vw`
+// solo, alguien que agranda la letra de su navegador no vería ningún cambio, porque `vw` no depende
+// de la letra base sino de la ventana. Sumados, el título obedece a las dos cosas.
+//
+// **Los tres son los tamaños que la aplicación ya tenía**, no números nuevos: el máximo de cada uno
+// es exactamente el de antes. Lo que se agrega es que en pantalla angosta bajan un escalón en vez de
+// quedarse grandes y apretar todo lo demás.
+//
+// *(Los tres bajan además un 20% junto con todo lo demás, por el `font-size: 80%` de `html`. La parte
+// `vw` de cada `clamp` **no** baja —mide la ventana, no la letra—, así que hoy cada título llega a su
+// tamaño máximo en una pantalla un poco más angosta que antes. Sigue siendo el comportamiento
+// correcto: nunca menos que el mínimo, nunca más que el máximo.)*
+
+// El título del encabezado, el `<h1>` con el nombre del negocio. **Reemplaza un salto que ya existía:**
+// hasta hoy pasaba de 28px a 32px de golpe al cruzar la tableta, con un `@media`. Ahora sube de a poco
+// entre esos mismos dos valores.
+$titulo-principal: clamp(1.75rem, 1.5rem + 1vw, 2rem); // 28px → 32px
+
+// Los títulos de sección y de tarjeta: `headline-md` de VISUALS.md. Los usan cuatro cosas —el saludo,
+// el título de cada paso, el de cada tarjeta y el mes del calendario—, y por eso es una variable y no
+// el valor escrito cuatro veces: si cambia, cambia en un lugar.
+$titulo-seccion: clamp(1.25rem, 1rem + 1.25vw, 1.5rem); // 20px → 24px
+
+// El título chico: el del cartel de reagendar.
+$titulo-chico: clamp(1rem, 0.9rem + 0.5vw, 1.125rem); // 16px → 18px
+
+// **El interlineado de un título con `clamp` no puede ir en `rem`**, y esta es la parte que se pasa
+// por alto: si la letra se achica a 20px y el interlineado se queda clavado en 32px, el título queda
+// flotando con demasiado aire arriba y abajo. Escrito **sin unidad**, el número es un multiplicador de
+// la letra —`1.333` quiere decir «una vez y un tercio»— así que el espacio sigue a la letra sola.
+// Cada uno es exactamente la proporción que el título ya tenía en su tamaño máximo.
+$alto-titulo-principal: 1.25; // 40 ÷ 32
+$alto-titulo: 1.3333; // 32 ÷ 24, y también 24 ÷ 18
+
 // Los puntos donde la pantalla cambia. Mobile-first: hasta acá, todo es teléfono.
 //
 // Los dos primeros son los cortes generales del proyecto, y no se tocan. El tercero es más chico y
@@ -174,6 +270,42 @@ $escritorio: 64rem; // 1024px
 html {
   // Para que el ancho de la barra de desplazamiento no mueva el contenido al aparecer.
   scrollbar-gutter: stable;
+
+  // ── Toda la letra de la aplicación, un 20% más chica ────────────────────────────────────────
+  //
+  // *Decidido por la estudiante el 2026-08-24, mirando la pantalla.* **Esta línea achica la
+  // tipografía de toda la aplicación de una sola vez**, sin tocar ninguno de los 82 valores de más
+  // abajo: lo que estaba escrito `1rem` se dibuja ahora a 12.8px en vez de 16, y el resto de la
+  // escala baja en la misma proporción.
+  //
+  // **Por qué `80%` y no `12.8px`.** Un porcentaje se mide **contra la letra base del navegador de
+  // quien mira**, así que quien la agranda desde su configuración —mucha gente que ve poco lo hace—
+  // sigue viendo todo crecer, solo que partiendo de un 20% menos. Escrito `12.8px` quedaría clavado y
+  // toda la conversión a `rem` del resto del archivo no serviría de nada. **Es la única forma de
+  // achicar todo sin renunciar a que la persona pueda agrandarlo.**
+  //
+  // **Por qué acá y no reescribiendo los 82 valores.** El resultado en pantalla es idéntico, y a
+  // cambio los `rem` de más abajo **siguen diciendo de un vistazo qué es cada cosa** —`1rem` es el
+  // texto normal, `1.5rem` un título— en vez de convertirse en una lista de números sin relación
+  // entre sí. Y si algún día se quiere volver atrás o probar otro porcentaje, se cambia acá.
+  //
+  // **Lo que esto NO achica, y hay que tenerlo presente:** los espaciados, los rellenos, los bordes y
+  // los tamaños mínimos para tocar con el dedo siguen en píxeles, así que **las cajas quedan igual de
+  // grandes y el texto adentro queda más chico**. Para las fichas de horario del calendario eso es
+  // justamente lo que se buscaba —les sobra lugar—; en el resto de la aplicación se ve como más aire
+  // alrededor del texto.
+  //
+  // **Y los tres cortes de pantalla de arriba no se mueven.** Están en `rem`, pero adentro de un
+  // `@media` los `rem` se miden **siempre contra la letra base del navegador** y nunca contra esta
+  // línea: es una regla del lenguaje, no una elección. Así que la aplicación sigue cambiando de
+  // formato a los mismos 476, 768 y 1024 píxeles de siempre.
+  //
+  // **El costo, escrito para que no quede escondido:** `VISUALS.md` dice *«Body: 16px remains the
+  // standard for accessibility»*, y con esta línea el texto normal queda en 12.8px y los avisos y
+  // textos de ayuda en 9.6px. **La estudiante lo decidió sabiéndolo**, después de que se le
+  // advirtiera, y por eso queda anotado acá, en `VISUALS.md` y en `DISENO.md` en vez de resuelto en
+  // silencio. Volver atrás es borrar esta línea.
+  font-size: 80%;
 }
 
 body {
@@ -213,8 +345,8 @@ body {
   color: $texto;
   font-family: $tipografia;
   // body-md del sistema: 16px con línea de 24px. 16px es el mínimo accesible.
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 1rem;
+  line-height: 1.5rem;
   -webkit-font-smoothing: antialiased;
 
   // De tableta para arriba, el fondo queda quieto mientras el contenido se desplaza por encima.
@@ -338,14 +470,16 @@ body {
 
   &__titulo {
     margin: 0;
-    // headline-lg-mobile: 28px / 36px. En pantalla grande sube a headline-lg: 32px / 40px.
-    font-size: 28px;
+    // De `headline-lg-mobile` (28px) a `headline-lg` (32px), **sin salto**: hasta el 2026-08-24 el
+    // cambio lo hacía un `@media` que lo subía de golpe al cruzar la tableta.
+    font-size: $titulo-principal;
     font-weight: 600;
-    line-height: 36px;
+    line-height: $alto-titulo-principal;
 
+    // Lo único que sigue atado al corte de pantalla es el espacio entre letras: `VISUALS.md` lo pide
+    // solo para los titulares grandes —«tracking apretado en los encabezados más grandes»— y en un
+    // teléfono, donde el título está en su tamaño chico, apretarlo no ayuda a leerlo.
     @media (min-width: $tableta) {
-      font-size: 32px;
-      line-height: 40px;
       letter-spacing: -0.01em;
     }
   }
@@ -353,9 +487,9 @@ body {
   &__bajada {
     margin: 0;
     // label-md: 14px, semibold, con un poco de espacio entre letras para que se lea chiquito.
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: $azul-claro;
@@ -422,9 +556,9 @@ body {
     // la que ir. Pero se tiene que ver y tocar como un enlace del menú.
     padding: 12px $stack-xs;
     font: inherit;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
     letter-spacing: 0.04em;
     text-align: left;
     text-transform: uppercase;
@@ -502,9 +636,9 @@ body {
   &__enlace {
     padding: 0;
     font: inherit;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
     color: $azul-claro;
     background-color: transparent;
     border: 0;
@@ -539,9 +673,9 @@ body {
   &__texto {
     margin: 0;
     // label-sm del sistema: 12px, para un texto de servicio que no compite con el contenido.
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
-    line-height: 16px;
+    line-height: 1rem;
     letter-spacing: 0.04em;
   }
 
@@ -551,9 +685,9 @@ body {
     @include columna($base);
 
     margin: 0 0 $stack-xs;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
     color: $blanco;
 
     @media (min-width: $tableta) {
@@ -608,17 +742,17 @@ body {
 
   &__titulo {
     margin: 0;
-    // headline-md: 24px / 32px.
-    font-size: 24px;
+    // headline-md: hasta 24px / 32px, y menos en pantalla angosta.
+    font-size: $titulo-seccion;
     font-weight: 600;
-    line-height: 32px;
+    line-height: $alto-titulo;
     color: $navy-oscuro;
   }
 
   &__nota {
     margin: 0;
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 1rem;
+    line-height: 1.5rem;
     color: $texto-suave;
   }
 }
@@ -636,9 +770,9 @@ body {
   // accesibilidad (quien usa un lector de pantalla o quien vuelve a mirar el formulario a medio
   // llenar necesita seguir viendo qué pedía cada casilla).
   &__etiqueta {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
     letter-spacing: 0.01em;
     color: $texto-suave;
   }
@@ -662,8 +796,8 @@ body {
     margin: 0;
     // `label-sm` de VISUALS.md: 12px. Mismo tamaño que el aviso y que los requisitos de la
     // contraseña — los tres son texto de guía, y en el sistema se ven igual.
-    font-size: 12px;
-    line-height: 16px;
+    font-size: 0.75rem;
+    line-height: 1rem;
     color: $texto-suave;
   }
 
@@ -722,9 +856,9 @@ body {
   width: 100%;
   padding: 12px $gutter;
   font: inherit;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 1.5rem;
   color: $blanco;
   background-color: $navy;
   border: 1px solid $navy;
@@ -770,8 +904,8 @@ body {
   &--chico {
     width: auto;
     padding: $stack-xs ($base * 3);
-    font-size: 12px;
-    line-height: 16px;
+    font-size: 0.75rem;
+    line-height: 1rem;
   }
 }
 
@@ -783,8 +917,8 @@ body {
   // `label-sm` de VISUALS.md: 12px con interlineado de 16. Es el tamaño que la estudiante fijó el
   // 2026-08-19 para **todo** texto de guía o de error, para que ese tipo de texto se distinga de un
   // vistazo del contenido de verdad, sin tener que leerlo.
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 0.75rem;
+  line-height: 1rem;
   color: $error-texto;
   background-color: $error-fondo;
   border: 1px solid $error;
@@ -831,9 +965,9 @@ body {
 
 .requisito {
   // `label-sm` de VISUALS.md: 12px, peso 500, interlineado 16.
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 1rem;
   // El gris del estado «todavía no escribiste nada». Los otros dos colores los pone el modificador.
   color: $gris-texto;
 
@@ -880,9 +1014,9 @@ body {
 .etiqueta-estado {
   display: inline-block;
   padding: $base ($base * 2);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 1rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: $indigo;
@@ -902,10 +1036,10 @@ body {
 
   &__titulo {
     margin: 0 0 $base;
-    // headline-md: 24px / 32px.
-    font-size: 24px;
+    // headline-md: hasta 24px / 32px, y menos en pantalla angosta.
+    font-size: $titulo-seccion;
     font-weight: 600;
-    line-height: 32px;
+    line-height: $alto-titulo;
     color: $navy-oscuro;
   }
 }
@@ -921,10 +1055,10 @@ body {
     align-items: center;
     gap: $stack-xs;
     margin: 0;
-    // headline-md: 24px / 32px.
-    font-size: 24px;
+    // headline-md: hasta 24px / 32px, y menos en pantalla angosta.
+    font-size: $titulo-seccion;
     font-weight: 600;
-    line-height: 32px;
+    line-height: $alto-titulo;
     color: $navy-oscuro;
   }
 
@@ -960,9 +1094,9 @@ body {
     flex: none;
     width: 32px;
     height: 32px;
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 700;
-    line-height: 24px;
+    line-height: 1.5rem;
     color: $blanco;
     background-color: $navy;
     border-radius: $radio-circulo;
@@ -1022,16 +1156,16 @@ body {
 
   &__nombre {
     // body-lg: 18px / 28px.
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 600;
-    line-height: 28px;
+    line-height: 1.75rem;
   }
 
   &__nota {
     // label-md: 14px.
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
     letter-spacing: 0.01em;
     color: $texto-suave;
   }
@@ -1107,10 +1241,10 @@ body {
 
   &__mes {
     margin: 0;
-    // headline-md: 24px / 32px.
-    font-size: 24px;
+    // headline-md: hasta 24px / 32px, y menos en pantalla angosta.
+    font-size: $titulo-seccion;
     font-weight: 600;
-    line-height: 32px;
+    line-height: $alto-titulo;
     color: $navy-oscuro;
   }
 
@@ -1123,8 +1257,8 @@ body {
     height: 44px;
     padding: 0;
     font: inherit;
-    font-size: 24px;
-    line-height: 24px;
+    font-size: 1.5rem;
+    line-height: 1.5rem;
     color: $navy;
     background-color: $blanco;
     border: 1px solid $borde-fuerte;
@@ -1162,9 +1296,9 @@ body {
 
   &__dias-semana {
     // label-sm: 12px, en mayúscula, para las iniciales de los días.
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
-    line-height: 16px;
+    line-height: 1rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     text-align: center;
@@ -1195,17 +1329,17 @@ body {
   }
 
   &__numero {
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
   }
 
   // El numerito de cuántos horarios quedan libres. Ocupa su lugar siempre, aunque esté vacío, para
   // que los números de los días no se muevan de una casilla a otra.
   &__marca {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
-    line-height: 16px;
+    line-height: 1rem;
     min-height: 16px;
   }
 
@@ -1262,9 +1396,9 @@ body {
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 1rem;
   color: $texto-suave;
 
   li {
@@ -1341,9 +1475,9 @@ body {
   // El relleno de los lados es chico a propósito: el ancho de la ficha ya lo fija la columna, y
   // este número solo marca el mínimo por debajo del cual el texto se apretaría.
   padding: $stack-xs $base;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 24px;
+  line-height: 1.5rem;
   // Números de ancho fijo: el 1 pasa a ocupar lo mismo que el 0, así las horas quedan alineadas
   // también entre una ficha y otra, no solo las cajas.
   font-variant-numeric: tabular-nums;
@@ -1422,25 +1556,25 @@ body {
   &__titulo {
     // `title-md` de VISUALS.md, el mismo de los títulos de tarjeta.
     margin: 0;
-    font-size: 18px;
+    font-size: $titulo-chico;
     font-weight: 700;
-    line-height: 24px;
+    line-height: $alto-titulo;
   }
 
   // Qué cita se está moviendo. Va en 16px, no en 12: **no es un texto de guía, es el dato** —el que
   // dice si se está moviendo la cita correcta— y tiene que leerse como contenido de verdad.
   &__cual {
     margin: 0;
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 600;
-    line-height: 24px;
+    line-height: 1.5rem;
   }
 
   // La aclaración de RN-18. Sí es texto de guía, así que va en el 12px de siempre.
   &__nota {
     margin: 0;
-    font-size: 12px;
-    line-height: 16px;
+    font-size: 0.75rem;
+    line-height: 1rem;
   }
 }
 
@@ -1467,18 +1601,18 @@ body {
   }
 
   &__que {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
     letter-spacing: 0.01em;
     color: $texto-suave;
   }
 
   &__dato {
     margin: 0;
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 600;
-    line-height: 24px;
+    line-height: 1.5rem;
     text-align: right;
     color: $navy-oscuro;
   }
@@ -1568,16 +1702,16 @@ body {
   }
 
   &__fecha {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.25rem;
     color: $texto-suave;
   }
 
   &__hora {
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 600;
-    line-height: 32px;
+    line-height: 2rem;
     // El 1 ocupa lo mismo que el 0, así las horas quedan alineadas de una fila a la otra.
     font-variant-numeric: tabular-nums;
     color: $navy-oscuro;
@@ -1587,16 +1721,30 @@ body {
     @include columna(0);
   }
 
-  &__servicio {
-    font-size: 16px;
+  // El nombre del cliente. **Solo lo usa «Citas por cerrar»** (pieza 8), que es la única lista donde
+  // los renglones son de gente distinta: en «Mis citas» el dueño ya lo dice el título de la sección.
+  //
+  // No inventa ningún valor: el tamaño y el peso son los mismos del servicio de abajo, y lo único que
+  // lo destaca es el navy, que en este archivo ya es el color de lo importante —la hora de la cita y
+  // los títulos—. Un tamaño más grande habría hecho competir al nombre con la hora, que es el otro
+  // dato con el que se identifica un renglón.
+  &__cliente {
+    font-size: 1rem;
     font-weight: 600;
-    line-height: 24px;
+    line-height: 1.5rem;
+    color: $navy-oscuro;
+  }
+
+  &__servicio {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5rem;
   }
 
   &__proveedor {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 400;
-    line-height: 20px;
+    line-height: 1.25rem;
     color: $texto-suave;
   }
 
@@ -1632,8 +1780,8 @@ body {
     flex-basis: 100%;
     margin: 0;
     // El mismo 12px de todo texto de guía en este proyecto (`label-sm` de VISUALS.md).
-    font-size: 12px;
-    line-height: 16px;
+    font-size: 0.75rem;
+    line-height: 1rem;
     color: $texto-suave;
   }
 }
@@ -1659,9 +1807,9 @@ body {
 .contrasena-temporal {
   margin: 0;
   padding: $stack-sm;
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 700;
-  line-height: 32px;
+  line-height: 2rem;
   letter-spacing: 2px;
   // `word-break` es lo que impide que una contraseña larga se salga de la tarjeta en un teléfono.
   word-break: break-all;

@@ -536,14 +536,22 @@ test("la ventana son 4 horas justas: a 3 horas y 59 minutos ya no se puede", asy
 test("una cita que ya pasó tampoco se puede cancelar desde la aplicación", async (t) => {
   const { insertarCitaAMano, cancelar } = await prepararCitas(t)
 
-  // Ayer a las 10. Faltan −22 horas, que es menos de 4: la misma regla la cubre sin ningún caso
-  // aparte. Cerrar las citas pasadas es de la pieza 8, y lo hace Personal.
+  // Ayer a las 10.
+  //
+  // **Esta prueba cambió el 2026-08-24, al construir la pieza 8, y el cambio vale la pena contarlo.**
+  // Hasta ese día esperaba `ventana_de_cancelacion`, porque una cita pasada caía sola en la regla de
+  // las 4 horas: si faltan −22 horas, faltan menos de 4. Era cierto como cuenta y falso como
+  // explicación, y **dejaba un hueco que solo se vio cuando apareció el segundo actor**: Personal no
+  // tiene ventana de cancelación (RN-6), así que a él una cita del mes pasado le quedaba cambiable.
+  // RN-26 lo cerró con un motivo propio, `ya_paso`, que ahora vale para los dos. El rechazo sigue
+  // siendo 422 —el problema es el momento, no el permiso— y **lo que se puede hacer con esta cita no
+  // es cancelarla sino cerrarla**, que es de la pieza 8 y lo hace Personal.
   const citaId = insertarCitaAMano(momento("2026-08-31", 10))
 
   const respuesta = await cancelar(citaId)
 
   assert.equal(respuesta.estado, 422)
-  assert.equal(respuesta.cuerpo.error, "ventana_de_cancelacion")
+  assert.equal(respuesta.cuerpo.error, "ya_paso")
 })
 
 // ══════════════════════════════════════════════════════ el correo al reagendar (RF-11, RF-14)
@@ -563,7 +571,10 @@ test("comprobación 9: reagendar manda la confirmación con la fecha y la hora N
   // La fecha nueva escrita en palabras, que es como la escribe la plantilla de la pieza 4.
   assert.match(segundo.html, /jueves 3 de setiembre de 2026/)
   assert.match(segundo.texto, /jueves 3 de setiembre de 2026/)
-  assert.match(segundo.texto, /15:00/)
+  // `3:00pm` y no `15:00`: la estudiante eligió am/pm para toda la aplicación el 2026-08-24, y el
+  // correo lo escribe `escribirHoraDelMomento` de `servidor/tiempo.js`. La hora es la misma; lo que
+  // cambió es cómo se escribe.
+  assert.match(segundo.texto, /3:00pm/)
   // Y no puede decir la vieja: sería exactamente el problema que este correo existe para evitar.
   assert.doesNotMatch(segundo.texto, /miércoles 2 de setiembre de 2026/)
 })
@@ -635,11 +646,14 @@ test("una cita que YA PASÓ lo dice, y no dice que faltan menos de 4 horas", asy
   const cita = buscarCita(citas.cuerpo, citaId)
 
   assert.equal(cita.sePuedeCambiar, false)
-  // **La regla es la misma** —faltan menos de 4 horas— y el rechazo del endpoint sigue siendo
-  // `ventana_de_cancelacion` (lo comprueba otra prueba más arriba). Lo que cambia es lo que la
-  // pantalla tiene que **decir**: «faltan menos de 4 horas» de una cita que ya ocurrió es una frase
-  // falsa. Lo encontró la estudiante mirando la pantalla el 2026-08-20, y ninguna prueba automática
-  // podía verlo: ninguna lee si una frase tiene sentido.
+  // Esta prueba nació el 2026-08-20 de un hallazgo de la estudiante mirando la pantalla: debajo de
+  // una cita de ayer salía «faltan menos de 4 horas», una frase falsa. Ninguna prueba automática
+  // podía verlo, porque ninguna lee si una frase tiene sentido.
+  //
+  // **En ese momento esto era solo un mensaje más preciso**, y la regla debajo seguía siendo la de
+  // las 4 horas. Desde el 2026-08-24 `ya_paso` **es la regla** (RN-26) y no un texto: una cita que ya
+  // ocurrió no la cambia nadie, ni Personal. Esta prueba no cambió una letra, y eso es lo interesante
+  // — lo que la pantalla ya decía resultó ser lo que la regla tenía que decir.
   assert.equal(cita.porQueNo, "ya_paso")
 })
 

@@ -63,7 +63,7 @@ todas las piezas)*:
 | 5 | Cancelar y reagendar | 3 | **cerrada el 2026-08-20** |
 | 6 | Recordatorio de 24 horas | 4 y 5 | pendiente |
 | 7 | Personal atiende el teléfono | 5 | **cerrada el 2026-08-24** (construida el 2026-08-21) |
-| 8 | Personal cierra las citas pasadas | 7 | pendiente |
+| 8 | Personal cierra las citas pasadas | 7 | **cerrada el 2026-08-24** |
 | 9 | Restablecer la contraseña olvidada | 4 | pendiente |
 | 10 | La información del cliente | 1 y 3 | **cerrada el 2026-08-19**, construida fuera de orden |
 | 11 | Categorías de servicio | 2 | **cerrada el 2026-08-19**, construida fuera de orden |
@@ -798,6 +798,15 @@ continua en verde y la revisión visual hecha.
     la cita existe pero es de otro cliente**, a propósito: contestar `403` ahí sería confirmarle a
     quien pregunta que ese número de cita existe— y `409` con `{error: "cita_no_activa"}` cuando la
     cita ya está cancelada, completada o marcada como no asistió.
+
+  *Corregido el 2026-08-24, al construir la pieza 8:* **una cita que ya pasó ya no se rechaza con
+  `ventana_de_cancelacion`, sino con el motivo nuevo `ya_paso`, también con `422`** (RN-26). Cuando
+  se escribió este bloque, una cita pasada caía sola en la ventana de las 4 horas —si faltan −22
+  horas, faltan menos de 4— y eso alcanzaba, porque el único actor que llegaba ahí era el cliente.
+  Con RN-26 dejó de alcanzar: **Personal no tiene ventana**, así que sin un motivo propio una cita
+  del mes pasado le quedaba cambiable. El campo `porQueNo` de `GET /api/citas` ya devolvía `ya_paso`
+  desde el 2026-08-20 para que la pantalla no dijera una frase falsa; ahora la **regla** dice lo
+  mismo que la pantalla, y las dos salen del mismo lugar.
   - `PATCH` devuelve además `422` con `{error: "mismo_dia"}` cuando el horario nuevo es de hoy o de
     un día que ya pasó (RN-4): reagendar aplica **la misma** regla de disponibilidad que reservar,
     así que tiene los mismos rechazos.
@@ -1198,6 +1207,10 @@ botones **no** tocar.*
 - Una cita marcada como «no asistió» queda perdida: no se repone ni se devuelve nada, y tampoco se
   borra (RN-19, RN-15).
 - Una cita ya cerrada no se puede volver a cerrar con otro estado.
+- **Sobre una cita que ya pasó, cerrarla es lo único que se puede hacer: «Reagendar» y «Cancelar» no
+  se ofrecen ni funcionan, tampoco para Personal (RN-26).** *(Punto agregado el 2026-08-24, al
+  arrancar la pieza: es la decisión que la pieza 7 dejó abierta a propósito, y la regla que la
+  resuelve —RN-26— se escribió en `ESPECIFICACION.md` antes de tocar código.)*
 
 **Con qué se comprueba**
 1. Insertar dos citas activas cuya hora ya pasó, de dos clientes distintos.
@@ -1211,6 +1224,11 @@ botones **no** tocar.*
 7. Entrar como cliente e intentar cerrar una cita: no existe la opción, y el pedido directo al API
    se rechaza.
 8. Intentar volver a cerrar una cita ya cerrada: lo rechaza.
+9. **Sobre una cita pasada, Personal no ve «Reagendar» ni «Cancelar»; y el pedido directo al API
+   para cancelarla o moverla se rechaza, tanto con la sesión de Personal como con la del cliente
+   (RN-26).**
+10. **Una cita del futuro sigue teniendo sus dos botones, para los dos actores: la regla nueva no se
+    llevó por delante RN-6 ni CA-3.**
 
 **Toca:** Reservas, Interfaz.
 
@@ -1220,12 +1238,69 @@ botones **no** tocar.*
 - *Produce:*
   - `GET /api/personal/citas-por-cerrar` — solo para sesión de tipo `personal`; devuelve las citas
     con estado `"activa"` cuyo `inicio` ya pasó: `[{id, cliente, servicio, proveedor, inicio}]`.
-  - `PATCH /api/citas/:citaId/cierre` — solo para sesión de tipo `personal`; recibe
+  - `PATCH /api/personal/citas/:citaId/cierre` — solo para sesión de tipo `personal`; recibe
     `{estado}` con valor `"completada"` o `"no_asistio"`; devuelve `200`; devuelve `403` si la
     sesión es de un cliente y `409` si la cita ya no está activa.
+
+    *La dirección se corrigió el 2026-08-24, al arrancar la pieza. Estaba escrita
+    `PATCH /api/citas/:citaId/cierre`, de antes de que la pieza 7 fijara la convención **«todo lo
+    que solo abre Personal vive bajo `/api/personal/`»** —para que el permiso se lea de un vistazo
+    en la dirección, sin abrir el código—. El propio bloque se contradecía: el `GET` de arriba sí la
+    seguía. **Decidido por la estudiante el 2026-08-24**, eligiendo la convención más nueva y con su
+    razón escrita, por encima de la dirección más vieja.*
   - Los campos `cerrada_en` y `cerrada_por` de la tabla `cita` quedan llenos.
+  - **Un motivo de rechazo nuevo, `ya_paso`, con `422`**, que `DELETE /api/citas/:citaId` y
+    `PATCH /api/citas/:citaId` devuelven cuando la cita ya ocurrió (RN-26) — **para los dos
+    actores**. Antes ese caso se le contestaba al cliente `ventana_de_cancelacion` y a Personal no se
+    le contestaba nada, porque lo dejaba pasar. *(Agregado el 2026-08-24; ver la corrección en el
+    bloque «Produce» de la pieza 5.)*
 
 **Evidencia**
+
+**Construida y CERRADA el 2026-08-24.** `npm test` da **277 de 277** — 27 pruebas nuevas en
+`pruebas/cierre-de-citas.test.js`, escritas antes del código y **vistas fallar primero**. Las diez
+comprobaciones se corrieron: siete contra la aplicación levantada por una persona, y tres como pedido
+directo al API, porque son rechazos que no tienen pantalla.
+
+| # | Qué pedía | Cómo se comprobó | Resultado |
+|---|---|---|---|
+| 1 y 2 | Dos citas pasadas de dos clientes distintos aparecen en la lista | En el navegador, con la cuenta de Personal: aparecieron las de **Marisol Prueba** y **ana torres**, cada una con el nombre de su dueño | ✅ |
+| 3 | Marcar una completada y la otra no asistió | Una con cada botón, con su pregunta de confirmación de por medio | ✅ |
+| 4 | En la base quedan los dos estados, con `cerrada_en` y `cerrada_por` | Consultado directo en SQLite: `completada` y `no_asistio`, las dos con la hora del cierre y el id de la cuenta de Personal | ✅ |
+| 5 | Recargar la lista: ninguna de las dos sigue apareciendo | Se recargó: desaparecieron las dos | ✅ |
+| 6 | Una tercera cita sin tocar sigue activa. **Nada la cierra sola** | Tres citas quedaron sin tocar; se salió y se volvió a entrar a la sección varias veces: **las tres siguen activas**, con `cerrada_en` y `cerrada_por` vacíos | ✅ |
+| 7 | El cliente no tiene la opción, y el pedido directo al API se rechaza | En pantalla: entrando como Marisol **no aparece «Citas por cerrar»** en el menú y sus citas pasadas no tienen ningún botón. Por API: `PATCH /api/personal/citas/6/cierre` con su sesión → **`403 solo_personal`**, y la cita quedó intacta | ✅ |
+| 8 | Volver a cerrar una cita ya cerrada se rechaza | `PATCH` sobre la cita 3, ya `completada`, pidiendo `no_asistio` → **`409 cita_no_activa`**. Sigue `completada`: el primer cierre es el que vale | ✅ |
+| 9 | **RN-26:** sobre una cita pasada no hay «Reagendar» ni «Cancelar», y el API los rechaza | En pantalla: las tres citas pasadas de Marisol muestran **«Completada» y «No asistió»**, y ninguna muestra los otros dos. Por API: `DELETE /api/citas/6` con la sesión de **Personal** → **`422 ya_paso`**, y la cita no se movió ni cambió de estado | ✅ |
+| 10 | Una cita futura conserva sus dos botones, para los dos actores | En pantalla: la cita del **27 de agosto** de melalo sigue con «Reagendar» y «Cancelar». Y dos pruebas automáticas lo fijan: la misma cita que empieza en 2 horas se le **sigue** aceptando a Personal (`204`) y rechazando al cliente (`422 ventana_de_cancelacion`) | ✅ |
+
+**Una regla de negocio nueva, escrita antes que el código.** La pieza 7 había dejado abierta a
+propósito la pregunta de qué botones ve Personal sobre una cita que ya pasó. La estudiante decidió el
+2026-08-24 **sacarle «Reagendar» y «Cancelar»**, y la regla se escribió como **RN-26** en
+`ESPECIFICACION.md` —con la corrección propagada a RN-6, RN-13, RN-17, RF-18 y un recorrido— **antes
+de tocar una línea de código**. La razón de fondo es RN-19: reagendar mueve la misma cita, así que
+mover la de alguien que no se presentó **borraría del registro que faltó**.
+
+**Una corrección al propio bloque *Produce* de esta pieza**, decidida por la estudiante el mismo día:
+el endpoint del cierre estaba escrito `PATCH /api/citas/:citaId/cierre`, de antes de que la pieza 7
+fijara la convención «todo lo que solo abre Personal vive bajo `/api/personal/`». Quedó
+**`PATCH /api/personal/citas/:citaId/cierre`**.
+
+**Un rechazo que el plan no había previsto**, adoptado al construir y anotado como decisión: cerrar
+una cita **que todavía no ocurrió** devuelve `422 todavia_no_paso`. Sale directo de RN-17, que dice
+que «completada» se marca *después de que el cliente asistió*.
+
+**La revisión visual encontró un defecto que ninguna prueba podía ver, y es el hallazgo número 20 del
+proyecto.** Al salir de la aplicación y volver a entrar con la cuenta de Personal, la tarjeta
+«Atendiendo a» **seguía mostrando a la persona de la sesión anterior**. La causa: «olvidar la
+llamada» estaba escrito **en dos mitades** —el dato lo borraba el logout, la pantalla la limpiaba el
+botón «Otra persona»— y las dos no decían lo mismo. Arrastraba dos consecuencias peores que el cartel
+viejo: **Personal se quedaba sin buscador** para elegir a otra persona, y **la contraseña temporal de
+un cliente sobrevivía al logout en pantalla**. Se corrigió sacando la regla a un solo lugar
+(`limpiarLaLlamada`), que ahora usan los dos caminos.
+
+**Lo que esta pieza NO tocó:** ninguna tabla ni columna nueva —`cerrada_en` y `cerrada_por` existían
+vacías desde la pieza 3—, ninguna dependencia nueva, y **CA-1, CA-2 y CA-3 intactos**.
 
 ---
 

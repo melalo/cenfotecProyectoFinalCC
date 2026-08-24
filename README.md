@@ -98,7 +98,16 @@ Estas te van a hacer construir lo incorrecto si no las sabés:
   técnico y el del negocio. Y va sin artículo con género —«tu terapista», «Terapista Ana»— porque hay
   proveedores mujeres y hombres.
 - **Los estilos son mobile-first**, y eso es verificable: todos los `@media` son `min-width` y
-  ninguno es `max-width`. Los cortes son 48rem y 64rem.
+  ninguno es `max-width`. Los cortes son 29.75rem, 48rem y 64rem.
+- **Ningún tamaño de letra se escribe en píxeles.** Van todos en `rem` —el píxel de `VISUALS.md`
+  dividido entre 16— y los títulos con `clamp()`. Y `html` lleva un `font-size: 80%` que achica toda
+  la tipografía de una sola vez: **no lo reemplaces por un tamaño en píxeles**, porque dejaría el
+  `rem` clavado y quien agranda la letra de su navegador dejaría de poder hacerlo. La tabla de
+  conversión y las tres razones están arriba de `estilos/estilos.scss`.
+- **La hora se escribe con `am`/`pm` en todas partes menos en las fichas de horario del calendario**,
+  que siguen en hora de 24. No es un olvido: son ocho por día en una fila de cuatro columnas y
+  `10:00am` no entra en un teléfono angosto. La razón está escrita en `fichaDeHorario` y en
+  `DISENO.md`.
 - **Todo campo de contraseña lleva el «ojito»** para mostrarla y ocultarla, en cualquier pantalla.
   No lo agregues campo por campo: ya hay una función que se lo pone a todos los
   `input[type="password"]` de la página, así que una pantalla nueva lo hereda sola.
@@ -265,7 +274,7 @@ Lo que carga hoy. El comando lo lista en pantalla al terminar:
 npm test
 ```
 
-**Hoy corre 250 pruebas**, todas en `pruebas/`:
+**Hoy corre 277 pruebas**, todas en `pruebas/`:
 
 - **14 de la pieza 1** (`autenticacion.test.js`): registrarse, entrar, el mensaje idéntico cuando el
   correo no existe y cuando la contraseña está mal, la contraseña cifrada, el correo repetido, la
@@ -317,6 +326,16 @@ npm test
   pendiente **no pueda hacer nada** —ni ver citas, ni reservar, ni ver ni guardar sus datos—, que las
   tres puertas que esa pantalla necesita sigan abiertas, que al cambiarla quede libre sin volver a
   entrar, que la temporal vieja quede rechazada, y que la nueva tenga que cumplir RN-23.
+- **27 de la pieza 8** (`cierre-de-citas.test.js`): que la lista de citas por cerrar traiga solo las
+  **activas cuya hora ya pasó** —de la más vieja a la más nueva, y con el nombre de su dueño, porque
+  son de gente distinta—, que marcarlas como **completada** o **no asistió** deje anotado **qué cuenta
+  de Personal lo hizo y cuándo** (REG-1), que después desaparezcan de la lista pero **no de la base**
+  (RN-15), que una cita que nadie toca **siga activa** —ningún estado se alcanza por el paso del
+  tiempo (RN-17)—, que un cliente no pueda cerrar ni la suya, que una cita ya cerrada no admita otro
+  estado, que una cita **que todavía no ocurrió** no se pueda marcar, y **RN-26**: una cita cuya hora
+  ya pasó no se cancela ni se reagenda **tampoco con la sesión de Personal**. Dos de las 27 existen
+  solo para demostrar que RN-26 **no se llevó por delante CA-3**: la misma cita que empieza dentro de
+  2 horas se le sigue aceptando a Personal y rechazando al cliente.
 
 Las del calendario **paran el reloj** en una fecha fija (martes 1 de setiembre de 2026, 8 de la
 mañana en Costa Rica). Sin eso dirían cosas distintas según el día en que se corran: «mañana hay
@@ -329,11 +348,11 @@ tres reglas que el curso exige proteger:
 |---|---|---|
 | **CA-1** | Dos intentos de reservar el mismo horario del mismo proveedor: exactamente uno lo consigue. | 3 — **ya cubierto** |
 | **CA-2** | Un intento de reservar un horario de hoy se rechaza, a cualquier hora que se intente. | 3 — **ya cubierto** |
-| **CA-3** | Cancelar o reagendar faltando menos de 4 horas: el cliente es rechazado, Personal es aceptado. | 5 la parte del cliente y 7 la de Personal — **las dos cubiertas** |
+| **CA-3** | Cancelar o reagendar faltando menos de 4 horas: el cliente es rechazado, Personal es aceptado. | 5 la parte del cliente y 7 la de Personal — **las dos cubiertas**, y la 8 agregó dos pruebas que vigilan que una regla nueva sobre esa misma función no lo debilite |
 
 ### Corren solas en cada push
 
-Desde la pieza 3, **estas 250 pruebas se corren automáticamente en cada `push` y en cada pull
+Desde la pieza 3, **estas 277 pruebas se corren automáticamente en cada `push` y en cada pull
 request**, sin que nadie escriba `npm test`. Lo hace GitHub Actions, configurado en
 `.github/workflows/pruebas.yml`.
 
@@ -342,9 +361,9 @@ distracción: GitHub solo ejecuta los archivos que están en `.github/workflows/
 única cosa de este proyecto que vive afuera de su carpeta, y está autorizada y explicada en
 `DISENO.md`.
 
-Para ver el resultado: en GitHub, pestaña **Actions**. Verde es que las 250 pasaron, en las dos
-versiones de Node. *(Este número decía «95» hasta el 2026-08-21: se había quedado viejo mientras las
-pruebas crecían pieza a pieza.)*
+Para ver el resultado: en GitHub, pestaña **Actions**. Verde es que las 277 pasaron, en las dos
+versiones de Node. *(Este número decía «95» hasta el 2026-08-21 y «250» hasta el 2026-08-24: se había
+quedado viejo mientras las pruebas crecían pieza a pieza.)*
 
 ## Qué no está en el repositorio
 

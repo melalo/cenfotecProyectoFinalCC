@@ -25,7 +25,7 @@
 | `npm install` | Instala las dependencias. |
 | `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita, ninguna cuenta de cliente y ningún correo registrado: esos se crean desde la aplicación, a partir de las piezas 3, 4 y 7. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
-| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **250**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4, 26 de la pieza 12, 39 de la pieza 5 y **76 de la pieza 7** (58 en `personal.test.js` y 18 en `cambio-de-contrasena.test.js`). **Los tres criterios de aceptación están cubiertos por completo**: CA-1 y CA-2 desde la pieza 3, y **CA-3 entero desde la pieza 7** — la parte del cliente la trajo la 5, la de Personal la 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
+| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **277**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4, 26 de la pieza 12, 39 de la pieza 5, 76 de la pieza 7 (58 en `personal.test.js` y 18 en `cambio-de-contrasena.test.js`) y **27 de la pieza 8** (`cierre-de-citas.test.js`). **Los tres criterios de aceptación están cubiertos por completo**: CA-1 y CA-2 desde la pieza 3, y **CA-3 entero desde la pieza 7** — la parte del cliente la trajo la 5, la de Personal la 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
@@ -57,8 +57,8 @@ proyectoFinal/
 │   ├── quien-actua.js     los dos actores del sistema, cliente y personal. No depende de nada,
 │   │                      y por eso puede ser compartido sin armar un círculo de importaciones
 │   ├── disponibilidad.js  qué horarios están libres — la regla, en un solo lugar
-│   ├── reservas.js        crear, cancelar y mover una cita — el único que toca su estado,
-│   │                      y donde vive la regla de la ventana de 4 horas (RN-5)
+│   ├── reservas.js        crear, cancelar, mover y **cerrar** una cita — el único que toca su
+│   │                      estado, y donde viven la ventana de 4 horas (RN-5) y RN-26
 │   ├── correo.js          los correos: armarlos, entregarlos y dejar constancia
 │   ├── plantillas-de-correo.js  qué dice cada correo — solo arma texto, no manda nada
 │   ├── enviador-resend.js el único archivo que habla con un servicio de afuera
@@ -139,7 +139,11 @@ mismas pantallas.
   podría reservarle una cita a cualquiera. Hay una prueba que lo comprueba.
 - **Personal tiene exactamente dos excepciones, y las dos son sobre el tiempo:** puede cancelar y
   mover dentro de las 4 horas (RN-6) y puede agendar para hoy (RN-25). **Todo lo demás lo alcanza
-  igual que al cliente** (RN-13): horario ocupado, feriado, domingo, almuerzo. Las dos excepciones
+  igual que al cliente** (RN-13): horario ocupado, feriado, domingo, almuerzo. **Y desde la pieza 8
+  hay una regla que lo alcanza igual y que conviene no confundir con una tercera excepción, porque va
+  para el otro lado: RN-26** — una cita cuya hora ya pasó no se cancela ni se reagenda, tampoco
+  Personal. Está escrita en `revisarSiSePuedeCambiar` **antes** de la línea que le da el pase a
+  Personal, y ese orden **es** la regla: puesta después no haría nada. Las dos excepciones
   están escritas **una sola vez cada una** —`revisarSiSePuedeCambiar` en `servidor/reservas.js` y
   `estaEnSuTiempo` en `servidor/disponibilidad.js`— y lo único que cambia es el `quien` que reciben.
   Si aparece una tercera excepción, va en el mismo lugar que la que le corresponda, no en un `if`
@@ -219,7 +223,11 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   terapista», «Terapista Ana»— porque hay proveedores mujeres y hombres: «la terapista» dejaría a
   Carlos mal nombrado.
 - **Una etiqueta de estado aparece solo cuando algo le pasó a la cita**: cancelada, completada o «no
-  asistió». Una cita que ya pasó y que nadie cerró todavía **no lleva etiqueta**, porque decir
+  asistió». **Desde la pieza 8 las tres existen de verdad**, y la promesa se cumplió: la etiqueta
+  nunca se desdice — pasa de no estar a decir COMPLETADA o NO ASISTIÓ. En la base el estado se escribe
+  `no_asistio`, sin tilde y con guión bajo como todo lo técnico, y **en pantalla se lee «NO ASISTIÓ»**:
+  esa traducción vive en un solo lugar del JavaScript del navegador (`enPalabras`), no repartida donde
+  haga falta. Una cita que ya pasó y que nadie cerró todavía **no lleva etiqueta**, porque decir
   «ACTIVA» de algo que ya ocurrió es falso, y decir «COMPLETADA» sería peor: la aplicación **no sabe
   si la persona asistió**, y RN-17 dice que ese estado solo lo marca Personal y nunca se alcanza por
   el paso del tiempo. Así la etiqueta **nunca se desdice**: pasa de no estar a decir COMPLETADA o NO
@@ -319,6 +327,34 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   fijada al construir la pieza 7, el 2026-08-21.*
 - **Cuando Personal reserva o mueve una cita, el aviso verde dice a qué dirección salió el correo.**
   Es el dato que le hace falta para poder confirmárselo por teléfono a quien está del otro lado.
+- **La letra se escribe en `rem`, y toda la aplicación se dibuja al 80%.** *Decidido por la
+  estudiante el 2026-08-24; el detalle completo está arriba del `.scss`, en `VISUALS.md` y en
+  `DISENO.md`.* Tres cosas que hay que respetar si se toca:
+  - **Ningún tamaño de letra ni interlineado se escribe en píxeles.** La tabla para convertir está
+    arriba del `.scss`: el píxel de `VISUALS.md` dividido entre 16 (`12px → 0.75rem`, `16px → 1rem`,
+    `24px → 1.5rem`). **Los espaciados sí siguen en píxeles**, porque son la retícula de 4px y eso es
+    *layout*, no letra.
+  - **`html` lleva `font-size: 80%` y nada más.** Achica toda la tipografía de una sola vez. **No se
+    reemplaza por un tamaño en píxeles:** un porcentaje se mide contra la letra base del navegador de
+    quien mira, así que quien la agranda desde su configuración sigue viendo todo crecer. Escrito en
+    píxeles quedaría clavado y la conversión a `rem` no serviría de nada. Volver atrás es borrar esa
+    línea. *(El costo está asumido y escrito: el texto normal queda en 12.8px, por debajo de los 16px
+    que `VISUALS.md` llama mínimo accesible.)*
+  - **Los títulos usan `clamp()`**, con las tres escalas en variables (`$titulo-principal`,
+    `$titulo-seccion`, `$titulo-chico`). Su interlineado va **sin unidad** —un multiplicador—, porque
+    uno fijo dejaría flotando al título cuando se achica. Y la parte `vw` de un `clamp` **va siempre
+    sumada a un `rem`, nunca sola**: `vw` mide la ventana y no la letra, así que sola ignoraría a
+    quien agranda la tipografía de su navegador.
+- **La hora se escribe con `am`/`pm`, con una sola excepción.** *Decidido por la estudiante el
+  2026-08-24.* La llevan la tarjeta de confirmar, el cartel de reagendar, las dos listas de citas y el
+  correo. **No la llevan las fichas de horario del calendario**, que siguen en hora de 24 (`10:00`):
+  son ocho por día en una fila de cuatro columnas —la caja más angosta del proyecto— y `10:00am` no
+  entra en un teléfono de 320px. La cuenta está escrita **dos veces a propósito**, en `horaConAmPm`
+  del navegador y en `escribirHoraDelMomento` del servidor, por la razón de siempre: el navegador no
+  puede leer nada de `servidor/`, y esto no es una regla de negocio sino una forma de escribir.
+- **`rem` y `clamp` hacen que la letra se adapte a quien mira, no que un texto entre en su caja.** Son
+  dos problemas distintos y se arreglan con cosas distintas: el segundo se arregla acortando el texto
+  o dándole más lugar. *Quedó anotado el 2026-08-24 porque se confundió en el momento.*
 - Todas las medidas son múltiplos de **4px**, la unidad base del sistema.
 - **Las etiquetas de los campos siempre visibles**, nunca flotando dentro del campo: lo pide el
   sistema por accesibilidad.
@@ -396,12 +432,22 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   frase dice algo falso**: en la pieza 5 el texto «faltan menos de 4 horas» salía debajo de una cita
   que ya había ocurrido, y las pruebas estaban todas en verde, porque comprobaban la regla y la regla
   estaba bien. Por eso **una pieza no se cierra sin que una persona abra el navegador y mire.** Los
-  **dieciocho** defectos visuales encontrados hasta hoy salieron todos de ahí, ninguno de una prueba,
-  **más un decimonoveno hallazgo que no estaba roto pero se veía** —la etiqueta que partía en dos
-  líneas—, cerrado el 2026-08-24. La cuenta: **doce** hasta la pieza 5, **seis** de la revisión de la
-  pieza 7, y ese último. *(Este número decía «ocho» hasta el 2026-08-21 y «doce» hasta el 2026-08-24:
-  se quedó viejo dos veces, las dos porque la revisión visual siguió encontrando cosas después de que
-  alguien anotó el número. Si volvés a tocarlo, mirá primero el final de `BITACORA.md`.)*
+  **diecinueve** defectos visuales encontrados hasta hoy salieron todos de ahí, ninguno de una prueba,
+  **más un vigésimo hallazgo que no era de apariencia** —ver abajo—. La cuenta: **doce** hasta la
+  pieza 5, **seis** de la revisión de la pieza 7, **uno** que no estaba roto pero se veía (la etiqueta
+  que partía en dos líneas) y **uno** de la revisión de la pieza 8. *(Este número decía «ocho» hasta el
+  2026-08-21 y «doce» hasta el 2026-08-24: se quedó viejo tres veces, las tres porque la revisión
+  visual siguió encontrando cosas después de que alguien anotó el número. Si volvés a tocarlo, mirá
+  primero el final de `BITACORA.md`.)*
+- **Y el hallazgo número 20 no fue de apariencia: fue una regla escrita en dos mitades** (pieza 8,
+  2026-08-24). Al salir y volver a entrar con la cuenta de Personal, la tarjeta «Atendiendo a» seguía
+  mostrando a la persona de la sesión anterior. **Del lado del API no había nada roto** —la sesión se
+  cerraba bien y el dato se borraba bien—: lo que quedaba viejo era **lo dibujado**. La causa era que
+  «olvidar la llamada» estaba partida en dos lugares —el dato lo borraba el logout, la pantalla la
+  limpiaba el botón «Otra persona»— y las dos no decían lo mismo. Arrastraba dos cosas peores que el
+  cartel viejo: **Personal se quedaba sin buscador**, y **la contraseña temporal de un cliente
+  sobrevivía al logout en pantalla**. La lección, que es la regla de siempre aplicada al frontend:
+  **si borrar algo pide tocar el dato y la pantalla, las dos cosas van en la misma función.**
 - **Y una revisión visual también puede terminar sin defecto, y eso también se anota.** El 2026-08-24
   se reportó que el campo de la contraseña temporal no aparecía al recargar. Se investigó el servidor
   (reproducido con `curl`), la caché del navegador, el CSS compilado y el código: **todo estaba

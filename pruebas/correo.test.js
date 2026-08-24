@@ -97,7 +97,9 @@ test("al reservar, el correo trae los cinco datos que pide RF-11", async (contex
   // porque las dos viajan en el mismo envío y las dos las puede terminar leyendo una persona.
   for (const version of [correo.html, correo.texto]) {
     assert.match(version, /miércoles 2 de setiembre de 2026/, "falta la fecha en palabras")
-    assert.match(version, /10:00/, "falta la hora")
+    // Con el `am` adentro a propósito: si dijera solo `/10:00/` seguiría pasando el día que alguien
+    // vuelva a la hora de 24, y el formato lo eligió la estudiante el 2026-08-24 para todas partes.
+    assert.match(version, /10:00am/, "falta la hora")
     assert.match(version, /Masaje relajante/, "falta el servicio")
     assert.match(version, /Ana/, "falta el proveedor")
     assert.ok(version.includes(NEGOCIO.ubicacion), "falta la ubicación del negocio")

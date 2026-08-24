@@ -42,6 +42,12 @@ const NUMERO_DE_CADA_RECHAZO = {
   // La ventana de las 4 horas (RN-5, CA-3). Es 422 y no 403 porque no es un problema de permisos:
   // la cita es suya y la cuenta es la correcta — lo que no sirve es **el momento** en que lo pide.
   ventana_de_cancelacion: 422,
+  // La cita ya ocurrió, así que no la cambia nadie: tampoco Personal (RN-26, pieza 8). Es 422 por la
+  // misma razón que la de arriba —el problema es el momento, no el permiso— y **es un motivo aparte
+  // a propósito**: hasta el 2026-08-24 este caso se contestaba `ventana_de_cancelacion`, que era
+  // cierto como cuenta («faltan −22 horas, o sea menos de 4») y falso como explicación. Lo único que
+  // se puede hacer con una cita pasada es cerrarla, por `PATCH /api/personal/citas/:citaId/cierre`.
+  ya_paso: 422,
   // 404 también para la cita de otra persona, a propósito: ver `buscarCitaParaCambiar`.
   cita_no_encontrada: 404,
 }

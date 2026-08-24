@@ -73,6 +73,11 @@ const menuPie = document.getElementById("menu-pie")
 const vistaReservar = document.getElementById("vista-reservar")
 const vistaCitas = document.getElementById("vista-citas")
 const vistaUsuario = document.getElementById("vista-usuario")
+// La vista de la pieza 8, que solo abre Personal.
+const vistaPorCerrar = document.getElementById("vista-por-cerrar")
+const listaPorCerrar = document.getElementById("lista-por-cerrar")
+const porCerrarVacio = document.getElementById("por-cerrar-vacio")
+const avisoPorCerrar = document.getElementById("aviso-por-cerrar")
 
 // Los pedazos de reservar y de «Mis citas» (pieza 3).
 const diaAyuda = document.getElementById("dia-ayuda")
@@ -199,6 +204,13 @@ const MENSAJES = {
     "teléfono. Acá abajo está la lista al día.",
   cita_no_encontrada:
     "No encontramos esa cita. Acá abajo está tu lista al día, por si cambió algo.",
+  // Los dos de la pieza 8 (RN-26, RN-17). Los dos le hablan a Personal, así que ninguno manda a
+  // llamar al negocio: quien los lee trabaja ahí.
+  ya_paso:
+    "Esa cita ya ocurrió, así que no se puede mover ni cancelar. Lo que sí se puede es marcar qué " +
+    "pasó, en «Citas por cerrar».",
+  todavia_no_paso:
+    "Esa cita todavía no ocurrió, así que no hay nada que marcar. Se cierra después de su hora.",
   desconocido: "Algo falló y no se pudo completar. Volvé a intentar en un momento.",
 }
 
@@ -289,6 +301,10 @@ function mostrarPantallaDentro(cuenta) {
  *     «mis» ahí sería falso.
  *   - **«Usuario» no aparece**: esa sección es la información personal de un cliente (RF-22), y el
  *     API se la rechaza a Personal. Ofrecer un botón que lleva a un error no es ofrecer nada.
+ *   - **«Citas por cerrar» aparece solo para Personal** (pieza 8), que es exactamente el caso de
+ *     arriba dado vuelta: cerrar una cita es de la cuenta del negocio (RF-21) y el API se lo rechaza
+ *     al cliente. Va con `data-vista` y no con `data-accion` porque **es una sección**: lleva a un
+ *     lugar y se subraya mientras se está ahí.
  */
 function acomodarElMenu(cuenta) {
   const personal = cuenta.tipo === "personal"
@@ -299,6 +315,10 @@ function acomodarElMenu(cuenta) {
 
   for (const enlace of document.querySelectorAll('[data-vista="usuario"]')) {
     enlace.hidden = personal
+  }
+
+  for (const enlace of document.querySelectorAll('[data-vista="por-cerrar"]')) {
+    enlace.hidden = !personal
   }
 
   // «Inicio» es **solo de Personal**, y no porque al cliente le sobre volver al inicio: para él
@@ -402,7 +422,12 @@ function mostrarPantallaEntrada() {
   // ni la persona a la que Personal estaba atendiendo.
   cuentaEnSesion = null
   contrasenaRecordada = null
-  eleccion.atendiendo = null
+
+  // **La llamada se cierra entera, dato y pantalla.** Hasta el 2026-08-24 acá decía solo
+  // `eleccion.atendiendo = null`, y eso vaciaba el dato pero dejaba la tarjeta «Atendiendo a»
+  // dibujada: al volver a entrar, Personal veía a la persona de la sesión anterior y sin buscador
+  // para cambiarla. Ahora las dos cosas salen de un solo lugar.
+  limpiarLaLlamada()
 
   olvidarLoElegido()
 }
@@ -697,7 +722,17 @@ async function elegirServicio(servicio) {
   listaProveedores.replaceChildren()
   for (const proveedor of respuesta.cuerpo) {
     listaProveedores.appendChild(
-      botonDeOpcion(proveedor.nombre, "Terapista", () => elegirProveedor(proveedor)),
+      // **Un solo renglón: «Terapista: Ana»**, no el nombre arriba y la palabra «Terapista» debajo.
+      // *Pedido de la estudiante el 2026-08-24, mirando la pantalla.* La palabra sola no agregaba
+      // nada —el título del paso ya dice «Elegí tu terapista», así que las tres opciones repetían la
+      // misma palabra tres veces— y pegada al nombre sí dice algo: **qué es ese nombre**.
+      //
+      // `nombre` sigue siendo el nombre pelado, y no es un detalle: es lo que queda en
+      // `data-nombre` y lo que `marcarElegido` busca para pintar la opción elegida. Lo que cambia
+      // es **el texto que se ve**, no el dato.
+      botonDeOpcion(proveedor.nombre, null, () => elegirProveedor(proveedor), {
+        titulo: `Terapista: ${proveedor.nombre}`,
+      }),
     )
   }
 
@@ -854,6 +889,28 @@ function fichaDeHorario(dia, horario) {
   const ficha = document.createElement("button")
   ficha.type = "button"
   ficha.className = horario.disponible ? "horario" : "horario horario--tomado"
+
+  // ── La única hora de toda la aplicación que NO lleva `am`/`pm` ─────────────────────────────
+  //
+  // *Decidido por la estudiante el 2026-08-24, mirando la pantalla, el mismo día que eligió `am`/`pm`
+  // para todo lo demás.* No es un olvido ni una inconsistencia que haya que arreglar: **es una
+  // excepción con una razón medible**.
+  //
+  // **La razón: esta es la caja más angosta del proyecto.** Son **ocho horarios por día en una fila de
+  // cuatro columnas**, y en una pantalla de 320px de ancho a cada ficha le quedan unos **58px** de
+  // texto. `10:00am` mide unos **66px**: se desborda. `10:00` mide unos 48 y entra con lugar de sobra,
+  // en cualquier teléfono. Ninguna otra hora de la aplicación vive en una caja así de apretada — las
+  // demás están en un renglón propio o en una tarjeta de ancho completo.
+  //
+  // **Y acá el formato importa menos que en cualquier otro lado**, que es lo que hace que la excepción
+  // no cueste nada: estas fichas son **una lista para comparar y elegir**, ocho números uno al lado del
+  // otro y todos del mismo día. Se leen como una escala —9, 10, 11, 13, 14…—, no como un dato suelto
+  // que alguien va a anotar en un papel. El `am`/`pm` sí importa donde la hora **se lee sola**: la
+  // tarjeta de confirmar, la lista de citas y el correo, que son los tres lugares donde una persona
+  // se entera de a qué hora tiene que estar en algún lado.
+  //
+  // No hace ninguna cuenta: **recorta** el texto del momento, que ya viene escrito en la hora del
+  // negocio (ese `-06:00` del final lo dice).
   ficha.textContent = horario.inicio.slice(11, 16)
   ficha.dataset.inicio = horario.inicio
 
@@ -926,6 +983,9 @@ function motivoDelDia(dia) {
  * «10:00am», y de `…T14:00:00-06:00` saca «2:00pm».
  *
  * Existe desde el 2026-08-21, para el cartel de reagendar, porque la estudiante pidió ese formato ahí.
+ * **Desde el 2026-08-24 la usa casi toda la aplicación**: la estudiante eligió am/pm para todas
+ * partes menos para las fichas de horario del calendario, y con eso se cerró el pendiente que
+ * `DISENO.md` tenía anotado desde que este formato apareció en un solo cartel.
  *
  * **No se le pega «am» a la hora y listo, y la diferencia no es un detalle:** a las 14:00 eso daría
  * «14:00am», que no existe. Así que se convierte de verdad — se le restan 12 a las horas de la tarde
@@ -943,9 +1003,14 @@ function motivoDelDia(dia) {
  * forma** — el texto que viaja al servidor sigue siendo `2026-08-27T14:00:00-06:00`, con su hora de 24
  * y su desfase.
  *
- * **Es el único lugar de la aplicación que usa am/pm.** El calendario, la lista de citas, la tarjeta
- * de confirmar y el correo siguen mostrando la hora de 24 (`14:00`). Queda anotado como pendiente en
- * `DISENO.md`: o se extiende a todo, o se vuelve atrás acá.
+ * **Los cuatro lugares que escriben una hora en pantalla la llaman a ella**: la tarjeta de confirmar,
+ * el «cuándo es hoy» del cartel de reagendar, y las dos listas de citas —«Mis citas» y «Citas por
+ * cerrar»—. **El correo lo escribe el servidor**, con `escribirHoraDelMomento` de `servidor/tiempo.js`,
+ * que hace exactamente esta misma cuenta: ahí está escrito por qué son dos.
+ *
+ * **Y hay exactamente una excepción: las fichas de horario del calendario**, que siguen mostrando la
+ * hora de 24 (`10:00`). No es un olvido — la razón está escrita entera en `fichaDeHorario`, y es de
+ * las que se pueden medir: es la caja más angosta del proyecto y `10:00am` no le entra.
  */
 function horaConAmPm(inicio) {
   const hora = Number(inicio.slice(11, 13))
@@ -1011,10 +1076,18 @@ function botonDeOpcion(nombre, detalle, alTocar, opciones = {}) {
   const boton = document.createElement("button")
   boton.type = "button"
   boton.className = opciones.accion ? "opcion opcion--con-accion" : "opcion"
+  // **Siempre el nombre pelado**, aunque en pantalla se lea de otra forma: es la identidad de la
+  // opción, lo que `marcarElegido` busca para pintar la elegida. Separar el dato de lo que se ve es
+  // justo lo que deja cambiar el texto sin romper nada.
   boton.dataset.nombre = nombre
 
-  const titulo = textoEn("span", "opcion__nombre", nombre)
-  const nota = textoEn("span", "opcion__nota", detalle)
+  // `opciones.titulo` deja que una lista escriba el renglón a su manera —«Terapista: Ana»— sin tocar
+  // el dato de arriba. Si no se pasa, el título es el nombre, que es el caso de las otras tres listas.
+  const titulo = textoEn("span", "opcion__nombre", opciones.titulo ?? nombre)
+
+  // **Sin `detalle` no se pone el renglón de abajo**, en vez de poner uno vacío: un `<span>` sin texto
+  // igual ocupa el espacio de la separación, y la opción quedaría con un hueco debajo del nombre.
+  const nota = detalle ? textoEn("span", "opcion__nota", detalle) : null
 
   if (opciones.accion) {
     // Con acción, el nombre y el correo van juntos adentro de un bloque: son la parte izquierda de
@@ -1022,7 +1095,7 @@ function botonDeOpcion(nombre, detalle, alTocar, opciones = {}) {
     const datos = document.createElement("span")
     datos.className = "opcion__datos"
     datos.appendChild(titulo)
-    datos.appendChild(nota)
+    if (nota) datos.appendChild(nota)
     boton.appendChild(datos)
 
     boton.appendChild(
@@ -1030,7 +1103,7 @@ function botonDeOpcion(nombre, detalle, alTocar, opciones = {}) {
     )
   } else {
     boton.appendChild(titulo)
-    boton.appendChild(nota)
+    if (nota) boton.appendChild(nota)
   }
 
   boton.addEventListener("click", alTocar)
@@ -1121,21 +1194,55 @@ async function elegirAQuienAtiendo(cliente) {
   await empezarAElegir()
 }
 
-/** Cierra la llamada: vuelve el buscador y se olvida de todo lo de esa persona. */
-async function olvidarAQuienAtiendo() {
+/**
+ * Se olvida de la llamada en curso: el dato **y** todo lo que esa persona había dejado en pantalla.
+ *
+ * ── Por qué esto es una función aparte (arreglado el 2026-08-24) ──────────────────────────────
+ *
+ * Hasta ese día «olvidar la llamada» estaba escrito **en dos mitades**: el dato lo borraba
+ * `mostrarPantallaEntrada` al salir, y la pantalla la limpiaba el botón «Otra persona». Dos lugares
+ * que tenían que decir lo mismo, y no lo decían: **al salir y volver a entrar, la tarjeta "Atendiendo
+ * a" seguía mostrando a la persona de la sesión anterior**, aunque el dato ya estuviera vacío.
+ *
+ * Lo encontró la estudiante mirando la pantalla, y **ninguna prueba automática podía verlo**: las 277
+ * hablan con el API, y del lado del API no había nada roto — la sesión se cerraba bien y el dato se
+ * borraba bien. Lo que quedaba viejo era lo dibujado.
+ *
+ * Escrito acá una sola vez, los dos caminos que terminan una llamada —«Otra persona» y salir de la
+ * aplicación— no se pueden volver a desincronizar.
+ *
+ * **No llama a `empezarAElegir`** a propósito: eso rearma el catálogo, y al salir no hay ninguna
+ * pantalla que rearmar. Lo hace `olvidarAQuienAtiendo`, que es el camino que sí se queda adentro.
+ */
+function limpiarLaLlamada() {
   eleccion.atendiendo = null
 
   atendiendoA.hidden = true
-  // La contraseña temporal se va con la persona: era para dictársela a ella.
+  // Los nombres también se borran, no solo se esconden. Un `hidden` deja el texto ahí, y esta tarjeta
+  // lleva el nombre y el correo de una persona: si mañana algo la volviera a mostrar antes de
+  // llenarla, aparecerían los de la llamada anterior.
+  atendiendoNombre.textContent = ""
+  atendiendoCorreo.textContent = ""
+
+  // **La contraseña temporal se va con la persona**, y acá esa línea pasó a importar de verdad: era
+  // para dictársela a ella. Escondida solo al tocar «Otra persona», quedaba **en pantalla después de
+  // salir**, esperando a quien entrara después con la cuenta del negocio.
   tarjetaContrasenaTemporal.hidden = true
   contrasenaTemporalEscrita.textContent = ""
+
   tarjetaCuentaNueva.hidden = true
+  // Y vuelve el buscador. Sin esto, al entrar de nuevo Personal se quedaba sin manera de buscar a
+  // nadie: el buscador escondido y los pasos de abajo cerrados, porque no hay nadie elegido.
   tarjetaBuscarCliente.hidden = false
 
   campoBuscarCliente.value = ""
   listaClientes.replaceChildren()
   ayudaBuscarCliente.textContent = AYUDA_DE_LA_BUSQUEDA
+}
 
+/** El botón «Otra persona»: cierra la llamada y deja la pantalla lista para la siguiente. */
+async function olvidarAQuienAtiendo() {
+  limpiarLaLlamada()
   await empezarAElegir()
 }
 
@@ -1226,6 +1333,7 @@ function mostrarVista(nombre) {
   vistaReservar.hidden = nombre !== "reservar"
   vistaCitas.hidden = nombre !== "citas"
   vistaUsuario.hidden = nombre !== "usuario"
+  vistaPorCerrar.hidden = nombre !== "por-cerrar"
 
   // Deja marcado en qué sección se está, en los dos menús a la vez.
   for (const enlace of document.querySelectorAll("[data-vista]")) {
@@ -1239,6 +1347,7 @@ function mostrarVista(nombre) {
   // del usuario.
   if (nombre === "citas") cargarMisCitas()
   if (nombre === "usuario") cargarMiInformacion()
+  if (nombre === "por-cerrar") cargarCitasPorCerrar()
 }
 
 function abrirElMenu() {
@@ -1264,6 +1373,7 @@ for (const enlace of document.querySelectorAll("[data-vista]")) {
     // sección: se limpia al navegar.
     esconderAviso(avisoCitas)
     esconderAviso(avisoUsuario)
+    esconderAviso(avisoPorCerrar)
 
     // Usar el menú es empezar de nuevo: si se había quedado a medias moviendo una cita, ese modo se
     // apaga (pieza 5). Sin esto, tocar «Reservar» en el menú mostraría la pantalla de reagendar sin
@@ -1293,7 +1403,7 @@ function elegirHorario(dia, horario) {
   resumenServicio.textContent = eleccion.servicio.nombre
   resumenProveedor.textContent = eleccion.proveedor.nombre
   resumenDia.textContent = tituloDelDia(dia.fecha)
-  resumenHora.textContent = horario.inicio.slice(11, 16)
+  resumenHora.textContent = horaConAmPm(horario.inicio)
 
   // La misma tarjeta dice dos cosas distintas según el modo (pieza 5). Reservando muestra cuatro
   // datos y dice «Confirmar la reserva»; reagendando muestra un quinto —cuándo es la cita **hoy**—
@@ -1311,7 +1421,7 @@ function elegirHorario(dia, horario) {
 
   if (moviendo) {
     const viejo = eleccion.reagendando.inicio
-    resumenAhora.textContent = `${tituloDelDia(viejo.slice(0, 10))}, ${viejo.slice(11, 16)}`
+    resumenAhora.textContent = `${tituloDelDia(viejo.slice(0, 10))}, ${horaConAmPm(viejo)}`
   }
 
   confirmacion.hidden = false
@@ -1530,7 +1640,7 @@ function filaDeCita(cita) {
   const cuando = document.createElement("div")
   cuando.className = "cita__cuando"
   cuando.appendChild(textoEn("span", "cita__fecha", tituloDelDia(cita.inicio.slice(0, 10))))
-  cuando.appendChild(textoEn("span", "cita__hora", cita.inicio.slice(11, 16)))
+  cuando.appendChild(textoEn("span", "cita__hora", horaConAmPm(cita.inicio)))
 
   const que = document.createElement("div")
   que.className = "cita__que"
@@ -1563,7 +1673,7 @@ function filaDeCita(cita) {
   // el título de su sección: **«Historial»**.
   const yaPasoYNadieLaToco = cita.grupo === "historial" && cita.estado === "activa"
   if (!yaPasoYNadieLaToco) {
-    fila.appendChild(textoEn("span", "etiqueta-estado", cita.estado))
+    fila.appendChild(textoEn("span", "etiqueta-estado", enPalabras(cita.estado)))
   }
 
   // Los botones de la pieza 5. **Quién decide si aparecen es el servidor**, en el campo
@@ -1605,6 +1715,24 @@ function accionesDeLaCita(cita, fila) {
     return acciones
   }
 
+  // ── La pieza 8, en el mismo renglón donde antes estaban «Reagendar» y «Cancelar» ────────────
+  //
+  // `porQueNo === "ya_paso"` es exactamente el conjunto de citas que se pueden cerrar: activas y con
+  // la hora pasada (RN-26). No hay que volver a preguntarse nada — **quién decide sigue siendo el
+  // servidor**, igual que con los otros dos botones.
+  //
+  // **Y solo para Personal**, porque cerrar una cita es de la cuenta del negocio (RF-21): el cliente
+  // ve la misma cita sin ningún botón, que es lo que ya veía antes.
+  //
+  // Los dos botones ocupan el lugar que dejaron «Reagendar» y «Cancelar», y eso es el cambio que la
+  // estudiante decidió el 2026-08-24: sobre una cita que ya ocurrió, lo único que se puede hacer es
+  // decir qué pasó.
+  if (esPersonal() && cita.porQueNo === "ya_paso") {
+    acciones.appendChild(botonDeCierre(cita, "completada", fila, cargarMisCitas, avisoCitas))
+    acciones.appendChild(botonDeCierre(cita, "no_asistio", fila, cargarMisCitas, avisoCitas))
+    return acciones
+  }
+
   // Una cita que ya no está activa no necesita explicación: la etiqueta de al lado ya dice
   // «cancelada», y agregarle una frase sería repetir lo mismo con más palabras.
   const nota = NOTA_DE_LA_CITA[cita.porQueNo]
@@ -1632,7 +1760,9 @@ function accionesDeLaCita(cita, fila) {
  *   - **`ya_paso`**: el título de su sección —**«Historial»**— ya lo dice, para todas las filas de
  *     golpe. *Hasta el 2026-08-20 tenía su propia nota, y se sacó ese mismo día, cuando la lista se
  *     partió en dos secciones y esa frase pasó a repetir lo que el título decía — en cada cita vieja,
- *     una vez.*
+ *     una vez.* **Y desde la pieza 8 este caso casi no llega hasta acá:** para Personal, una cita con
+ *     `ya_paso` muestra los dos botones de cerrar (RF-21) y sale antes. Solo el cliente cae en este
+ *     renglón, y sigue sin ver nada, que es lo correcto — cerrar no es suyo.
  *
  * **`ya_paso` sigue haciendo falta aunque no muestre nada, y es lo delicado de este archivo:** es lo
  * único que impide que una cita del mes pasado caiga en el renglón de abajo y diga «faltan menos de 4
@@ -1836,6 +1966,203 @@ function textoEn(etiqueta, clase, texto) {
   elemento.className = clase
   elemento.textContent = texto
   return elemento
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// CERRAR LAS CITAS PASADAS (pieza 8, RF-21)
+//
+// Personal marca qué ocurrió con una cita que ya pasó: **completada** si el cliente asistió, **no
+// asistió** si no se presentó (RN-17, RN-19). Se puede hacer desde dos lugares, y es a propósito:
+//
+//   - **«Citas por cerrar»**, la lista de trabajo pendiente de todo el negocio, que es por donde se
+//     hace cuando el trabajo es «cerrar lo del día».
+//   - **En la propia lista de citas del cliente**, en el mismo renglón donde antes estaban
+//     «Reagendar» y «Cancelar», que es por donde se hace cuando ya se está mirando a esa persona
+//     porque llamó.
+//
+// Las dos llaman a la **misma** función y mandan el mismo pedido: lo único distinto es qué lista se
+// vuelve a pedir después y en qué aviso se contesta.
+//
+// Esta pantalla no decide nada: quién puede cerrar y qué citas se pueden cerrar lo contesta el
+// servidor. Acá solo se muestran los botones que el campo `porQueNo` habilita.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Las dos palabras de un cierre, tal como se leen en pantalla. Los nombres técnicos no se muestran. */
+const CIERRES = {
+  completada: { boton: "Completada", enPalabras: "completada" },
+  no_asistio: { boton: "No asistió", enPalabras: "no asistió" },
+}
+
+/**
+ * El estado de una cita, escrito como se lee. Solo hace falta traducir uno —`no_asistio`, que va sin
+ * tilde y con guión bajo porque así se nombra todo lo técnico en este proyecto—, pero la traducción
+ * pasa por acá para **todos**: así, el día que aparezca otro estado con nombre técnico, este es el
+ * único lugar donde agregarlo.
+ */
+function enPalabras(estado) {
+  return CIERRES[estado]?.enPalabras ?? estado
+}
+
+/**
+ * Uno de los dos botones de cerrar. `alTerminar` es qué lista volver a pedir cuando el cierre salga
+ * bien, y `donde` es en qué aviso contestar: son lo único que cambia entre los dos lugares desde los
+ * que se puede cerrar.
+ */
+function botonDeCierre(cita, estado, fila, alTerminar, donde) {
+  const boton = document.createElement("button")
+  boton.type = "button"
+  boton.className = "boton boton--suave boton--chico"
+  boton.textContent = CIERRES[estado].boton
+  boton.addEventListener("click", () => preguntarSiCierra(cita, estado, fila, alTerminar, donde))
+  return boton
+}
+
+/**
+ * Antes de cerrar, pregunta — igual que antes de cancelar (decisión de la estudiante del 2026-08-20,
+ * aplicada acá el 2026-08-24 por la misma razón).
+ *
+ * **Cerrar no se deshace:** una cita ya cerrada no se puede volver a cerrar con otro estado, así que
+ * un toque por error deja escrito que alguien faltó cuando en realidad fue. Y a diferencia de
+ * cancelar, acá los dos botones están **uno al lado del otro**, así que confundirse de botón es más
+ * fácil todavía.
+ *
+ * La pregunta reemplaza a los botones **en el mismo renglón**, sin ventana emergente, por la misma
+ * razón que la de cancelar: una ventana del navegador no se puede vestir con el sistema visual del
+ * proyecto, y tapa justo la cita que la persona quiere mirar para estar segura de que es la correcta.
+ */
+function preguntarSiCierra(cita, estado, fila, alTerminar, donde) {
+  const acciones = fila.querySelector(".cita__acciones")
+
+  acciones.replaceChildren()
+  acciones.appendChild(
+    textoEn(
+      "p",
+      "cita__nota",
+      `¿Marcar esta cita como ${CIERRES[estado].enPalabras}? Una vez marcada no se puede cambiar.`,
+    ),
+  )
+
+  const siCierro = document.createElement("button")
+  siCierro.type = "button"
+  siCierro.className = "boton boton--chico"
+  siCierro.textContent = `Sí, ${CIERRES[estado].enPalabras}`
+  siCierro.addEventListener("click", () => cerrarLaCita(cita, estado, siCierro, alTerminar, donde))
+
+  const noCierro = document.createElement("button")
+  noCierro.type = "button"
+  noCierro.className = "boton boton--suave boton--chico"
+  noCierro.textContent = "No, dejarla"
+  // Volver a dibujar la lista es más simple y más seguro que deshacer a mano lo que se acaba de
+  // cambiar: lo que se ve vuelve a salir de lo que el servidor dice ahora.
+  noCierro.addEventListener("click", alTerminar)
+
+  acciones.appendChild(siCierro)
+  acciones.appendChild(noCierro)
+}
+
+/** Cierra la cita de verdad (RF-21). Queda registrado qué cuenta la marcó y cuándo (REG-1). */
+async function cerrarLaCita(cita, estado, boton, alTerminar, donde) {
+  esconderAviso(donde)
+  // Se apaga el botón mientras el pedido viaja: dos toques seguidos mandarían dos cierres.
+  boton.disabled = true
+
+  const respuesta = await pedirAlApi(`/api/personal/citas/${cita.id}/cierre`, {
+    method: "PATCH",
+    cuerpo: { estado },
+  })
+
+  if (respuesta.estado !== 200) {
+    boton.disabled = false
+    mostrarAviso(donde, mensajeDelError(respuesta.cuerpo))
+    // La lista se vuelve a pedir igual: si el rechazo fue porque alguien ya la cerró desde otro
+    // lado, lo que está en pantalla quedó viejo y hay que mostrar lo que hay ahora.
+    alTerminar()
+    return
+  }
+
+  alTerminar()
+
+  // **El aviso nombra al cliente cuando se sabe quién es**, porque esta pantalla es de Personal y las
+  // citas son de otra persona. En «Citas por cerrar» el nombre viene en la cita; en la lista de un
+  // cliente ya está en el título de la sección, así que ahí no hace falta repetirlo.
+  const deQuien = cita.cliente ? ` de ${cita.cliente}` : ""
+  mostrarAvisoDeExito(
+    donde,
+    `La cita${deQuien} quedó marcada como ${CIERRES[estado].enPalabras}. Queda anotado que la ` +
+      "marcaste vos y a qué hora.",
+  )
+}
+
+/**
+ * La lista de citas por cerrar: las de **todo el negocio** cuya hora ya pasó y que nadie marcó
+ * todavía (RF-21). Se vuelve a pedir cada vez que se entra a la sección, no una sola vez: si alguien
+ * cerró una desde otra computadora, hay que ver lo que hay ahora.
+ */
+async function cargarCitasPorCerrar() {
+  listaPorCerrar.replaceChildren()
+
+  const respuesta = await pedirAlApi("/api/personal/citas-por-cerrar")
+
+  if (respuesta.estado !== 200) {
+    porCerrarVacio.hidden = true
+    mostrarAviso(avisoPorCerrar, mensajeDelError(respuesta.cuerpo))
+    return
+  }
+
+  for (const cita of respuesta.cuerpo) {
+    listaPorCerrar.appendChild(filaPorCerrar(cita))
+  }
+
+  // El cartel de «no hay ninguna» no es un error ni una mala noticia: es que el trabajo está al día.
+  porCerrarVacio.hidden = respuesta.cuerpo.length > 0
+}
+
+/**
+ * Un renglón de «Citas por cerrar». Es la misma forma que un renglón de «Mis citas» —para que las dos
+ * listas se lean igual— con **una diferencia y una ausencia**:
+ *
+ *   - **lleva el nombre del cliente**, y primero: son citas de gente distinta, así que sin el nombre
+ *     no se sabe a quién se le está marcando qué. En «Mis citas» no hace falta, porque el título de
+ *     la sección ya dice de quién son.
+ *   - **no lleva etiqueta de estado**: todas las de esta lista están activas, así que una etiqueta
+ *     que dijera lo mismo en todos los renglones no informaría nada. Es la misma regla de siempre —
+ *     *una etiqueta aparece solo cuando algo le pasó a la cita*— y acá justamente **todavía no le
+ *     pasó nada**: eso es lo que se viene a decidir.
+ */
+function filaPorCerrar(cita) {
+  const fila = document.createElement("li")
+  fila.className = "cita"
+
+  const cuando = document.createElement("div")
+  cuando.className = "cita__cuando"
+  cuando.appendChild(textoEn("span", "cita__fecha", tituloDelDia(cita.inicio.slice(0, 10))))
+  cuando.appendChild(textoEn("span", "cita__hora", horaConAmPm(cita.inicio)))
+
+  const que = document.createElement("div")
+  que.className = "cita__que"
+  // **El nombre y el servicio van en un solo renglón**, separados por un guión: «Marisol Prueba -
+  // Limpieza facial». *Pedido de la estudiante el 2026-08-24, mirando la pantalla.* En dos renglones
+  // el nombre y el servicio se leían como dos datos sueltos; juntos se leen como una sola frase, que
+  // es lo que son: qué le tocaba a quién. Y el renglón deja de ser tan alto, que en una lista de
+  // muchas citas se nota.
+  que.appendChild(textoEn("span", "cita__cliente", `${cita.cliente} - ${cita.servicio}`))
+  que.appendChild(textoEn("span", "cita__proveedor", `Terapista ${cita.proveedor}`))
+
+  const acciones = document.createElement("div")
+  acciones.className = "cita__acciones"
+  acciones.appendChild(
+    botonDeCierre(cita, "completada", fila, cargarCitasPorCerrar, avisoPorCerrar),
+  )
+  acciones.appendChild(
+    botonDeCierre(cita, "no_asistio", fila, cargarCitasPorCerrar, avisoPorCerrar),
+  )
+
+  fila.appendChild(cuando)
+  fila.appendChild(que)
+  fila.appendChild(acciones)
+
+  return fila
 }
 
 

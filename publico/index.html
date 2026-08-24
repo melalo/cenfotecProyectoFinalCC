@@ -116,6 +116,14 @@
           <button class="navegacion__enlace" type="button" data-accion="inicio" hidden>Inicio</button>
           <button class="navegacion__enlace" type="button" data-vista="reservar">Reservar</button>
           <button class="navegacion__enlace" type="button" data-vista="citas">Mis citas</button>
+          <!--
+            Solo la ve Personal (pieza 8). Es una **sección**, no una acción, así que va con
+            `data-vista`: lleva a un lugar y se subraya mientras se está ahí. El JavaScript la
+            esconde para el cliente, igual que hace con «Usuario» al revés.
+          -->
+          <button class="navegacion__enlace" type="button" data-vista="por-cerrar" hidden>
+            Citas por cerrar
+          </button>
           <button class="navegacion__enlace" type="button" data-vista="usuario">Usuario</button>
           <!--
             «Salir» está en los dos menús, pero **se ve en uno solo a la vez**: acá adentro de la
@@ -719,6 +727,40 @@
             </section>
           </div>
 
+          <!-- ══ Vista «Citas por cerrar» (pieza 8, RF-21) ══════════════════════════════════
+            Solo la abre Personal. **No es el expediente de una persona sino la lista de trabajo
+            pendiente del negocio**: las citas de todo el mundo cuya hora ya pasó y que nadie marcó
+            todavía. Por eso cada renglón lleva el nombre de su dueño, cosa que la lista de «Citas
+            del cliente» no necesita — ahí ya se sabe de quién son.
+          ══════════════════════════════════════════════════════════════════════════════════════ -->
+          <div id="vista-por-cerrar" class="vista" hidden>
+            <section class="paso">
+              <h3 class="paso__titulo">Citas por cerrar</h3>
+
+              <!--
+                `campo__ayuda` es la clase que este proyecto ya usa para todo texto de guía: 12px,
+                el `label-sm` de `VISUALS.md`. Se reusa en vez de inventar una nueva, aunque acá no
+                haya ningún campo debajo — lo que la clase describe es **cómo se lee** ese texto.
+              -->
+              <p class="campo__ayuda">
+                Las citas cuya hora ya pasó y que todavía nadie marcó. Ninguna se cierra sola: hasta
+                que alguien diga qué ocurrió, siguen abiertas.
+              </p>
+
+              <!-- Acá aterriza el aviso verde de «quedó marcada como…», y también los errores. -->
+              <p id="aviso-por-cerrar" class="aviso aviso--informativo" role="status" hidden></p>
+
+              <article class="tarjeta">
+                <p id="por-cerrar-vacio" class="tarjeta__nota" hidden>
+                  No hay ninguna cita esperando. Todas las que ya pasaron están marcadas.
+                </p>
+
+                <!-- La misma lista de datos que «Mis citas»: rayitas de 1px, no una caja por cita. -->
+                <ul id="lista-por-cerrar" class="citas"></ul>
+              </article>
+            </section>
+          </div>
+
           <!-- ══ Vista «Usuario» (pieza 10) ═════════════════════════════════════════════════ -->
           <div id="vista-usuario" class="vista" hidden>
             <section class="paso">
@@ -835,6 +877,9 @@
           <button class="pie__enlace" type="button" data-accion="inicio" hidden>Inicio</button>
           <button class="pie__enlace" type="button" data-vista="reservar">Reservar</button>
           <button class="pie__enlace" type="button" data-vista="citas">Mis citas</button>
+          <button class="pie__enlace" type="button" data-vista="por-cerrar" hidden>
+            Citas por cerrar
+          </button>
           <button class="pie__enlace" type="button" data-vista="usuario">Usuario</button>
           <button class="pie__enlace pie__enlace--desde-tableta" type="button" data-accion="salir">
             Salir

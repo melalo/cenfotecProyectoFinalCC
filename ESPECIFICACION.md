@@ -81,7 +81,11 @@ solo calendario y no dos agendas que se puedan desincronizar.
 5. **RN-5:** El cliente no puede cancelar ni reagendar una cita dentro de la ventana de
    cancelación (menos de 4 horas antes). El sistema se lo informa y le pide llamar al negocio.
 6. **RN-6:** Personal **sí** puede cancelar y reagendar dentro de la ventana de cancelación. La
-   restricción de RN-5 es solo para el cliente actuando por su cuenta. *(Decidido en la sesión de
+   restricción de RN-5 es solo para el cliente actuando por su cuenta. **Pero la cita tiene que no
+   haber ocurrido todavía: una cita cuya hora ya pasó no se cancela ni se reagenda, ni siquiera
+   Personal (RN-26).** *(Este último límite se agregó el 2026-08-24, al arrancar la pieza 8: hasta
+   entonces esta regla, leída junto con RN-17, dejaba a Personal cancelando y moviendo citas del mes
+   pasado.)* *(Decidido en la sesión de
    especificación. Sin esta regla, el mensaje "llame al negocio" de RN-5 no resolvería nada: la
    asistente atendería la llamada y descubriría que ella tampoco puede hacerlo, y esa cancelación
    de último momento quedaría sin registrar — que es exactamente la segunda fuente de verdad que
@@ -102,7 +106,8 @@ solo calendario y no dos agendas que se puedan desincronizar.
     tiene que ver con **la agenda**: tampoco puede reservar un horario ocupado (RN-1), ni un feriado
     (RN-2), ni fuera del horario de atención ni en el almuerzo (RN-3). Las **dos** reglas que no lo
     alcanzan son las que tienen que ver con **el tiempo**: RN-4 según RN-25 (sí puede reservar para
-    hoy) y RN-5 según RN-6 (sí puede cancelar y mover dentro de las 4 horas).
+    hoy) y RN-5 según RN-6 (sí puede cancelar y mover dentro de las 4 horas). **Y RN-26 sí lo
+    alcanza, igual que al cliente:** una cita cuya hora ya pasó no la cambia nadie.
     *(Corregido el 2026-08-21: hasta entonces esta regla decía que Personal «tampoco puede reservar
     para el mismo día», y eso dejaba el hueco que RN-25 explica. La distinción que quedó es la que
     tiene sentido: lo que protege la agenda alcanza a los dos, y lo que protege al cliente de sí mismo
@@ -120,7 +125,9 @@ solo calendario y no dos agendas que se puedan desincronizar.
     era la pregunta abierta PA-3.)*
 17. **RN-17:** Una cita pasa al estado **completada** solo cuando Personal la marca así, después
     de que el cliente asistió. No se marca sola al pasar la hora, y el cliente no puede marcarla.
-    *(Decidido en la sesión de planificación; antes era la pregunta abierta PA-4.)*
+    **Y mientras nadie la cierre, lo único que se le puede hacer es cerrarla: cambiarla de fecha o
+    cancelarla ya no (RN-26).** *(Decidido en la sesión de planificación; antes era la pregunta
+    abierta PA-4.)*
 19. **RN-19:** Si el cliente no cancela y no se presenta, **pierde la cita**: no se le repone ni se
     le devuelve nada. Personal la marca como **no asistió**, igual que marca las completadas.
     *(Decidido en la sesión de planificación, como consecuencia de RN-17. El estado tiene que
@@ -253,6 +260,44 @@ solo calendario y no dos agendas que se puedan desincronizar.
     un feriado, ni un domingo, ni el almuerzo, ni una hora fuera del horario de atención. Las únicas
     dos reglas que no lo alcanzan son RN-4 y RN-5.
 
+26. **RN-26:** Una cita **cuya hora ya pasó** no se puede cancelar ni reagendar. **Tampoco
+    Personal.** Lo único que se le puede hacer es **cerrarla**, marcándola como completada o como no
+    asistió (RF-21). Sigue **activa** hasta que alguien la cierre, porque ninguna cita cambia de
+    estado por el solo paso del tiempo (RN-17).
+
+    *(Decidido por la estudiante el 2026-08-24, al arrancar la pieza 8, sobre la pregunta que la
+    pieza 7 dejó abierta a propósito.)*
+
+    **De dónde salió el hueco.** RN-6 dice que Personal no tiene ventana de cancelación, y RN-17 dice
+    que una cita que ya pasó sigue activa. Las dos juntas dejaban a Personal con **«Reagendar»** y
+    **«Cancelar»** debajo de una cita del mes pasado. No era un error de código: la especificación
+    simplemente **no decía nada** de ese caso.
+
+    **Por qué se cierra y no se mueve: RN-19.** Reagendar **mueve la misma cita** a otra fecha, no
+    crea una segunda. Así que mover una cita a la que el cliente no se presentó **borra del registro
+    que faltó**, y eso es exactamente lo que RN-19 existe para evitar: la cita perdida tiene que
+    dejar constancia de por qué se perdió. Cancelarla tendría el mismo problema al revés — diría que
+    se canceló algo que en realidad ocurrió, o que se dejó de ocurrir sin aviso.
+
+    **Qué hace la asistente cuando alguien faltó y llama para mover la fecha.** Cierra la vieja como
+    **no asistió** y le **reserva una cita nueva**. Son dos pasos en vez de uno, y a cambio el
+    historial dice la verdad: que faltó el día que faltó, y que tiene otra cita el día que la tiene.
+
+    **Esta regla no es una excepción de Personal, es lo contrario.** Las dos excepciones de Personal
+    —RN-6 y RN-25— lo dejan hacer **más** que el cliente. Esta lo alcanza **igual** que al cliente,
+    que ya no podía tocar una cita pasada. Y no es una restricción de política: **ese momento ya no
+    existe**, igual que RN-25 dice de un horario que ya empezó.
+
+    **El borde exacto:** una cita que empieza **en este mismo instante** ya empezó, así que ya no se
+    puede cambiar. Se mide con la hora del negocio (Costa Rica), como todo en este sistema, y **no se
+    redondea** — el mismo criterio que RN-5 y RN-25.
+
+    **Qué cambia en lo que el sistema contesta.** Hasta el 2026-08-24 una cita pasada se le rechazaba
+    al cliente diciendo `ventana_de_cancelacion` —«faltan menos de 4 horas»—, porque si faltan −22
+    horas, faltan menos de 4. La frase era verdadera como cuenta y **falsa como explicación**. Con
+    esta regla el motivo pasa a ser **`ya_paso`**, que es lo que de verdad ocurre, y vale para los
+    dos actores.
+
 ## Qué queda registrado
 
 1. **REG-1:** De cada cita: el cliente, el servicio, el proveedor, la fecha y hora de inicio, su
@@ -345,6 +390,11 @@ solo calendario y no dos agendas que se puedan desincronizar.
 3. En los dos casos queda registrado qué cuenta lo marcó y cuándo.
 4. Si el cliente no se presentó, pierde esa cita: no se le repone ni se le devuelve nada. Ninguna
    cita se borra (RN-15).
+5. **Sobre esa cita, marcarla es lo único que Personal puede hacer:** cambiarle la fecha o
+   cancelarla ya no se ofrece, porque la cita ya ocurrió (RN-26).
+6. Si quien faltó llama para conseguir otra fecha, Personal **cierra la vieja como no asistió y le
+   reserva una cita nueva**. Así el historial dice las dos cosas: que faltó ese día, y que tiene
+   otra cita.
 
 ### El cliente revisa y completa su información
 
@@ -449,7 +499,7 @@ igual a las cuentas de Personal.
 17. **RF-17:** El sistema permite que Personal cree la cuenta de un cliente con una contraseña
     temporal (RN-11).
 18. **RF-18:** El sistema permite que Personal cancele y reagende citas sin la restricción de la
-    ventana de cancelación (RN-6).
+    ventana de cancelación (RN-6), **siempre que la cita todavía no haya ocurrido** (RN-26).
 19. **RF-19:** El sistema registra cada correo que envía, con su resultado, y no invalida la cita
     cuando un envío falla (REG-3).
 20. **RF-20:** El sistema conserva las citas canceladas, completadas y no asistidas, y no borra

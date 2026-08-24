@@ -2123,3 +2123,138 @@ automática.** Tres de ellos no eran de apariencia sino **de lo que la aplicaci�
 esos tres no terminó en un cambio de texto sino en **una regla de negocio nueva** (RN-25). Es el
 argumento más citable del proyecto a favor de que **una pieza no se cierra sin que una persona abra
 el navegador y mire**.
+
+---
+
+### 2026-08-24 (segunda sesión del día) — Pieza 8: Personal cierra las citas pasadas
+
+**Cerrada.** `npm test` da **277 de 277** (27 nuevas). Las diez comprobaciones del plan se corrieron:
+siete en el navegador por una persona, tres como pedido directo al API porque son rechazos que no
+tienen pantalla. **Ninguna tabla ni columna nueva** —`cerrada_en` y `cerrada_por` esperaban vacías
+desde la pieza 3— y **ninguna dependencia nueva**.
+
+#### Lo primero fue decidir, no construir
+
+La pieza 7 había dejado abierta a propósito una pregunta: **a Personal le aparecían «Reagendar» y
+«Cancelar» sobre una cita del mes pasado.** No era un error del código — salía de leer **RN-6**
+(Personal no tiene ventana de cancelación) junto con **RN-17** (ninguna cita cambia de estado por el
+paso del tiempo), y la especificación **no decía nada** de ese caso.
+
+La estudiante eligió **sacarlos**, y la regla se escribió como **RN-26 en `ESPECIFICACION.md` antes de
+tocar una línea de código**, con la corrección propagada a RN-6, RN-13, RN-17, RF-18 y un recorrido.
+
+**La razón de fondo es RN-19, y es la parte que vale la pena poder explicar.** Reagendar **mueve la
+misma cita** a otra fecha; no crea una segunda. Así que mover la cita de alguien que no se presentó
+**borra del registro que faltó** — y RN-19 existe precisamente para que la cita perdida deje
+constancia de por qué se perdió. El caso real que motivaba dejarlos —alguien falta, llama al día
+siguiente, la asistente le mueve la fecha— se resuelve en **dos pasos**: cerrar la vieja como «no
+asistió» y reservar una nueva. Un paso más, y a cambio el historial dice las dos cosas.
+
+**Y RN-26 no es una tercera excepción de Personal, es lo contrario.** Las dos que tiene —RN-6 y
+RN-25— lo dejan hacer **más** que el cliente. Esta lo alcanza **igual**.
+
+#### Una regla nueva destapó que un parche viejo ya no hacía falta
+
+Desde el 2026-08-20 existía una segunda función, `porQueNoSePuedeCambiar`, cuyo único trabajo era
+traducir `ventana_de_cancelacion` a `ya_paso` **solo para la pantalla**: la regla decía «faltan menos
+de 4 horas» —cierto como cuenta, porque faltaban −22— y esa frase debajo de una cita del mes pasado
+era falsa. Como no se quería tocar el motivo que devuelven los endpoints (lo fija el plan y lo
+comprueba CA-3), se parchó del lado del texto.
+
+Con RN-26, **`ya_paso` pasó a ser la regla** y no un texto, para los dos actores. El parche adelgazó a
+una línea. **Lección, y es la segunda vez que este proyecto la aprende: cuando un mensaje suena falso,
+casi siempre la regla detrás tiene un hueco.** La primera fue RN-25, tres días antes.
+
+#### Dos correcciones a documentos, decididas antes de construir
+
+1. **El endpoint del cierre se movió a `/api/personal/`.** El bloque *Produce* de la pieza 8 lo tenía
+   escrito `PATCH /api/citas/:citaId/cierre`, de antes de que la pieza 7 fijara la convención «todo lo
+   que solo abre Personal vive bajo `/api/personal/`» — cuya razón está escrita: **el permiso se lee
+   de un vistazo en la dirección**. El propio bloque se contradecía, porque el `GET` de al lado sí la
+   seguía. Ganó la convención más nueva, y `PLAN.md` se corrigió anotando por qué.
+2. **Un rechazo que el plan no había previsto:** cerrar una cita **que todavía no ocurrió** devuelve
+   `422 todavia_no_paso`. Sale directo de RN-17 —«completada» se marca *después de que el cliente
+   asistió*— y sin él se podría marcar como completada una cita de la semana que viene, cuya etiqueta
+   **se desdiría** el día de la cita. Quedó escrito como decisión, no adoptado en silencio.
+
+#### El hallazgo número 20, y no fue de apariencia
+
+Probando la aplicación, la estudiante notó que **al salir y volver a entrar con la cuenta de Personal,
+la tarjeta «Atendiendo a» seguía mostrando a la persona de la sesión anterior**.
+
+**Ninguna de las 277 pruebas podía verlo.** Del lado del API no había nada roto: la sesión se cerraba
+bien y el dato se borraba bien. Lo que quedaba viejo era **lo dibujado**.
+
+**La causa: «olvidar la llamada» estaba escrito en dos mitades.** El dato lo borraba el logout; la
+pantalla la limpiaba el botón «Otra persona». Dos lugares que tenían que decir lo mismo, y no lo
+decían.
+
+**Y el cartel viejo tapaba dos consecuencias peores**, que solo aparecieron al leer el código:
+
+| Lo que se veía | Lo que además pasaba |
+|---|---|
+| «Atendiendo a: Marisol Prueba» con nadie elegido de verdad | **Personal se quedaba sin buscador**: la tarjeta «¿Quién llama?» seguía escondida y los pasos de abajo cerrados. La única salida era tocar «Otra persona» |
+| — | **La contraseña temporal de un cliente sobrevivía al logout en pantalla**, esperando a quien entrara después con la cuenta del negocio. Esa tarjeta solo se escondía al tocar «Otra persona» |
+
+Se arregló **sacando la regla a un solo lugar** (`limpiarLaLlamada`), que ahora usan los dos caminos
+que terminan una llamada. Es la regla de siempre del proyecto —una regla, un lugar— aplicada al
+frontend, y quedó como convención en `CLAUDE.md`: **si borrar algo pide tocar el dato y la pantalla,
+las dos cosas van en la misma función.**
+
+#### La revisión visual cambió cómo se escribe la letra en todo el proyecto
+
+Es el cambio de más alcance desde que entró `VISUALS.md`, y salió de tirar de un hilo chico: una ficha
+de horario que no entraba.
+
+1. **Dos textos que pasaron a un solo renglón**, los dos por la misma razón —dos datos sueltos se leen
+   peor que una frase—: «Marisol Prueba - Limpieza facial» en «Citas por cerrar», y **«Terapista: Ana»**
+   en el paso de elegir terapista, donde la palabra sola repetía tres veces lo que el título ya decía.
+   En el segundo cambió **el texto que se ve, no el dato**: `data-nombre` sigue siendo el nombre pelado.
+2. **La hora pasó a `am`/`pm`**, cerrando un pendiente que `DISENO.md` arrastraba desde el 2026-08-21,
+   cuando ese formato apareció en un solo cartel y quedó conviviendo con la hora de 24 del resto.
+3. **Toda la tipografía pasó de píxeles a `rem`:** 41 tamaños y sus 41 interlineados. No cambió ni un
+   píxel de cómo se veía; lo que se gana es que **quien agranda la letra desde su navegador vea crecer
+   toda la aplicación**. Los espaciados no se convirtieron: son la retícula de 4px, que es *layout*.
+4. **Los seis títulos pasaron a `clamp()`**, reemplazando un `@media` que ya existía.
+5. **Y ahí apareció el error de razonamiento del día**, que vale más anotado que escondido: se esperaba
+   que `rem` y `clamp` resolvieran el desborde de la ficha, **y no tenían por qué**. Con la letra base
+   en 16px la conversión dibuja exactamente lo mismo. **`rem` y `clamp` hacen que la letra se adapte a
+   quien mira; no hacen que un texto entre en su caja.** Son dos problemas distintos con arreglos
+   distintos: el segundo se arregla acortando el texto o dándole más lugar.
+6. **La estudiante lo resolvió como se resuelve de verdad: dejando las fichas del calendario en hora de
+   24.** Es **la única hora de toda la aplicación** sin `am`/`pm`, y la excepción se puede medir: son
+   ocho por día en una fila de cuatro columnas —la caja más angosta del proyecto— y en una pantalla de
+   320px le quedan ~58px de texto para un `10:00am` que mide ~66. Además, ahí el formato importa menos:
+   son ocho números del mismo día que se leen **como una escala para comparar**, no como un dato suelto.
+7. **Y decidió achicar toda la letra un 20%**, con un `font-size: 80%` en `html`. Se hizo con **una
+   línea y no reescribiendo los 82 valores** —el resultado es idéntico y los `rem` siguen diciendo qué
+   es cada cosa— y **con un porcentaje y no con un tamaño fijo**, para que quien agranda la letra de su
+   navegador siga pudiendo hacerlo.
+
+**El costo de esa última quedó escrito en tres lados, y esto también es gobernanza.** `VISUALS.md` dice
+*«Body: 16px remains the standard for accessibility»*, y con el 80% el texto normal queda en 12.8px y
+los avisos en 9.6px. Se le advirtió a la estudiante antes de hacerlo, decidió igual, y en vez de
+resolverlo en silencio quedó anotado en el `.scss`, en `DISENO.md` y **en el propio `VISUALS.md`** —con
+una nota que dice que la aplicación se aparta de su propia línea, por decisión de quién y con qué
+fecha—. Es el mismo criterio con el que se actualizó ese archivo cuando cambió el azul: **una versión
+distinta escondida en el `.scss` sería justo lo que este proyecto evita.**
+
+#### El saldo
+
+**Ocho hallazgos en esta pieza, ninguno de una prueba automática.** Uno era un defecto de comportamiento
+con dos consecuencias escondidas, dos eran textos, y cinco cambiaron cómo se escribe la apariencia en
+todo el proyecto. Con estos, la cuenta del proyecto llega a **veinte**, y sigue sin haber uno solo que
+haya salido de `npm test`.
+
+**Lo que la pieza deja para poder defenderla, en tres ideas:**
+
+1. **La regla nueva se escribió antes que el código, y su lugar en la función *es* la regla.** RN-26 va
+   en `revisarSiSePuedeCambiar` **antes** de la línea que le da el pase a Personal. Puesta después no
+   haría absolutamente nada, porque Personal no tiene ventana. Una línea más abajo y la pieza no
+   arreglaba nada.
+2. **Meterle una regla nueva a la función de CA-3 obliga a demostrar que no se rompió nada.** Por eso
+   hay **dos pruebas que existen solo para eso**: la misma cita que empieza dentro de 2 horas se le
+   sigue aceptando a Personal (`204`) y rechazando al cliente (`422 ventana_de_cancelacion`).
+3. **El defecto que encontró una persona no lo podía encontrar el API.** La sesión se cerraba bien, el
+   dato se borraba bien, y aun así la pantalla mentía. Es el vigésimo caso seguido, y el argumento del
+   proyecto a favor de que una pieza no se cierra sin que alguien abra el navegador y mire.

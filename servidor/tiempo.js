@@ -201,15 +201,43 @@ export function escribirFechaEnPalabras(fecha) {
 }
 
 /**
- * La hora de un momento del proyecto, sin la fecha: de `2026-09-02T10:00:00-06:00` saca `10:00`.
+ * La hora de un momento del proyecto, sin la fecha, **escrita con `am` y `pm`**: de
+ * `2026-09-02T10:00:00-06:00` saca `10:00am`, y de `…T15:00:00-06:00` saca `3:00pm`.
  *
- * No hace ninguna cuenta a propósito: **recorta**. El momento ya viene escrito en la hora del
- * negocio —ese `-06:00` del final lo dice—, así que convertirlo a algo para volver a leer la hora
- * sería inventar una oportunidad de equivocarse en una hora, que es de donde salen los errores que
- * este archivo existe para evitar.
+ * *Hasta el 2026-08-24 devolvía la hora de 24 (`15:00`). El formato lo eligió la estudiante ese día,
+ * para toda la aplicación: era el pendiente que `DISENO.md` tenía anotado desde el 2026-08-21, cuando
+ * el cartel de reagendar estrenó am/pm y quedó siendo el único lugar con ese formato.*
+ *
+ * **Sigue sin convertir el momento, y eso es lo importante:** los dígitos de la hora se **recortan**
+ * del texto, igual que antes, porque el momento ya viene escrito en la hora del negocio —ese `-06:00`
+ * del final lo dice—. Lo único que se agrega es una cuenta sobre ese número ya recortado. Convertir el
+ * momento con `new Date()` para volver a leerle la hora sería inventar una oportunidad de equivocarse
+ * en una hora, que es de donde salen los errores que este archivo existe para evitar.
+ *
+ * **No se le pega «am» a la hora y listo, y la diferencia no es un detalle:** a las 15:00 eso daría
+ * «15:00am», que no existe.
+ *
+ * Los dos casos borde del reloj de 12 horas, aunque hoy ninguno pueda pasar en este negocio (atiende
+ * de 9 a 18): **el mediodía es 12:00pm, no 12:00am**, y **la medianoche es 12:00am, no 0:00am**. Están
+ * resueltos igual, porque el día que el negocio cambie su horario nadie se va a acordar de venir a
+ * arreglarlos.
+ *
+ * **Esta cuenta está escrita dos veces en el proyecto, y es a propósito:** acá, y en `horaConAmPm` de
+ * `publico/aplicacion-cliente.js`. No es una regla de negocio que se pueda desincronizar con
+ * consecuencias —**el momento no se toca, solo se escribe de otra forma**— y el archivo del navegador
+ * **no puede leer** nada de `servidor/`. Es la misma excepción, con la misma razón, que los nombres de
+ * los días y de los meses. Si algún día cambia el formato, hay que cambiarlo en los dos lados.
  */
 export function escribirHoraDelMomento(inicio) {
-  return inicio.slice(11, 16)
+  const hora = Number(inicio.slice(11, 13))
+  const minutos = inicio.slice(14, 16)
+
+  const esDeLaTarde = hora >= 12
+  // El 0 (medianoche) y el 12 (mediodía) se escriben los dos «12»: el resto de la tarde se pasa a su
+  // número de la mañana restándole 12.
+  const enDoceHoras = hora % 12 === 0 ? 12 : hora % 12
+
+  return `${enDoceHoras}:${minutos}${esDeLaTarde ? "pm" : "am"}`
 }
 
 /** La fecha de un momento del proyecto: de `2026-09-02T10:00:00-06:00` saca `2026-09-02`. */

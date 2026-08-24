@@ -137,6 +137,38 @@ The system continues to use **Manrope** but with a more disciplined application 
 - **Body:** 16px remains the standard for accessibility. Line heights are kept at 1.5x to ensure that dense medical information or booking details remain legible.
 - **Labels:** Used for metadata, such as doctor specialties or appointment times, with a slightly increased letter spacing for scannability at small sizes.
 
+### Cómo se aplica esta escala en la aplicación *(2026-08-24)*
+
+Dos decisiones de la estudiante cambian **cómo se escribe y cómo se dibuja** la escala de arriba. Los
+números de la escala siguen siendo los de este archivo; lo que cambia es la unidad y el porcentaje al
+que se renderizan. Quedan escritas acá y no solo en el `.scss` porque **este archivo es la autoridad
+sobre la apariencia**, y una versión distinta escondida en el código sería justamente lo que el
+proyecto evita.
+
+1. **Los tamaños se escriben en `rem`, no en píxeles.** `12px → 0.75rem`, `14px → 0.875rem`,
+   `16px → 1rem`, `18px → 1.125rem`, `24px → 1.5rem`, `28px → 1.75rem`, `32px → 2rem` (se divide entre
+   16). Los interlineados, igual. Así, quien agranda la letra desde la configuración de su navegador
+   ve crecer toda la aplicación, en vez de que lo ignore. **Los espaciados no se convirtieron**: la
+   retícula de 4px es *layout*, no letra.
+
+2. **Toda la tipografía se dibuja al 80%**, con un `font-size: 80%` en `html`. Es decir: lo que la
+   escala llama 16px se ve a **12.8px**, 24px se ve a 19.2px, y así con todo — las proporciones entre
+   un tamaño y otro no cambian, bajan todos juntos. Se hace con un porcentaje y no con un tamaño fijo
+   para que **la persona que agranda la letra de su navegador siga pudiendo hacerlo**, partiendo de un
+   20% menos.
+
+   > ⚠️ **Esto se aparta de una línea de este mismo archivo**, y por eso está escrito: *«Body: 16px
+   > remains the standard for accessibility»*. Con el 80%, el texto normal queda en 12.8px y los
+   > avisos y textos de ayuda en 9.6px, por debajo de ese mínimo. **La estudiante lo decidió el
+   > 2026-08-24 después de que se le advirtiera**, mirando la pantalla y buscando que la aplicación
+   > entrara más holgada. Volver atrás es borrar esa única línea del `.scss`.
+
+3. **Los títulos usan `clamp()`**, así que no tienen un tamaño fijo: crecen con el ancho de la
+   pantalla entre un mínimo y un máximo. Los máximos son los de la escala de arriba —32px el `<h1>`,
+   24px los títulos de sección, 18px el del cartel de reagendar— y los mínimos son un escalón más
+   abajo. El interlineado de esos títulos va **sin unidad** (un multiplicador), para que el aire siga
+   a la letra cuando se achica.
+
 ## Layout & Spacing
 
 The layout utilizes a **Fluid-Fixed Hybrid Grid**. Content scales fluidly between breakpoints but is constrained by a 1280px maximum width to ensure readability on wide displays.

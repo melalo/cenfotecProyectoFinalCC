@@ -28,11 +28,22 @@
 import { enviarConfirmacionDeCita } from "./correo.js"
 import { revisarHorario } from "./disponibilidad.js"
 import { QUIEN_CLIENTE, QUIEN_PERSONAL } from "./quien-actua.js"
-import { escribirMomento, horasHasta } from "./tiempo.js"
+import { escribirMomento, horasHasta, todaviaNoEmpezo } from "./tiempo.js"
 
-/** Los estados de una cita (bloque *Produce* de la pieza 3). Los otros dos son de la pieza 8. */
+/**
+ * Los estados de una cita (bloque *Produce* de la pieza 3). Los dos últimos los trajo la pieza 8.
+ *
+ * **A los dos últimos solo se llega porque alguien los marcó**, nunca por el paso del tiempo
+ * (RN-17). Una cita cuya hora pasó y que nadie cerró sigue siendo `activa`, y eso es a propósito:
+ * la aplicación no sabe si la persona asistió — eso lo sabe quien estuvo ahí.
+ */
 export const ESTADO_ACTIVA = "activa"
 export const ESTADO_CANCELADA = "cancelada"
+export const ESTADO_COMPLETADA = "completada"
+export const ESTADO_NO_ASISTIO = "no_asistio"
+
+/** Los dos únicos cierres que existen (RF-21). Cualquier otra palabra se rechaza. */
+export const CIERRES_VALIDOS = [ESTADO_COMPLETADA, ESTADO_NO_ASISTIO]
 
 /**
  * Los canales de una cita (RN-12): la reservó el cliente por su cuenta, o la reservó Personal
@@ -216,16 +227,36 @@ export async function crearCitaYConfirmar({
  *
  *   - `"se_puede"`               → adelante
  *   - `"cita_no_activa"`         → ya está cancelada, completada o marcada como no asistió
+ *   - `"ya_paso"`                → la cita ya ocurrió, y entonces no la cambia nadie (RN-26)
  *   - `"ventana_de_cancelacion"` → faltan menos de 4 horas y quien pide es un cliente (RN-5)
  *
- * Las citas que **ya pasaron** caen solas en el último caso: si faltan −22 horas, faltan menos de 4.
- * No hace falta ningún caso aparte para ellas, y no tenerlo es un caso borde menos donde equivocarse.
+ * ── El orden de los tres casos no es casual ──────────────────────────────────────────────────
  *
- * Personal no tiene ventana (RN-6): es lo que hace útil el mensaje «llame al negocio» que recibe el
- * cliente. Sin eso, la asistente atendería la llamada y descubriría que ella tampoco puede.
+ * **`ya_paso` se pregunta ANTES de la excepción de Personal, y ahí está toda la regla RN-26.** Si
+ * estuviera después, Personal —que no tiene ventana de cancelación (RN-6)— seguiría pudiendo mover y
+ * cancelar citas del mes pasado, que es exactamente el hueco que la pieza 7 encontró mirando la
+ * pantalla y que la 8 vino a cerrar.
+ *
+ * **Hasta el 2026-08-24 este caso no existía**, y no era un descuido: una cita pasada caía sola en la
+ * ventana de las 4 horas —si faltan −22 horas, faltan menos de 4—, así que para el cliente la regla
+ * ya la cubría. Lo que cambió es que ahora hay **dos actores**, y para el segundo esa cuenta no corre.
+ * De paso, el motivo dejó de ser una frase falsa: «faltan menos de 4 horas» era cierto como cuenta y
+ * mentira como explicación debajo de una cita de la semana pasada.
+ *
+ * **Las dos reglas miran cosas distintas y por eso no se pisan:** RN-26 mira si la cita **ya
+ * ocurrió**; RN-5 mira **cuántas horas faltan** para una que todavía no ocurrió. Personal se saltea
+ * la segunda (RN-6) y no la primera (RN-26).
+ *
+ * El borde se decide una vez y queda escrito: **una cita que empieza en este mismo instante ya
+ * empezó**, así que ya no se cambia. Es la misma `todaviaNoEmpezo` que usa RN-25 para los horarios
+ * del calendario, y por eso las dos reglas del proyecto que hablan de «ya empezó» no se pueden
+ * desincronizar.
  */
 export function revisarSiSePuedeCambiar({ cita, quien, ahora }) {
   if (cita.estado !== ESTADO_ACTIVA) return "cita_no_activa"
+
+  // RN-26. Alcanza a los dos actores, y por eso va antes que la excepción de Personal.
+  if (laCitaYaPaso({ cita, ahora })) return "ya_paso"
 
   if (quien === QUIEN_PERSONAL) return "se_puede"
 
@@ -236,37 +267,49 @@ export function revisarSiSePuedeCambiar({ cita, quien, ahora }) {
 }
 
 /**
+ * ¿La hora de esta cita **ya pasó**? Es la pregunta de la que dependen tres cosas de este archivo:
+ * RN-26 (no se cambia), la lista de citas por cerrar (RF-21), y en qué grupo de la pantalla cae.
+ *
+ * Está escrita una sola vez para que las tres contesten siempre lo mismo. Si cada una hiciera su
+ * propia cuenta, un día una cita podría estar en el historial y a la vez ofrecer «Reagendar».
+ *
+ * La cuenta en sí no vive acá sino en `tiempo.js`, como manda la convención del proyecto: **todo lo
+ * que tenga que ver con fechas se escribe ahí**.
+ */
+function laCitaYaPaso({ cita, ahora }) {
+  return !todaviaNoEmpezo(cita.inicio, ahora)
+}
+
+/**
  * Lo mismo que `revisarSiSePuedeCambiar`, pero **con el detalle que la pantalla necesita para
  * escribir una frase que sea verdad**. Devuelve `null` cuando sí se puede.
  *
- * Existe por una razón concreta, encontrada mirando la pantalla el 2026-08-20: la regla no distingue
- * una cita **que ya pasó** de una que empieza en dos horas —las dos «faltan menos de 4 horas», una
- * con número negativo—, y eso es correcto **como regla**. Pero en pantalla salía «Faltan menos de 4
- * horas para esta cita» debajo de una cita de la mañana, a mediodía. La frase era falsa.
+ * ── Cómo nació, y por qué el 2026-08-24 adelgazó ─────────────────────────────────────────────
  *
- * Por qué son dos funciones y no una:
+ * **Nació el 2026-08-20 como un parche**, y vale la pena que quede escrito. Mirando la pantalla se
+ * vio que debajo de una cita de la semana pasada salía «Faltan menos de 4 horas para esta cita»: una
+ * frase falsa. La regla no estaba mal —una cita pasada cae sola en la ventana, porque si faltan −22
+ * horas faltan menos de 4— pero la **explicación** sí. Como no se quería tocar el motivo que devuelven
+ * los endpoints (lo fija el plan y lo comprueba CA-3), se agregó esta segunda función que traducía
+ * `ventana_de_cancelacion` a `ya_paso` **solo para la pantalla**.
  *
- *   - **`revisarSiSePuedeCambiar` decide**, y su respuesta es la que viaja como motivo del rechazo de
- *     los endpoints. Ahí `ventana_de_cancelacion` tiene que seguir siendo `ventana_de_cancelacion`:
- *     es lo que fija el bloque *Produce* del plan y lo que comprueba **CA-3**. Una cita pasada se
- *     rechaza por RN-5, no por una regla nueva.
- *   - **Esta explica**, y solo la usa `GET /api/citas` para que la pantalla tenga qué escribir.
+ * **El 2026-08-24 el parche dejó de hacer falta**, y no porque se borrara: porque la regla de verdad
+ * cambió. RN-26 dice que una cita pasada no la cambia nadie, así que `revisarSiSePuedeCambiar` ya
+ * devuelve `ya_paso` por su cuenta y para los dos actores. Lo que la pantalla decía y lo que la regla
+ * decide pasaron a ser **lo mismo**, que es como tenía que haber sido siempre.
  *
- * O sea: se agrega precisión al mensaje **sin tocar la regla ni el contrato de los endpoints**. Y la
- * distinción la hace el servidor, no la pantalla, porque el frontend no decide reglas de negocio.
+ * **Y entonces por qué sigue existiendo esta función.** Por una diferencia chica pero real: la regla
+ * contesta `"se_puede"` y la pantalla necesita `null` —«no hay ningún motivo que mostrar»—. Convertir
+ * eso es su único trabajo hoy. Vale como recordatorio de algo que este proyecto ya vivió dos veces:
+ * **cuando un mensaje suena falso, casi siempre la regla detrás tiene un hueco** — pasó acá y pasó
+ * con RN-25.
  *
  * Valores posibles: `"cita_no_activa"`, `"ya_paso"`, `"ventana_de_cancelacion"` y `null`.
  */
 export function porQueNoSePuedeCambiar({ cita, quien, ahora }) {
   const revision = revisarSiSePuedeCambiar({ cita, quien, ahora })
 
-  if (revision === "se_puede") return null
-
-  if (revision === "ventana_de_cancelacion" && horasHasta(cita.inicio, ahora) < 0) {
-    return "ya_paso"
-  }
-
-  return revision
+  return revision === "se_puede" ? null : revision
 }
 
 /**
@@ -293,7 +336,9 @@ export function porQueNoSePuedeCambiar({ cita, quien, ahora }) {
  */
 export function grupoDeLaCita({ cita, ahora }) {
   if (cita.estado !== ESTADO_ACTIVA) return "historial"
-  if (horasHasta(cita.inicio, ahora) < 0) return "historial"
+  // La **misma** cuenta que usa RN-26, a propósito (2026-08-24): si cada una hiciera la suya, una
+  // cita podría estar en el historial y a la vez ofrecer «Reagendar», o al revés.
+  if (laCitaYaPaso({ cita, ahora })) return "historial"
   return "proxima"
 }
 
@@ -514,4 +559,95 @@ export function citasDelCliente({ base, clienteId, ahora, quien = QUIEN_CLIENTE 
       grupo: grupoDeLaCita({ cita, ahora }),
     }
   })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// CERRAR LAS CITAS PASADAS (pieza 8, RF-21)
+//
+// El componente **Reservas** es el único que modifica el estado de una cita, y esto es lo último que
+// le faltaba saber hacer: marcar lo que ocurrió. Crear, cancelar, mover y cerrar quedan los cuatro
+// en este archivo, que es lo que `DISENO.md` dice desde el principio.
+//
+// **Ningún estado se alcanza por el paso del tiempo (RN-17).** No hay ninguna tarea que recorra la
+// base cerrando citas viejas, y no es un olvido: la aplicación **no sabe** si la persona asistió.
+// Eso lo sabe quien estuvo ahí, y por eso el cierre siempre lo escribe una cuenta de Personal.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Las citas que están esperando que Personal las cierre: **activas y con la hora ya pasada**
+ * (RF-21). Ordenadas de la más vieja a la más nueva, para que la que más tiempo lleva sin cerrar
+ * quede arriba.
+ *
+ * Devuelve el **nombre** del cliente además del del servicio y el proveedor: es una lista de citas de
+ * gente distinta, así que sin el nombre no se sabría de quién es cada una.
+ *
+ * **Por qué el «ya pasó» se filtra acá y no en el `WHERE` de la consulta.** En SQL se podría comparar
+ * el texto del `inicio` contra el momento de ahora, y funcionaría, porque todos los momentos de este
+ * proyecto se escriben igual y con el mismo desfase. Pero sería **la misma regla escrita dos veces**:
+ * una en SQL y otra en `laCitaYaPaso`, con dos bordes que un día pueden dejar de coincidir. Al
+ * volumen del negocio —unas 2.300 citas al año (RN-15)— traerlas y filtrarlas acá no cuesta nada, y a
+ * cambio la respuesta a «¿ya pasó?» sigue estando en un solo lugar.
+ */
+export function citasPorCerrar({ base, ahora }) {
+  const filas = base
+    .prepare(
+      `SELECT cita.id, cliente.nombre AS cliente,
+              servicio.nombre AS servicio, proveedor.nombre AS proveedor,
+              cita.inicio, cita.estado
+         FROM cita
+         JOIN cliente   ON cliente.id   = cita.cliente_id
+         JOIN servicio  ON servicio.id  = cita.servicio_id
+         JOIN proveedor ON proveedor.id = cita.proveedor_id
+        WHERE cita.estado = ?
+        ORDER BY cita.inicio`,
+    )
+    .all(ESTADO_ACTIVA)
+
+  return filas
+    .filter((cita) => laCitaYaPaso({ cita, ahora }))
+    .map(({ estado, ...cita }) => cita)
+}
+
+/**
+ * Cierra una cita: la marca como **completada** (el cliente asistió) o como **no asistió** (no se
+ * presentó), y anota **qué cuenta de Personal lo hizo y cuándo** (RF-21, RN-17, RN-19, REG-1).
+ *
+ * **No borra nada** (RN-15): una cita marcada «no asistió» queda perdida —no se repone ni se devuelve
+ * nada— pero su fila sigue ahí. Ese es justamente el punto de que el estado exista: una cita que se
+ * quedara «activa» para siempre no dejaría rastro de por qué se perdió.
+ *
+ * Devuelve `{ ok: true, cierre }` o `{ ok: false, motivo }`, y no sabe nada de HTTP. Los motivos:
+ * `"cita_no_encontrada"`, `"cita_no_activa"` y `"todavia_no_paso"`.
+ *
+ * **`todavia_no_paso` sale directo de RN-17**, que dice que «completada» se marca *después de que el
+ * cliente asistió*: nadie asistió todavía a una cita de la semana que viene. Sin esta comprobación se
+ * podría marcar como completada una cita futura, y esa etiqueta se desdiría el día de la cita — que
+ * es exactamente lo que la regla de la etiqueta existe para evitar.
+ *
+ * No manda ningún correo, igual que cancelar: `ESPECIFICACION.md` no pide ninguno al cerrar.
+ */
+export function cerrarCita({ base, citaId, estado, personalId, ahora }) {
+  const cerrar = base.transaction(() => {
+    const cita = base.prepare("SELECT * FROM cita WHERE id = ?").get(citaId)
+    if (!cita) return { ok: false, motivo: "cita_no_encontrada" }
+
+    if (cita.estado !== ESTADO_ACTIVA) return { ok: false, motivo: "cita_no_activa" }
+    if (!laCitaYaPaso({ cita, ahora })) return { ok: false, motivo: "todavia_no_paso" }
+
+    const cerradaEn = escribirMomento(ahora)
+
+    // El `AND estado = 'activa'` del final es el mismo cuidado que tiene cancelar: si dos cierres
+    // llegaran al mismo tiempo, el segundo no encuentra fila que cambiar en vez de pisar al primero.
+    base
+      .prepare(
+        `UPDATE cita
+            SET estado = ?, cerrada_en = ?, cerrada_por = ?
+          WHERE id = ? AND estado = ?`,
+      )
+      .run(estado, cerradaEn, personalId, citaId, ESTADO_ACTIVA)
+
+    return { ok: true, cierre: { id: cita.id, estado, cerradaEn } }
+  })
+
+  return cerrar.immediate()
 }
