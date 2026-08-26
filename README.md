@@ -154,8 +154,8 @@ alternativas, está en `DISENO.md`, «Decisiones tomadas al construir la pieza 3
 ## Cómo se levanta
 
 ```bash
-git clone https://github.com/melalo/laboratorioClaudeCenfotec.git
-cd laboratorioClaudeCenfotec/proyectoFinal
+git clone https://github.com/melalo/cenfotecProyectoFinalCC.git
+cd cenfotecProyectoFinalCC
 
 npm install     # instala las dependencias
 npm run datos   # crea la base SQLite y carga los datos de prueba
@@ -212,7 +212,7 @@ documentado como variable de entorno acá abajo.
 
 ## Variables de entorno
 
-Se leen de un archivo `.env` en la raíz de `proyectoFinal/`. **Ese archivo nunca se sube al
+Se leen de un archivo `.env` en la raíz del repositorio. **Ese archivo nunca se sube al
 repositorio.** El proyecto debe incluir un `.env.ejemplo` versionado, con las claves vacías, para
 que se sepa cuáles hacen falta.
 
@@ -383,14 +383,15 @@ tres reglas que el curso exige proteger:
 
 ### Corren solas en cada push
 
-Desde la pieza 3, **estas 277 pruebas se corren automáticamente en cada `push` y en cada pull
-request**, sin que nadie escriba `npm test`. Lo hace GitHub Actions, configurado en
+Desde la pieza 3, **estas 277 pruebas se corren automáticamente en cada `push`**, sin que nadie escriba `npm test`. Lo hace GitHub Actions, configurado en
 `.github/workflows/pruebas.yml`.
 
-Ese archivo está en la **raíz del repositorio**, no dentro de `proyectoFinal/`, y no es una
-distracción: GitHub solo ejecuta los archivos que están en `.github/workflows/` en la raíz. Es la
-única cosa de este proyecto que vive afuera de su carpeta, y está autorizada y explicada en
-`DISENO.md`.
+Ese archivo está en la **raíz del repositorio**, que es donde GitHub los busca: solo ejecuta los
+que están en `.github/workflows/`. *Hasta la migración del 2026-08-26 el proyecto vivía dentro de la
+carpeta `proyectoFinal/` del repositorio del curso, y este archivo era **la única cosa del proyecto
+que vivía afuera de su carpeta** — una excepción autorizada y explicada en `DISENO.md`. Al pasar el
+proyecto a su propio repositorio dejó de ser una excepción: ahora la raíz del repositorio y la raíz
+del proyecto son la misma.*
 
 Para ver el resultado: en GitHub, pestaña **Actions**. Verde es que las 277 pasaron, en las dos
 versiones de Node. *(Este número decía «95» hasta el 2026-08-21 y «250» hasta el 2026-08-24: se había
@@ -410,7 +411,7 @@ quedado viejo mientras las pruebas crecían pieza a pieza.)*
 Los documentos:
 
 ```
-proyectoFinal/
+cenfotecProyectoFinalCC/
 ├── README.md              ← estás acá
 ├── ESPECIFICACION.md      ← qué tiene que hacer el sistema  (la autoridad)
 ├── DISENO.md              ← qué forma tiene la solución     (la autoridad)
@@ -428,7 +429,7 @@ Y el código, que nació con la pieza 1. Las convenciones de esta estructura est
 `CLAUDE.md`:
 
 ```
-proyectoFinal/
+cenfotecProyectoFinalCC/
 ├── servidor/              el backend: acá viven las reglas de negocio
 │   ├── index.js             arranca el servidor (es lo que corre npm start)
 │   ├── aplicacion.js        arma la aplicación de Express, sin ponerla a escuchar

@@ -147,7 +147,7 @@ las siguen en vez de inventar otras.
 ### Estructura de carpetas
 
 ```
-proyectoFinal/
+cenfotecProyectoFinalCC/
 ├── servidor/            el backend: acá viven las reglas de negocio
 │   ├── index.js           el único archivo que arranca el servidor y lo pone a escuchar
 │   ├── aplicacion.js      arma la aplicación de Express, pero no la pone a escuchar
@@ -609,9 +609,11 @@ Existe desde la pieza 3. Las 277 pruebas corren solas en **cada push**, a cualqu
   suite sobre el mismo código —, así que GitHub mostraba dos resultados idénticos y gastaba el
   doble de minutos.
 
-- **Ese archivo vive en la raíz del repositorio, no en esta carpeta.** Es la única excepción a la
-  regla «todo el trabajo queda adentro de la carpeta del día», autorizada por la estudiante el
-  2026-08-19: GitHub solo ejecuta los archivos que están en `.github/workflows/` en la raíz.
+- **Ese archivo vive en la raíz del repositorio**, porque GitHub solo ejecuta los archivos que
+  están en `.github/workflows/` en la raíz. *Hasta la migración del 2026-08-26 eso lo convertía en
+  la única excepción a la regla «todo el trabajo queda adentro de la carpeta del día», autorizada
+  por la estudiante el 2026-08-19. Desde que el proyecto tiene su propio repositorio ya no es una
+  excepción: la raíz del repositorio es la raíz del proyecto.*
 - **Correr en Node 20 no es un detalle:** es lo que comprueba la promesa del `README.md`. Si una
   dependencia nueva exige una versión mayor, la integración continua se pone roja y hay que elegir
   la dependencia, no cambiar la promesa. Ya pasó con `better-sqlite3` — ver `DISENO.md`,

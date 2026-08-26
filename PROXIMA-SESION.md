@@ -8,10 +8,10 @@ Esta es la hoja para retomar sin releer nada.*
 
 ## Lo que hay que decir al abrir la conversación
 
-> La carpeta del día es `proyectoFinal`. Arrancamos la pieza 9. Leé `PROXIMA-SESION.md`.
+> Abrí el repositorio `cenfotecProyectoFinalCC`. Arrancamos la pieza 9. Leé `PROXIMA-SESION.md`.
 
 Con eso alcanza. El agente tiene que leer por su cuenta `ESPECIFICACION.md`, `DISENO.md`, la pieza 9
-de `PLAN.md`, `VISUALS.md` y el `CLAUDE.md` de la carpeta.
+de `PLAN.md`, `VISUALS.md` y el `CLAUDE.md` del repositorio.
 
 ---
 
@@ -115,7 +115,7 @@ primero qué se pierde.
 A mano, si se prefiere:
 
 ```bash
-cd c:\Users\melal\Desktop\cursoCenfotecClaude\proyectoFinal
+cd c:\Users\melal\Desktop\claudeCodeCenfotec\cenfotecProyectoFinalCC
 
 npm install     # solo la primera vez en una máquina nueva
 npm run estado  # cuenta en qué estado está todo, sin levantar nada
