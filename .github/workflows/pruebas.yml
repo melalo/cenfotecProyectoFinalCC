@@ -1,0 +1,67 @@
+# Integración continua: las pruebas automáticas corren solas en cada push.
+#
+# ── De dónde viene este archivo ───────────────────────────────────────────────────────────────
+#
+# Vino del repositorio del curso (`melalo/laboratorioClaudeCenfotec`), donde el proyecto vivía
+# dentro de la carpeta `proyectoFinal/` y este archivo tenía que estar en la raíz de ese
+# repositorio, porque **GitHub solo ejecuta los archivos que están en `.github/workflows/` en la
+# raíz.** Al migrar el proyecto a su propio repositorio (2026-08-26) el proyecto pasó a ser la raíz,
+# así que desaparecieron las dos líneas que apuntaban a `proyectoFinal/`: el `working-directory` y
+# la ruta del `cache-dependency-path`. Nada más cambió.
+#
+# La historia de la decisión original está en `BITACORA.md` y en `DISENO.md`, sección «Decisiones
+# tomadas al construir la pieza 3».
+#
+# ── Qué protege ──────────────────────────────────────────────────────────────────────────────
+#
+# `PROYECTO.md` §7, punto 4, pide que las reglas de negocio CA-1, CA-2 y CA-3 estén cubiertas por
+# pruebas **que corran en cada push**. CA-1 (dos personas reservan el mismo horario y solo una lo
+# consigue) y CA-2 (no hay citas para hoy) nacen con la pieza 3 y viven en
+# `pruebas/reservas.test.js`. CA-3 quedó cubierta por completo desde la pieza 7, y este archivo la
+# corre igual sin tocarlo.
+
+name: Pruebas
+
+# En cada push a cualquier rama, y en cada pull request. Así nunca hay una rama con las pruebas
+# rotas sin que se note.
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+
+    # ── Las dos versiones de Node que el proyecto promete ─────────────────────────────────────
+    #
+    # El `README.md` promete «Node.js 20 o superior». Correr las pruebas en Node 20 **y** en Node 24
+    # es lo que convierte esa frase en algo comprobado en vez de una promesa escrita: si alguna
+    # dependencia dejara de servir en Node 20, se ve acá y no en la máquina de quien clone el
+    # repositorio. Ya pasó una vez, al montar esta integración: `better-sqlite3` había quedado en una
+    # versión que exige Node 22, y hubo que bajarla.
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 24]
+
+    steps:
+      # Trae una copia del repositorio a la máquina donde va a correr todo.
+      - name: Traer el repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          # Guarda las dependencias descargadas para que la próxima vez tarde menos.
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # `npm ci` en vez de `npm install`: instala **exactamente** las versiones que dice
+      # `package-lock.json`, sin actualizar nada por su cuenta. Es lo que hace que acá corra lo mismo
+      # que corre en la máquina de la estudiante.
+      - name: Instalar las dependencias
+        run: npm ci
+
+      - name: Correr las pruebas
+        run: npm test
