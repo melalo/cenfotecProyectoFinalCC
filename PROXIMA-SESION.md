@@ -106,10 +106,19 @@ la ñ sí). **La pieza 9 no vuelve a escribir esa regla: la llama.**
 
 ## Cómo levantar la aplicación
 
+**Lo más rápido, desde el 2026-08-24, es la skill propia del proyecto.** Con Claude Code abierto en la
+carpeta, escribí `/launch`: revisa que se pueda arrancar, levanta la aplicación, y **cuenta leyéndolo
+de la base** qué cuentas hay y qué se puede mostrar — así no hace falta creerle a la tabla de más
+abajo, que es una foto y se pone vieja. Con `/launch limpio` rehace los datos de prueba, avisando
+primero qué se pierde.
+
+A mano, si se prefiere:
+
 ```bash
 cd c:\Users\melal\Desktop\cursoCenfotecClaude\proyectoFinal
 
 npm install     # solo la primera vez en una máquina nueva
+npm run estado  # cuenta en qué estado está todo, sin levantar nada
 npm start       # levanta la aplicación
 ```
 
@@ -119,6 +128,10 @@ npm start       # levanta la aplicación
 > rehace la base desde cero y se lleva las cuentas y las citas.
 
 ### Lo que hay en la base ahora mismo
+
+> ⚠️ **Esta tabla es una foto del 2026-08-24 y se pone vieja sola.** Para el dato al día, corré
+> `/launch` o `npm run estado`, que lo cuentan de la base. Se deja acá porque tiene una cosa que la
+> skill **no puede** dar: **las contraseñas de los clientes**, que en la base solo están cifradas.
 
 | Cuenta | Entra con | Sirve para |
 |---|---|---|
@@ -153,7 +166,7 @@ recuperación solo va a llegar de verdad a `melalo9@gmail.com`.
 | | |
 |---|---|
 | **Pieza 6** | «Recordatorio de 24 h». **Sigue trabada por una decisión, no por tiempo** — ver abajo |
-| **Del curso** | La **skill propia de arranque** que pide la rúbrica, y **preparar la presentación** de la sesión 8 |
+| **Del curso** | ~~La skill propia de arranque~~ **HECHA el 2026-08-24: `/launch`.** Queda **preparar la presentación** de la sesión 8 |
 
 ### La pieza 6 sigue trabada por una decisión abierta
 

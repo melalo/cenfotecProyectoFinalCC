@@ -12,6 +12,7 @@
     "prestart": "npm run estilos",
     "start": "node servidor/index.js",
     "datos": "node guiones/cargar-datos.js",
+    "estado": "node guiones/estado.js",
     "test": "node --test"
   },
   "dependencies": {

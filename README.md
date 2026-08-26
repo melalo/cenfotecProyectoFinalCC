@@ -169,6 +169,37 @@ Con eso, la aplicación tiene que quedar disponible en:
 *(El puerto 3000 se fija acá como decisión del proyecto, para que no dependa de la máquina. Si está
 ocupado, se puede cambiar con la variable de entorno `PORT`.)*
 
+### El atajo: la skill `/launch`
+
+Los tres comandos de arriba levantan la aplicación, pero **no dicen con qué cuenta entrar ni qué hay
+adentro para mirar**. Para eso el repositorio trae una skill propia de Claude Code, en
+`.claude/skills/launch/`. Con Claude Code abierto en esta carpeta:
+
+```
+/launch          → levanta con los datos que ya hay. No borra nada
+/launch limpio   → rehace los datos de prueba y levanta. Avisa qué se pierde y pide confirmación
+```
+
+Hace cuatro cosas: revisa que se pueda arrancar (puerto libre, `.env`, base creada), levanta la
+aplicación, y después **cuenta qué hay adentro leyéndolo de la base de datos** — qué cuentas existen,
+cuántas citas hay y de qué tipo, y qué se puede mostrar.
+
+**Lo que automatiza no es correr dos comandos: es el paso de después.** Hasta el 2026-08-24, para
+poder recorrer la aplicación había que abrir un documento y leer una tabla escrita a mano. Esa tabla
+**es una foto del momento en que se escribió** y se pone vieja sola — ese mismo día decía «tres citas
+esperando» cuando quedaban dos. La skill no la lee: le pregunta a la base, que es lo único que no
+puede quedar desactualizado.
+
+Lo que cuenta se puede pedir también **sin Claude Code**, porque la cuenta vive en un guion y no en la
+skill:
+
+```bash
+npm run estado
+```
+
+Ese comando **solo lee** —abre la base en modo `readonly`—, así que se puede correr con la aplicación
+levantada y no puede romper nada.
+
 ### La prueba de que esto está bien hecho
 
 El compromiso del curso es que **el prototipo se levante siguiendo únicamente este README, en una
@@ -410,13 +441,16 @@ proyectoFinal/
 │   ├── disponibilidad.js    qué horarios están libres — la regla, escrita una sola vez
 │   ├── reservas.js          crear una cita — el único lugar que toca el estado de una cita
 │   └── rutas/               un archivo por grupo de endpoints del API
-├── guiones/               comandos de mantenimiento (hoy: cargar los datos de prueba)
+├── .claude/               la skill propia del proyecto
+│   └── skills/launch/       /launch: deja el proyecto levantado y listo para recorrerse
+├── guiones/               comandos de mantenimiento: cargar los datos de prueba (cargar-datos.js)
+│                          y contar en qué estado está el proyecto (estado.js)
 ├── estilos/               los .scss que se escriben a mano, siguiendo VISUALS.md
 ├── publico/               lo que el navegador recibe: HTML, su JavaScript, el CSS generado
 │   ├── fuentes/             la tipografía Manrope, dentro del proyecto (no se pide a internet)
 │   └── img/                 las imágenes (hoy: el fondo de la página)
 ├── pruebas/               las pruebas automáticas de npm test
 ├── datos/                 el archivo SQLite — se genera, no se sube
-├── package.json           las dependencias y los cuatro comandos
+├── package.json           las dependencias y los cinco comandos
 └── .env.ejemplo           qué variables de entorno hacen falta
 ```

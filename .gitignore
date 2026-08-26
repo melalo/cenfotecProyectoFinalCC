@@ -1,4 +1,9 @@
-.claude/
+# La skill propia del proyecto (.claude/skills/launch/) SÍ se sube: la consigna del curso pide
+# expresamente «al menos un skill o comando propio de Claude Code, en la carpeta .claude/».
+# Lo que se queda afuera es solo la skill que vino con el material del curso, que no la escribió
+# la estudiante — subirla sería devolverle al docente lo que él mismo dio.
+# *Cambiado el 2026-08-24: antes esta línea excluía `.claude/` entera.*
+.claude/skills/mi-proyecto/
 DISENO1.md
 SEGUIMIENTO.md
 

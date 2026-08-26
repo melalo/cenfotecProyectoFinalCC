@@ -519,6 +519,37 @@ hacen que la letra se adapte a quien mira, no que el texto entre en su caja.* So
 distintos y se arreglan con cosas distintas — el segundo se arregla acortando el texto o dándole más
 lugar. Creer que uno resuelve el otro es el error fácil, y por eso queda anotado.
 
+## Decisiones tomadas al construir la skill `/launch` (2026-08-24)
+
+*No es una pieza del plan: es el entregable **«skill de arranque»** que pide la consigna del curso.
+Nacieron dos archivos —`.claude/skills/launch/SKILL.md` y `guiones/estado.js`— y ninguna dependencia
+nueva.*
+
+**Las tres que decidió la estudiante antes de construirla:**
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| Cómo se llama | `/arrancar`; `/demostracion`; `/levantar` | **`/launch`** | Elegido por la estudiante. **Es una excepción a la convención de nombres del proyecto**, que pide español y minúscula, y queda anotada como tal en `CLAUDE.md` — del mismo tipo que «vertical slices»: una palabra que se prefiere en inglés aunque el resto esté en español. |
+| Si muestra la contraseña de la cuenta de Personal | Mostrarla; mostrar solo los correos | **Mostrarla**, leída de `guiones/datos-de-prueba.js` | **No hay riesgo:** es un dato de prueba inventado y ya está en texto plano en un archivo versionado, en el `README.md` y en `PROXIMA-SESION.md`. La ventaja es que **no puede quedar vieja**: sale del archivo que de verdad crea esa cuenta, así que si cambia ahí, la skill lo dice sola. Las de los clientes **no se pueden mostrar** aunque se quisiera: en la base solo queda su huella cifrada. |
+| Qué se sube de `.claude/` | La carpeta entera; **solo la skill propia** | **Solo la propia**: se excluye `.claude/skills/mi-proyecto/` | La consigna exige que la skill esté **en `.claude/` dentro del repositorio**, y hasta ese día el `.gitignore` excluía esa carpeta entera. Se destildó solo lo necesario: `mi-proyecto` vino con el material del curso y **las reglas del curso mandan mantener el material de apoyo fuera del repositorio** — subirla sería devolverle al docente lo que él dio. Así, lo que hay en `.claude/` es exactamente lo que la rúbrica va a mirar. |
+
+**Y las decisiones técnicas que salieron de construirla:**
+
+| Decisión | Opciones consideradas | Elección | Razón |
+|---|---|---|---|
+| Dónde vive lo que la skill cuenta | Todo adentro del `SKILL.md`; **en un guion aparte** | **En `guiones/estado.js`**, que el `SKILL.md` solo orquesta | Es la regla de siempre del proyecto —una regla, un lugar— aplicada acá: la cuenta de «cuántas citas esperan» se puede pedir **sin la skill**, con `npm run estado`, y no hay dos versiones que puedan desincronizarse. Al `SKILL.md` le queda lo que sí es suyo: revisar antes de arrancar, preguntar cuando hay que destruir algo, levantar, y mostrar. |
+| De dónde sale el estado del proyecto | De `PROXIMA-SESION.md`, que ya lo tiene escrito; **de la base de datos** | **De la base** | Un documento escrito a mano **es una foto del momento en que se escribió**, y se pone viejo solo. No es teórico: ese mismo 2026-08-24 la tabla de `PROXIMA-SESION.md` dijo «tres citas esperando» cuando quedaban dos, porque entre que se escribió y se leyó alguien cerró una — y hubo que corregirla dos veces en una tarde. La base **es lo que la aplicación usa para funcionar**, así que no puede estar desactualizada respecto de sí misma. |
+| Cómo se comprueba que el puerto está libre | Con un comando del sistema (`netstat`, `lsof`); **intentando ocuparlo y soltándolo** | **Intentando ocuparlo**, con `node:net` | `netstat` y `lsof` se escriben distinto en Windows, Mac y Linux, y este proyecto tiene como restricción dura que **levante en una máquina que no es la de la estudiante**. Abrir y cerrar un servidor de prueba funciona igual en los tres. **Y la revisión existe por un caso real:** la bitácora del 2026-08-17 tiene una sesión perdida porque un proceso viejo ocupaba el 3000, el agente **afirmó en falso** que el entorno lo había matado, y el `EADDRINUSE` solo apareció un paso después. |
+| Cómo se abre la base para contar | Normal; **en modo `readonly`** | **`readonly`** | Un guion de diagnóstico no tiene por qué poder escribir, y escrito así **lo garantiza la base misma** en vez de la buena intención de quien lo programó. De paso resuelve algo práctico: se puede correr con la aplicación levantada sin pelearse con ella. |
+| Qué hace con `npm run datos` | Correrlo siempre; no correrlo nunca; **solo en un modo, y con confirmación** | **Solo en `/launch limpio`, mostrando antes qué se pierde** | Ese comando **borra la base entera**: se llevaría las cuentas, las citas y la evidencia de las piezas cerradas. El modo normal no lo toca. Y antes de correrlo la skill dice con números qué se va a perder, porque «esto borra datos» es fácil de leer por encima; «se borran 10 citas y 6 cuentas» no. |
+| Cómo se avisa qué no tocar | Una lista fija de advertencias; **avisos razonados sobre los datos de ahora** | **Razonados** | Si hay **una sola** cita futura, la skill avisa que no se cancele **porque se dio cuenta de que es la única**; con cinco no dice nada. Un documento escrito a mano repite esa advertencia para siempre, aunque haya dejado de ser cierta — y una advertencia que ya no aplica enseña a no leer las advertencias. |
+| Si la skill corre las pruebas | Sí, de paso; **no** | **No** | Son dos cosas distintas: esta prepara una demostración, `npm test` verifica el código. Mezclarlas haría que arrancar la aplicación tarde medio minuto, y que quien solo quiere mostrarla se acostumbre a saltearse la salida. |
+
+**Lo que la skill deliberadamente NO hace:** no inventa citas ni cuentas. Si no hay nada para mostrar
+lo dice y explica por qué — para la pieza 8 hacen falta citas pasadas, y la aplicación **no deja
+crearlas** (RN-4): hay que insertarlas a mano en la base, igual que hacen las pruebas. Eso está
+permitido y explicado en `CLAUDE.md`, pero la skill no lo hace sin que se lo pidan.
+
 ## El sistema visual
 
 La apariencia de la aplicación no se inventa en el código: sale de **`VISUALS.md`**, el sistema

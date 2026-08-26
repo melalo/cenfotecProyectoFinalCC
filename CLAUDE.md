@@ -131,6 +131,7 @@ Un slice no se da por cerrado hasta que ese bloque de "cómo probarlo" está esc
 | `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita, ninguna cuenta de cliente y ningún correo registrado: esos se crean desde la aplicación, a partir de las piezas 3, 4 y 7. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
 | `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **277**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4, 26 de la pieza 12, 39 de la pieza 5, 76 de la pieza 7 (58 en `personal.test.js` y 18 en `cambio-de-contrasena.test.js`) y **27 de la pieza 8** (`cierre-de-citas.test.js`). **Los tres criterios de aceptación están cubiertos por completo**: CA-1 y CA-2 desde la pieza 3, y **CA-3 entero desde la pieza 7** — la parte del cliente la trajo la 5, la de Personal la 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
+| `npm run estado` | **Cuenta en qué estado está el proyecto, leyéndolo de la base de datos.** Cuatro revisiones antes de arrancar —puerto libre, `.env`, clave del correo, base creada— y después qué cuentas hay, cuántas citas y de qué tipo, y qué se puede mostrar. **Solo lee** (abre la base en modo `readonly`), así que se puede correr con la aplicación levantada. Existe desde el 2026-08-24, y lo usa la skill `/launch`. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
@@ -168,7 +169,10 @@ proyectoFinal/
 │   ├── plantillas-de-correo.js  qué dice cada correo — solo arma texto, no manda nada
 │   ├── enviador-resend.js el único archivo que habla con un servicio de afuera
 │   └── rutas/             un archivo por grupo de endpoints del API
-├── guiones/             comandos de mantenimiento (hoy: cargar los datos de prueba)
+├── .claude/             la skill propia del proyecto
+│   └── skills/launch/     `/launch`: deja el proyecto levantado y listo para recorrerse
+├── guiones/             comandos de mantenimiento: cargar los datos de prueba, y contar
+│                        en qué estado está el proyecto (`estado.js`)
 ├── estilos/             los archivos .scss que se escriben a mano
 ├── publico/             lo que el navegador recibe tal cual: HTML, JavaScript del navegador
 │   ├── css/               el CSS que SASS genera — no se escribe a mano y no se sube
@@ -197,6 +201,39 @@ todo junto, no se podrían probar los endpoints.
 
 Los nombres de tablas, columnas y endpoints **no se eligen acá**: los fija el bloque *Produce* de
 cada pieza en `PLAN.md`, y se copian de ahí tal cual.
+
+### La skill propia: `/launch`
+
+Existe desde el 2026-08-24 y es **el entregable «skill de arranque»** que pide la consigna del curso:
+*«al menos un skill o comando propio de Claude Code, en la carpeta `.claude/`, que automatiza una
+tarea real del proyecto»*. Vive en `.claude/skills/launch/SKILL.md`.
+
+- **La tarea real que automatiza no se inventó para la entrega.** Es la que se hacía a mano en cada
+  sesión: dos comandos, y después abrir `PROXIMA-SESION.md` para acordarse de con qué cuenta entrar,
+  qué citas hay y cuál no hay que tocar.
+- **El punto de la skill es de dónde saca ese último dato.** Un documento escrito a mano **es una
+  foto** y se pone viejo solo — el 2026-08-24 esa misma tabla dijo «tres citas esperando» cuando
+  quedaban dos, porque entre que se escribió y se leyó alguien cerró una. La skill **le pregunta a la
+  base**, que es la única fuente que no puede quedar desactualizada.
+- **El nombre está en inglés a propósito**, elegido por la estudiante ese día. Es una **excepción a
+  la convención de nombres** de más arriba, que pide español y minúscula, y es del mismo tipo que
+  «vertical slices»: una palabra que se prefiere en inglés aunque el resto esté en español. **No se
+  «corrige».**
+- **La regla la escribe el guion, no la skill.** Todo lo que hay que contar vive en
+  `guiones/estado.js` (`npm run estado`), y el `SKILL.md` solo orquesta: revisar, preguntar cuando
+  hay que destruir algo, levantar, y mostrar. Así el mismo dato se puede pedir sin la skill, y no hay
+  dos versiones de la cuenta que puedan desincronizarse.
+- **`estado.js` abre la base en modo `readonly`**, y eso no es decoración: garantiza **desde la base
+  misma** que un guion de diagnóstico no pueda tocar nada, en vez de confiar en la buena intención de
+  quien lo escribió. De paso deja correrlo con la aplicación levantada.
+- **`npm run datos` nunca se corre solo.** Borra la base entera. La skill lo hace únicamente en el
+  modo `/launch limpio`, y **después de mostrar con números qué se va a perder** y recibir el sí.
+- **Los avisos se razonan, no se copian.** Si hay **una sola** cita futura, la skill avisa que no se
+  cancele **porque se dio cuenta de que es la única**; con cinco no dice nada. Un documento escrito a
+  mano repetiría esa advertencia para siempre, aunque hubiera dejado de ser cierta.
+- **La carpeta `.claude/` ya no está excluida entera del repositorio.** Se excluye solo
+  `.claude/skills/mi-proyecto/`, que es la skill que vino con el material del curso. La razón está
+  escrita en el `.gitignore`.
 
 ### Estilo de código
 

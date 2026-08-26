@@ -2258,3 +2258,95 @@ haya salido de `npm test`.
 3. **El defecto que encontró una persona no lo podía encontrar el API.** La sesión se cerraba bien, el
    dato se borraba bien, y aun así la pantalla mentía. Es el vigésimo caso seguido, y el argumento del
    proyecto a favor de que una pieza no se cierra sin que alguien abra el navegador y mire.
+
+---
+
+### 2026-08-24 (tercera sesión del día) — La skill propia: `/launch`
+
+**El entregable «skill de arranque» de la consigna, construido.** No es una pieza del plan: es el
+punto 3 de los diez entregables obligatorios del curso, que pide *«al menos un skill o comando propio
+de Claude Code, en la carpeta `.claude/`, que automatiza una tarea real del proyecto»*. En la rúbrica
+no tiene criterio propio: se revisa dentro del **criterio 3, «Configuración técnica y generación de
+código»**, junto con el `CLAUDE.md`, el prototipo corriendo y la bitácora.
+
+Nacieron dos archivos —`.claude/skills/launch/SKILL.md` y `guiones/estado.js`— y **ninguna
+dependencia nueva**.
+
+#### La tarea que automatiza no se inventó para la entrega
+
+La consigna advierte, sin decirlo así, la trampa fácil: se puede escribir una skill que **cumpla la
+letra** —existe, está en la carpeta correcta, funciona— y que no automatice nada que alguien haga de
+verdad.
+
+Acá no hizo falta buscar una tarea: **estaba sufrida y documentada**. Para poder recorrer la
+aplicación había que correr dos comandos y después **abrir `PROXIMA-SESION.md` y leer una tabla
+escrita a mano** con las cuentas, las citas y qué no tocar.
+
+#### El argumento de la skill, y salió de un error del mismo día
+
+Un documento escrito a mano **es una foto del momento en que se escribió**. Ese mismo 2026-08-24 esa
+tabla hubo que corregirla **dos veces en una tarde**: decía «tres citas esperando» cuando quedaban
+dos —entre que se escribió y se leyó, la estudiante había cerrado una— y no incluía la cuenta de
+prueba creada durante la revisión.
+
+O sea que **el documento envejeció mientras se lo escribía**. Esa es la tarea real: no correr dos
+comandos, sino tener a mano un dato que no se pueda quedar viejo. La skill no lee el documento: **le
+pregunta a la base**, que es lo que la aplicación usa para funcionar y por lo tanto no puede estar
+desactualizada respecto de sí misma.
+
+#### Un límite que apareció al mirar el código, y que cambió el diseño
+
+La primera versión de la propuesta decía que la skill iba a mostrar las contraseñas de las cuentas
+leyéndolas de la base. **Al ir a mirarlo, era falso: no se puede.** En la base solo queda la huella
+cifrada de cada contraseña —es a propósito, y es lo correcto—, así que ni el propio sistema puede
+volver a leerlas.
+
+Lo que sí se pudo, y quedó: la cuenta de **Personal** la precarga `guiones/datos-de-prueba.js`, y ahí
+la contraseña **está escrita en texto** porque es un dato de prueba inventado. La skill la lee de ahí,
+que es **la fuente de verdad de esa cuenta** — si algún día cambia, la skill lo dice sola. Para los
+clientes dice quiénes son y cuáles tienen la temporal pendiente, y para las claves manda al `README`.
+
+**Vale anotarlo porque el error se detectó antes de prometerlo**, no después de construirlo: la
+propuesta se corrigió sola al ir a verificar en vez de dar por sentado lo que sonaba razonable.
+
+#### Las siete decisiones técnicas
+
+Están completas en `DISENO.md`. Las tres que más conviene poder defender:
+
+1. **La cuenta vive en un guion, no en la skill.** Todo lo que hay que contar está en
+   `guiones/estado.js` (`npm run estado`); el `SKILL.md` solo orquesta. Es la regla de siempre —una
+   regla, un lugar— aplicada acá: el mismo dato se puede pedir **sin Claude Code**, y no hay dos
+   versiones que se puedan desincronizar.
+2. **La base se abre en modo `readonly`.** Un guion de diagnóstico no tiene por qué poder escribir, y
+   escrito así **lo garantiza la base misma** en vez de la buena intención de quien lo programó. De
+   paso deja correrlo con la aplicación levantada.
+3. **Los avisos se razonan, no se copian.** Si hay **una sola** cita futura, la skill avisa que no se
+   cancele **porque se dio cuenta de que es la única**; con cinco no dice nada. Un documento escrito a
+   mano repite esa advertencia para siempre aunque haya dejado de ser cierta — y una advertencia que
+   ya no aplica enseña a no leer las advertencias.
+
+#### La revisión del puerto existe por un caso de esta bitácora
+
+`estado.js` comprueba que el 3000 esté libre **antes** de intentar levantar nada, y lo hace
+intentando ocuparlo un instante y soltándolo —no con `netstat`, que se escribe distinto en cada
+sistema operativo y este proyecto tiene que levantar en una máquina ajena—.
+
+No es una precaución teórica: **la primera entrada de gobernanza de este proyecto, del 2026-08-17, es
+exactamente eso.** El agente afirmó como un hecho que el entorno estaba matando el proceso del
+servidor, y era falso: el proceso seguía vivo ocupando el puerto. Se detectó por el `EADDRINUSE` del
+paso siguiente, no por el razonamiento del agente. **Ahora esa comprobación es la primera línea que
+imprime la skill**, así que el control quedó automatizado en vez de depender de que alguien se
+acuerde.
+
+#### Probada, no solo escrita
+
+Se corrió el procedimiento entero: `npm run estado` con el puerto libre, `npm start` en segundo plano,
+`curl` devolviendo `200`, y `npm run estado` otra vez **detectando el puerto ocupado** y explicando
+las dos causas posibles. Las dos ramas de la revisión se vieron funcionar.
+
+#### Un cambio al `.gitignore`, con su razón escrita
+
+Hasta hoy excluía **`.claude/` entera**, para no subir la skill `mi-proyecto` que vino con el material
+del curso. La consigna exige que la skill propia esté **en `.claude/` dentro del repositorio**, así
+que la exclusión pasó a ser solo `.claude/skills/mi-proyecto/`. Se comprobó con `git add --dry-run`
+que sube `launch` y no sube `mi-proyecto`.
