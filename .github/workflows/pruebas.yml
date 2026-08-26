@@ -33,9 +33,15 @@ name: Pruebas
 # formas son YAML válido y significan lo mismo en la documentación de GitHub, pero con `push:` vacío
 # **este repositorio dejó de disparar corridas**: los push del 2026-08-26 no crearon ninguna, ni una
 # fallida. Escrito explícito no hay nada que interpretar.
+#
+# `workflow_dispatch` agrega **un botón para correr las pruebas a mano** desde la pestaña Actions,
+# sin tener que subir nada. Entró el 2026-08-26 como diagnóstico —para saber si el problema era solo
+# el disparador automático o las Acciones del repositorio entero— y se queda porque sirve sola:
+# después de una corrida roja se puede volver a intentar sin inventar un commit vacío.
 on:
   push:
     branches: ["**"]
+  workflow_dispatch:
 
 jobs:
   pruebas:
