@@ -190,7 +190,7 @@ estudiante:
 
 ## Las convenciones que hay que seguir respetando
 
-Están completas en el `CLAUDE.md` de la carpeta. Las que más se olvidan, **con las cuatro que la
+Están completas en el `CLAUDE.md` del repositorio. Las que más se olvidan, **con las cuatro que la
 pieza 8 agregó marcadas**:
 
 - **`VISUALS.md` manda sobre la apariencia.** Si un color o una medida no está ahí, no se inventa.
