@@ -29,18 +29,17 @@ name: Pruebas
 # rama ya viene de un push, y ese push ya corrió esta misma suite sobre el mismo código. GitHub
 # mostraba dos resultados idénticos y consumía el doble de minutos.
 #
-# «A cualquier rama» se escribe explícito, `branches: ["**"]`, y no dejando `push:` vacío. Las dos
-# formas son YAML válido y significan lo mismo en la documentación de GitHub, pero con `push:` vacío
-# **este repositorio dejó de disparar corridas**: los push del 2026-08-26 no crearon ninguna, ni una
-# fallida. Escrito explícito no hay nada que interpretar.
-#
 # `workflow_dispatch` agrega **un botón para correr las pruebas a mano** desde la pestaña Actions,
-# sin tener que subir nada. Entró el 2026-08-26 como diagnóstico —para saber si el problema era solo
-# el disparador automático o las Acciones del repositorio entero— y se queda porque sirve sola:
-# después de una corrida roja se puede volver a intentar sin inventar un commit vacío.
+# sin tener que subir nada. Nació el 2026-08-26 como diagnóstico y se quedó porque sirve solo:
+# después de una corrida roja se puede volver a intentar sin inventar un commit vacío para forzarla.
+#
+# *Ese día GitHub dejó de crear corridas al subir código y se le echó la culpa a este archivo: se
+# escribió el disparador como `branches: ["**"]` creyendo que `push:` vacío era el problema. No lo
+# era —era una caída de GitHub Actions, incidente crítico abierto a las 15:11 UTC por una falla de
+# base de datos—, así que el filtro se saco y quedó como estaba. La diferencia no es solo estética:
+# `branches` deja afuera los push de etiquetas, y `push:` vacío los incluye.*
 on:
   push:
-    branches: ["**"]
   workflow_dispatch:
 
 jobs:
