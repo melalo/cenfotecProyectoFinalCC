@@ -22,11 +22,14 @@
 
 name: Pruebas
 
-# En cada push a cualquier rama, y en cada pull request. Así nunca hay una rama con las pruebas
-# rotas sin que se note.
+# Solo en cada push, a cualquier rama. Así nunca hay una rama con las pruebas rotas sin que se note.
+#
+# *Cambiado el 2026-08-25, a pedido de la estudiante: antes también corría en cada pull request.* Se
+# quitó ese disparador porque duplicaba trabajo sin agregar información: al abrir un pull request la
+# rama ya viene de un push, y ese push ya corrió esta misma suite sobre el mismo código. GitHub
+# mostraba dos resultados idénticos y consumía el doble de minutos.
 on:
   push:
-  pull_request:
 
 jobs:
   pruebas:

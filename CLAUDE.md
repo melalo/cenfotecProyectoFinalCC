@@ -600,8 +600,14 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
 
 ### Integración continua
 
-Existe desde la pieza 3. Las 250 pruebas corren solas en **cada push y cada pull request**, en
+Existe desde la pieza 3. Las 277 pruebas corren solas en **cada push**, a cualquier rama, en
 **Node 20 y Node 24**, configuradas en `.github/workflows/pruebas.yml`.
+
+- **Corre solo en push, no en pull request.** *Cambiado el 2026-08-25, a pedido de la estudiante:
+  hasta entonces también se disparaba en cada pull request.* Ese segundo disparador no agregaba
+  información — la rama de un pull request ya viene de un push, y ese push ya corrió esta misma
+  suite sobre el mismo código —, así que GitHub mostraba dos resultados idénticos y gastaba el
+  doble de minutos.
 
 - **Ese archivo vive en la raíz del repositorio, no en esta carpeta.** Es la única excepción a la
   regla «todo el trabajo queda adentro de la carpeta del día», autorizada por la estudiante el
