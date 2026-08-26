@@ -28,8 +28,14 @@ name: Pruebas
 # quitó ese disparador porque duplicaba trabajo sin agregar información: al abrir un pull request la
 # rama ya viene de un push, y ese push ya corrió esta misma suite sobre el mismo código. GitHub
 # mostraba dos resultados idénticos y consumía el doble de minutos.
+#
+# «A cualquier rama» se escribe explícito, `branches: ["**"]`, y no dejando `push:` vacío. Las dos
+# formas son YAML válido y significan lo mismo en la documentación de GitHub, pero con `push:` vacío
+# **este repositorio dejó de disparar corridas**: los push del 2026-08-26 no crearon ninguna, ni una
+# fallida. Escrito explícito no hay nada que interpretar.
 on:
   push:
+    branches: ["**"]
 
 jobs:
   pruebas:
