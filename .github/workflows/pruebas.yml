@@ -58,13 +58,28 @@ jobs:
       matrix:
         node: [20, 24]
 
+    # ── Sobre el `@v5` de las dos herramientas prestadas de acá abajo ─────────────────────────
+    #
+    # `actions/checkout` y `actions/setup-node` son dos herramientas que pone GitHub, y el `@v5` es
+    # **su** versión, no la de nada de este proyecto.
+    #
+    # **Estaban en `@v4` hasta el 2026-08-28.** Cada corrida traía un aviso amarillo: esas versiones
+    # están hechas por dentro con Node 20, GitHub lo está retirando de sus máquinas, y las forzaba a
+    # correr con Node 24 avisando que era por cortesía. No rompía nada, pero el día que dejara de
+    # forzarlas la integración continua se habría puesto roja **sin que este proyecto hubiera
+    # cambiado una línea**.
+    #
+    # ⚠️ **Ese Node 20 del aviso NO es el Node 20 de la matriz de arriba**, y confundirlos sería un
+    # error caro: el de arriba es donde corren **las pruebas de este proyecto**, y es una promesa del
+    # `README.md` que se comprueba en cada push. El del aviso era el que usaban por dentro las
+    # herramientas prestadas. Son dos cosas distintas que se llaman igual. **La matriz no se toca.**
     steps:
       # Trae una copia del repositorio a la máquina donde va a correr todo.
       - name: Traer el repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Instalar Node.js ${{ matrix.node }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
           # Guarda las dependencias descargadas para que la próxima vez tarde menos.

@@ -655,6 +655,13 @@ Existe desde la pieza 3. Las 302 pruebas corren solas en **cada push**, a cualqu
   suite sobre el mismo código —, así que GitHub mostraba dos resultados idénticos y gastaba el
   doble de minutos.
 
+- **Las dos herramientas prestadas de GitHub van en `@v5`** desde el 2026-08-28
+  (`actions/checkout` y `actions/setup-node`). Estaban en `@v4` y cada corrida traía un aviso
+  amarillo: esas versiones usan Node 20 por dentro, GitHub lo está retirando de sus máquinas y las
+  forzaba a correr con Node 24. **No rompía nada, pero el día que dejara de forzarlas la integración
+  se habría puesto roja sin que este proyecto cambiara una línea.** ⚠️ **Ese Node 20 no es el de la
+  matriz**: el de la matriz es donde corren las pruebas del proyecto y es una promesa del
+  `README.md`. Son dos cosas distintas que se llaman igual, y **la matriz no se toca**.
 - **Ese archivo vive en la raíz del repositorio**, porque GitHub solo ejecuta los archivos que
   están en `.github/workflows/` en la raíz. *Hasta la migración del 2026-08-26 eso lo convertía en
   la única excepción a la regla «todo el trabajo queda adentro de la carpeta del día», autorizada

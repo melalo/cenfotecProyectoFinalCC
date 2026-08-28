@@ -115,8 +115,9 @@ como fallidos; la cita se crea igual (RF-19).
 
 ## Dos pendientes chicos, de antes
 
-- **La integración continua trae dos avisos amarillos:** `actions/checkout@v4` y
-  `actions/setup-node@v4`. No rompe nada; conviene subirlas a la versión 5 cuando haya un rato.
+- ~~La integración continua trae dos avisos amarillos~~ **HECHO el 2026-08-28:** `actions/checkout`
+  y `actions/setup-node` pasaron a la **versión 5**. Los avisos desaparecieron y la corrida sigue
+  verde en Node 20 y Node 24.
 - **El año del pie de página** sigue escrito a mano («2026»). Anotado en `DISENO.md`.
 - 🆕 **`SEGUIMIENTO.md` está muy desactualizado.** Todavía tiene tareas como «subir a GitHub la
   pieza 1». No molesta a nadie, pero si alguien lo lee esperando el estado real, se confunde.
