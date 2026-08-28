@@ -15,7 +15,8 @@
 // tabla para que se pueda saber a quién no le llegó.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-import { armarCorreoDeConfirmacion } from "./plantillas-de-correo.js"
+import { armarCorreoDeConfirmacion, armarCorreoDeRecuperacion } from "./plantillas-de-correo.js"
+import { MINUTOS_QUE_DURA_EL_ENLACE } from "./recuperacion.js"
 import { escribirMomento } from "./tiempo.js"
 
 /** Los tres tipos de correo del proyecto (bloque *Produce* de la pieza 4). */
@@ -95,7 +96,49 @@ export async function enviarConfirmacionDeCita({ base, enviador, citaId, ahora }
     ahora,
     tipo: TIPO_CONFIRMACION,
     clienteId: datos.clienteId,
+    personalId: null,
     citaId,
+    correo,
+  })
+}
+
+/**
+ * Le manda a una cuenta el enlace para restablecer su contraseña olvidada (RF-3, pieza 9).
+ *
+ * `cuenta` es `{ id, tipo, nombre, correo }`, con el `tipo` de siempre: `"cliente"` o `"personal"`.
+ * **Las dos reciben exactamente el mismo correo**, porque las dos tienen contraseña y las dos se la
+ * pueden olvidar. Lo único que cambia es en cuál de las dos columnas del registro queda anotado a
+ * quién le llegó (REG-3).
+ *
+ * **Nunca lanza un error**, igual que la confirmación: si el envío se cae, se anota la falla y se
+ * sigue. El token ya está guardado cuando esto corre, así que un correo que no sale deja a la
+ * persona sin su enlace —y eso se ve en la tabla—, pero no rompe nada ni deja nada a medias.
+ */
+export async function enviarEnlaceDeRecuperacion({ base, enviador, ahora, cuenta, enlace }) {
+  const negocio = base
+    .prepare("SELECT nombre, telefono FROM configuracion_negocio")
+    .get()
+
+  const correo = armarCorreoDeRecuperacion({
+    nombre: cuenta.nombre,
+    correo: cuenta.correo,
+    enlace,
+    minutosQueDura: MINUTOS_QUE_DURA_EL_ENLACE,
+    // Una base sin el catálogo cargado no tiene la fila del negocio. No debería pasar —`npm run
+    // datos` la carga—, pero un correo con un «undefined» adentro sería peor que uno sin el nombre.
+    negocioNombre: negocio?.nombre ?? "Bienestar y salud",
+    negocioTelefono: negocio?.telefono ?? "",
+  })
+
+  await entregarYRegistrar({
+    base,
+    enviador,
+    ahora,
+    tipo: TIPO_RECUPERACION,
+    clienteId: cuenta.tipo === "cliente" ? cuenta.id : null,
+    personalId: cuenta.tipo === "personal" ? cuenta.id : null,
+    // Sin cita: este correo no es de ninguna reserva (REG-3, comprobación 8 de la pieza 9).
+    citaId: null,
     correo,
   })
 }
@@ -108,16 +151,25 @@ export async function enviarConfirmacionDeCita({ base, enviador, citaId, ahora }
  * solo correo que se trató de entregar, y contarlos como dos haría creer que a alguien le llegó el
  * aviso dos veces.
  */
-async function entregarYRegistrar({ base, enviador, ahora, tipo, clienteId, citaId, correo }) {
+async function entregarYRegistrar({
+  base,
+  enviador,
+  ahora,
+  tipo,
+  clienteId,
+  personalId,
+  citaId,
+  correo,
+}) {
   const exito = await intentarEntregar(enviador, correo)
 
   base
     .prepare(
       `INSERT INTO correo_enviado
-         (destinatario_correo, cliente_id, cita_id, tipo, enviado_en, exito)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+         (destinatario_correo, cliente_id, personal_id, cita_id, tipo, enviado_en, exito)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(correo.para, clienteId, citaId, tipo, escribirMomento(ahora), exito ? 1 : 0)
+    .run(correo.para, clienteId, personalId, citaId, tipo, escribirMomento(ahora), exito ? 1 : 0)
 }
 
 /**

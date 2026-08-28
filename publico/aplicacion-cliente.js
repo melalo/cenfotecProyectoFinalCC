@@ -128,6 +128,36 @@ const campoContrasenaTemporal = document.getElementById("campo-contrasena-tempor
 const requisitosContrasenaNueva = document.getElementById("requisitos-contrasena-nueva")
 const avisoCambiarContrasena = document.getElementById("aviso-cambiar-contrasena")
 
+// ─── Los pedazos que agrega la pieza 9: la contraseña olvidada (RF-3) ───────────────────────
+const pantallaOlvide = document.getElementById("pantalla-olvide")
+const formaOlvide = document.getElementById("forma-olvide")
+const avisoOlvide = document.getElementById("aviso-olvide")
+const botonOlvide = document.getElementById("boton-olvide")
+
+const pantallaRestablecer = document.getElementById("pantalla-restablecer")
+const formaRestablecer = document.getElementById("forma-restablecer")
+const avisoRestablecer = document.getElementById("aviso-restablecer")
+const requisitosContrasenaRestablecer = document.getElementById(
+  "requisitos-contrasena-restablecer",
+)
+
+const campoRecordarCorreo = document.getElementById("recordar-correo")
+const campoCorreoEntrar = formaEntrar.querySelector('input[name="correo"]')
+
+/**
+ * Las cinco pantallas del proyecto, escritas en un solo lugar.
+ *
+ * Va acá abajo y no arriba de todo porque las dos últimas nacen en esta pieza. Quien agregue una
+ * sexta la suma a esta lista y no tiene que tocar nada más.
+ */
+const TODAS_LAS_PANTALLAS = [
+  pantallaEntrada,
+  pantallaCambiarContrasena,
+  pantallaOlvide,
+  pantallaRestablecer,
+  pantallaDentro,
+]
+
 // El paso «¿Quién llama?», que solo ve Personal.
 const pasoQuienLlama = document.getElementById("paso-quien-llama")
 const tarjetaBuscarCliente = document.getElementById("tarjeta-buscar-cliente")
@@ -184,6 +214,12 @@ const MENSAJES = {
     "Antes de seguir tenés que cambiar la contraseña temporal que te dio el negocio.",
   cliente_no_encontrado:
     "No encontramos esa cuenta. Volvé a buscar a la persona en el paso «¿Quién llama?».",
+  // El de la pieza 9. Un solo mensaje para los tres casos —el enlace no existe, ya se usó o se
+  // venció— porque el servidor tampoco los distingue: decir cuál de los tres fue sería contar algo
+  // sobre un enlace ajeno. El mensaje dice qué hacer, que es lo único que le sirve a quien lo lee.
+  token_invalido:
+    "Este enlace ya no sirve: o se venció, o ya lo usaste. Pedí uno nuevo desde «¿Olvidaste tu " +
+    "contraseña?» y vas a recibir otro.",
   contrasena_actual_incorrecta:
     "Esa contraseña temporal no es la correcta. Revisala con quien te la dictó, letra por letra.",
   // Los tres de la pieza 10. Cada uno dice **qué** dato está mal, no «revisá el formulario».
@@ -272,9 +308,7 @@ function mostrarPantallaDentro(cuenta) {
 
   nombreDeQuienEntro.textContent = cuenta.nombre
   tipoDeCuenta.textContent = cuenta.tipo === "personal" ? "personal del negocio" : "cliente"
-  pantallaEntrada.hidden = true
-  pantallaCambiarContrasena.hidden = true
-  pantallaDentro.hidden = false
+  mostrarSoloEstaPantalla(pantallaDentro)
 
   // El menú aparece solo acá adentro: las secciones que enlaza no existen para quien no entró.
   navegacion.hidden = false
@@ -377,11 +411,27 @@ async function volverAlInicio() {
  * (`olvidarAQuienAtiendo`), y sigue teniendo un solo lugar desde donde se llama.
  */
 
+/**
+ * Deja a la vista una sola pantalla y esconde todas las demás.
+ *
+ * **Existe desde la pieza 9, y arregla una trampa que estaba a punto de morder.** Hasta entonces
+ * había tres pantallas, y cada función que mostraba una escondía las otras dos **nombrándolas una
+ * por una**. Eso funciona con tres; con cinco —la 9 trae dos más— alcanza con que alguien se olvide
+ * de nombrar una para que queden dos pantallas dibujadas encima de la otra. Y no lo detectaría
+ * ninguna prueba, porque ninguna mira la página dibujada.
+ *
+ * Es la misma regla del proyecto de siempre, aplicada al frontend: **una cosa, un lugar**. La lista
+ * está escrita una sola vez, y una pantalla nueva se agrega ahí y ya queda cubierta.
+ */
+function mostrarSoloEstaPantalla(cual) {
+  for (const pantalla of TODAS_LAS_PANTALLAS) {
+    pantalla.hidden = pantalla !== cual
+  }
+}
+
 /** La pantalla del cambio obligatorio de la contraseña temporal (pieza 7, RF-4). */
 function mostrarPantallaDeCambio() {
-  pantallaEntrada.hidden = true
-  pantallaDentro.hidden = true
-  pantallaCambiarContrasena.hidden = false
+  mostrarSoloEstaPantalla(pantallaCambiarContrasena)
 
   // Sin menú y sin pie de navegación: RF-4 dice «antes de dejarlo hacer nada más», y las dos únicas
   // salidas de acá son cambiar la contraseña o irse.
@@ -408,9 +458,14 @@ function mostrarPantallaDeCambio() {
 }
 
 function mostrarPantallaEntrada() {
-  pantallaDentro.hidden = true
-  pantallaCambiarContrasena.hidden = true
-  pantallaEntrada.hidden = false
+  mostrarSoloEstaPantalla(pantallaEntrada)
+
+  // El correo recordado y el estado del cuadrito se ponen **acá**, y no solo al abrir la página
+  // (RF-24). Es la misma lección del hallazgo número 20: si dejar la pantalla lista pide tocar dos
+  // cosas, las dos van en la misma función. Puesto solo en el arranque, salir y volver a esta
+  // pantalla mostraría el cuadrito marcado aunque acabara de entrar Personal, que es justo lo que
+  // RN-28 dice que no tiene que pasar.
+  recordarElCorreoDeLaVezPasada()
 
   navegacion.hidden = true
   botonMenu.hidden = true
@@ -2285,9 +2340,218 @@ formaEntrar.addEventListener("submit", async (evento) => {
   // recordar y se deja vacío a propósito.
   contrasenaRecordada = respuesta.cuerpo.debeCambiarContrasena ? escrito.contrasena : null
 
+  // RF-24 y RN-28: acá recién se sabe de qué tipo es la cuenta, y por eso el correo se guarda
+  // **después** de entrar y no al escribirlo.
+  guardarOOlvidarElCorreo(escrito.correo, respuesta.cuerpo.tipo)
+
   formaEntrar.reset()
   mostrarPantallaDentro(respuesta.cuerpo)
 })
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// «Recordar mi correo» (pieza 9, RF-24 y RN-28)
+//
+// Se guarda **en el navegador de quien entra**, no en la base: no es un dato del sistema, es una
+// comodidad de esa computadora. No viaja al servidor y no se comparte entre máquinas.
+//
+// Y **nunca la contraseña**. Lo único que se ahorra es escribir el correo.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+const LLAVE_DEL_CORREO = "correo-recordado"
+const LLAVE_DE_LA_PREFERENCIA = "recordar-el-correo"
+
+/**
+ * Leer y escribir en la memoria del navegador puede **fallar**, y no es raro: pasa en una ventana
+ * de incógnito, o cuando alguien configuró su navegador para no dejar guardar nada. Si fallara sin
+ * que nadie lo atrape, se caería el arranque entero de la aplicación por una comodidad.
+ *
+ * Por eso las dos funciones tragan el error y siguen: sin memoria, el campo del correo aparece
+ * vacío y todo lo demás funciona igual.
+ */
+function leerDeLaMemoria(llave) {
+  try {
+    return window.localStorage.getItem(llave)
+  } catch {
+    return null
+  }
+}
+
+function escribirEnLaMemoria(llave, valor) {
+  try {
+    if (valor === null) window.localStorage.removeItem(llave)
+    else window.localStorage.setItem(llave, valor)
+  } catch {
+    // Sin memoria no se recuerda nada, y ya está. No hay nada que avisarle a nadie.
+  }
+}
+
+/**
+ * Después de entrar: guardar el correo, o borrarlo.
+ *
+ * **La cuenta de Personal nunca se recuerda** (RN-28), esté el cuadrito marcado o no: vive en la
+ * computadora del mostrador, donde se sienta más de una persona a lo largo del día. La regla gana
+ * sobre el cuadrito, y para que la pantalla no diga algo falso, la preferencia queda guardada en
+ * «no» — así la próxima vez el cuadrito aparece desmarcado, que es lo que de verdad está pasando.
+ */
+function guardarOOlvidarElCorreo(correo, tipoDeCuenta) {
+  const quiereQueLoRecuerden = campoRecordarCorreo.checked && tipoDeCuenta !== "personal"
+
+  escribirEnLaMemoria(LLAVE_DE_LA_PREFERENCIA, quiereQueLoRecuerden ? "si" : "no")
+  escribirEnLaMemoria(LLAVE_DEL_CORREO, quiereQueLoRecuerden ? correo : null)
+}
+
+/**
+ * Al abrir la página: dejar el cuadrito y el campo del correo como quedaron la última vez.
+ *
+ * **Viene marcado la primera vez** (RN-28): quien llega primero a esta pantalla es un cliente en su
+ * propia máquina. Por eso «no hay nada guardado» se trata como «sí», y solo un «no» escrito de
+ * verdad lo desmarca.
+ */
+function recordarElCorreoDeLaVezPasada() {
+  campoRecordarCorreo.checked = leerDeLaMemoria(LLAVE_DE_LA_PREFERENCIA) !== "no"
+
+  const correo = leerDeLaMemoria(LLAVE_DEL_CORREO)
+  if (correo && campoRecordarCorreo.checked) campoCorreoEntrar.value = correo
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// La contraseña olvidada (pieza 9, RF-3 y RN-27)
+//
+// Son dos pantallas y dos momentos distintos: **pedir** el enlace, y **usarlo**. En el medio pasa
+// por el correo de la persona, así que entre una y otra la página se cierra y se vuelve a abrir.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** El pedacito de la dirección que trae el código, tal como lo escribe el correo. */
+const MARCA_DEL_ENLACE = "#restablecer="
+
+/** El código que vino en la dirección, mientras la persona elige su contraseña nueva. */
+let codigoDeRecuperacion = null
+
+botonOlvide.addEventListener("click", () => {
+  esconderAviso(avisoOlvide)
+  formaOlvide.reset()
+
+  // El correo que ya escribió en «Entrar» se le trae escrito: si llegó acá es porque lo intentó
+  // ahí, y hacérselo escribir de nuevo sería pedirle dos veces lo mismo.
+  formaOlvide.elements.correo.value = campoCorreoEntrar.value
+
+  mostrarSoloEstaPantalla(pantallaOlvide)
+})
+
+for (const boton of document.querySelectorAll('[data-accion="volver-a-entrar"]')) {
+  boton.addEventListener("click", () => {
+    esconderAviso(avisoEntrar)
+    olvidarElCodigoYLimpiarLaDireccion()
+    mostrarPantallaEntrada()
+  })
+}
+
+formaOlvide.addEventListener("submit", async (evento) => {
+  evento.preventDefault()
+  esconderAviso(avisoOlvide)
+
+  const escrito = datosDeLaForma(formaOlvide)
+  await pedirAlApi("/api/contrasena/olvide", { method: "POST", cuerpo: escrito })
+
+  // **Siempre el mismo mensaje, exista la cuenta o no**, y por eso ni siquiera se mira qué contestó
+  // el servidor: es la misma regla del mensaje genérico de login. Si acá dijera «ese correo no está
+  // registrado», esta pantalla sería una manera de averiguar quién tiene cuenta.
+  //
+  // Y por eso el mensaje está escrito con cuidado: dice «si esa cuenta existe», no «te lo mandamos».
+  mostrarAvisoDeExito(
+    avisoOlvide,
+    "Si esa cuenta existe, ya salió un correo con el enlace para elegir tu contraseña nueva. " +
+      "Vence en 1 hora y sirve una sola vez. Si no lo ves, mirá también la carpeta de correo no " +
+      "deseado.",
+  )
+
+  formaOlvide.reset()
+})
+
+// Los requisitos se repintan con cada tecla, igual que en las otras dos pantallas donde alguien
+// elige una contraseña. Son un espejo de RN-23: el servidor es el que decide.
+formaRestablecer.elements.contrasenaNueva.addEventListener("input", (evento) => {
+  repintarRequisitos(requisitosContrasenaRestablecer, evento.target.value)
+})
+
+formaRestablecer.addEventListener("submit", async (evento) => {
+  evento.preventDefault()
+  esconderAviso(avisoRestablecer)
+
+  const campos = formaRestablecer.elements
+  const nueva = campos.contrasenaNueva.value
+  const repetida = campos.contrasenaRepetida.value
+
+  // Que las dos coincidan no es una regla de negocio, igual que en el cambio obligatorio: el
+  // servidor recibe una sola contraseña y no tiene con qué compararla. Es un colador de dedazos, y
+  // su lugar es el único sitio donde las dos existen.
+  if (nueva !== repetida) {
+    mostrarAviso(
+      avisoRestablecer,
+      "Las dos contraseñas nuevas no son iguales. Revisalas —podés usar el ojito para verlas.",
+    )
+    return
+  }
+
+  const respuesta = await pedirAlApi("/api/contrasena/restablecer", {
+    method: "POST",
+    cuerpo: { codigo: codigoDeRecuperacion, contrasena: nueva },
+  })
+
+  if (respuesta.estado !== 204) {
+    mostrarAviso(
+      avisoRestablecer,
+      respuesta.cuerpo?.error === "contrasena_invalida"
+        ? mensajeDeLaContrasena(respuesta.cuerpo)
+        : mensajeDelError(respuesta.cuerpo),
+    )
+    return
+  }
+
+  formaRestablecer.reset()
+  repintarRequisitos(requisitosContrasenaRestablecer, "")
+  olvidarElCodigoYLimpiarLaDireccion()
+
+  // **No se abre la sesión sola.** Se la manda a entrar con la contraseña nueva, y escribirla una
+  // vez es lo que le confirma que quedó donde ella cree que quedó.
+  mostrarPantallaEntrada()
+  mostrarAvisoDeExito(avisoEntrar, "Listo: ya podés entrar con tu contraseña nueva.")
+})
+
+/**
+ * Si la dirección trae un código, deja la pantalla de elegir la contraseña nueva.
+ *
+ * Devuelve `true` cuando encontró uno, para que el arranque sepa que ya hay una pantalla puesta y
+ * no muestre otra encima.
+ */
+function abrirElEnlaceSiVinoUno() {
+  const direccion = window.location.hash
+  if (!direccion.startsWith(MARCA_DEL_ENLACE)) return false
+
+  codigoDeRecuperacion = direccion.slice(MARCA_DEL_ENLACE.length)
+  if (codigoDeRecuperacion === "") return false
+
+  repintarRequisitos(requisitosContrasenaRestablecer, "")
+  mostrarSoloEstaPantalla(pantallaRestablecer)
+  return true
+}
+
+/**
+ * Borra el código de la memoria y de la barra de direcciones.
+ *
+ * Lo segundo importa: si el código se quedara escrito ahí, recargar la página volvería a abrir esta
+ * pantalla con un enlace que ya se usó, y quedaría copiado en el historial del navegador para quien
+ * use esa computadora después.
+ *
+ * Se cambia con `replaceState` y no tocando `location.hash` directamente, porque esto último
+ * **agrega una entrada al historial**: el botón «atrás» del navegador traería el código de vuelta.
+ */
+function olvidarElCodigoYLimpiarLaDireccion() {
+  codigoDeRecuperacion = null
+  if (window.location.hash !== "") {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search)
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Cambiar la contraseña temporal (pieza 7, RF-4 y RN-11)
@@ -2581,9 +2845,14 @@ async function arrancar() {
 
   if (respuesta.estado === 200) {
     mostrarPantallaDentro(respuesta.cuerpo)
-  } else {
-    mostrarPantallaEntrada()
+    return
   }
+
+  // El enlace del correo manda sobre todo lo demás: si la dirección trae un código, quien abrió
+  // la página no vino a entrar, vino a elegir su contraseña nueva.
+  if (abrirElEnlaceSiVinoUno()) return
+
+  mostrarPantallaEntrada()
 }
 
 arrancar()

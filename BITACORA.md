@@ -2350,3 +2350,95 @@ Hasta hoy excluía **`.claude/` entera**, para no subir la skill `mi-proyecto` q
 del curso. La consigna exige que la skill propia esté **en `.claude/` dentro del repositorio**, así
 que la exclusión pasó a ser solo `.claude/skills/mi-proyecto/`. Se comprobó con `git add --dry-run`
 que sube `launch` y no sube `mi-proyecto`.
+
+
+### 2026-08-28 — Pieza 9: restablecer la contraseña olvidada. Y tres cosas que aparecieron preguntando
+
+**La pieza 9 quedó CERRADA el mismo día**: construida, probada y revisada en el navegador. Pero lo
+que más deja esta sesión no es la pieza: son **tres cosas que aparecieron porque la estudiante
+preguntó**, y las tres corrigieron algo que estaba escrito mal.
+
+#### La pieza, en corto
+
+Dos endpoints (`POST /api/contrasena/olvide` y `POST /api/contrasena/restablecer`), la tabla
+`token_recuperacion`, el correo con el enlace, y dos pantallas nuevas. **21 pruebas nuevas, escritas
+antes del código y vistas fallar primero** — la corrida previa dio «tests 19, pass 0, fail 19», y
+fallaban por la razón correcta: los endpoints no existían, así que el servidor devolvía la página en
+vez de JSON.
+
+**Sus pruebas tienen algo que ninguna otra del proyecto: un reloj que se puede mover.** Las demás
+paran el tiempo en un martes y no lo mueven nunca. Acá **el paso del tiempo es la regla** (RN-27), así
+que hay una prueba que adelanta 61 minutos y comprueba que el enlace ya no sirve, y otra que adelanta
+59 y comprueba que todavía sí. Sin eso, comprobar el vencimiento obligaría a esperar una hora.
+
+**Y obligó a rehacer una tabla.** `correo_enviado.cliente_id` era obligatoria desde la pieza 4, cuando
+el único correo del sistema era la confirmación de una cita y toda cita tiene un cliente. El de
+recuperación **también le llega a Personal**, que no es cliente de nadie, y REG-3 dice **cada** correo.
+Como SQLite no sabe volver opcional una columna que ya existe, la tabla se rehace copiando todas sus
+filas dentro de una transacción. **Se comprobó primero contra una copia de la base de trabajo real**:
+sus 8 correos, 11 citas y 7 clientes quedaron intactos.
+
+#### Lo primero que apareció preguntando: un dato ya decidido que se buscó mal, tres veces
+
+`PROXIMA-SESION.md` decía que el vencimiento del enlace era una decisión abierta: «no lo inventes,
+preguntá». Se preguntó, la estudiante eligió **1 hora**, y quedó escrito como decisión del día.
+
+**Y estaba decidido desde el 11 de agosto**, en la tabla «Otras decisiones» de `DISENO.md`:
+«Vencimiento del enlace de recuperación — 15 min, 1 hora, 24 horas → 1 hora». Apareció porque **ella
+preguntó de dónde salían los 7 días de la sesión**, y esa fila estaba dos renglones más abajo.
+
+No hubo daño —eligió lo mismo—, pero la falla es real y el proyecto tiene una regla justamente para
+eso. **Por qué se escapó, que es lo útil:** esa tabla mezcla decisiones técnicas (qué framework, qué
+servicio de correo) con **dos reglas de negocio con número**. Nadie busca una regla de negocio en la
+tabla donde se eligió Express. **Se corrigió lo escrito** en cuatro lugares, sin maquillarlo: RN-27
+ahora dice que la decisión es del 11 de agosto y que la búsqueda falló.
+
+#### Lo segundo: una regla que la estudiante quiso cambiar después de vivirla
+
+Abrió la aplicación para probar la pieza 9 y **se encontró ya adentro sin haber escrito nada**. Le
+pareció mal. Era la sesión de 7 días que ella misma había elegido el 11 de agosto, entre tres
+opciones, sin haberla visto funcionar nunca.
+
+**La cambió a 4 horas.** Es **RN-29**, y con eso la regla salió de la tabla de decisiones técnicas y
+pasó a `ESPECIFICACION.md`, que es donde vive una regla de negocio con un número. **Ya no queda
+ninguna escondida ahí.**
+
+Y aparecieron **2 pruebas nuevas** que antes no existían: ese número vivía en una constante que nadie
+vigilaba, así que **cambiarlo por accidente no rompía nada**. Se vieron fallar primero
+(`Max-Age=604800` contra los 14400 esperados).
+
+**La fila vieja de `DISENO.md` quedó tachada, no borrada.** Cambiar de opinión es válido; borrar el
+rastro de la decisión original, no.
+
+#### Lo tercero: el hallazgo 21, y es de una clase nueva
+
+Probando, la estudiante tocó el botón del correo y el navegador mostró *«This site can't be
+reached»*. **No era el código.** Resend le había puesto encima un rastreador de clics de Amazon
+(`awstrack.me`), y ese rastreador no abrió. Nuestro enlace viajaba adentro, entero.
+
+**Es el primero de los 21 hallazgos del proyecto que no es visual ni del código.** Los veinte
+anteriores salieron de mirar la pantalla; este salió de mirar **la frontera con un servicio de
+afuera**. Y ninguna prueba automática lo podía detectar: las 21 de la pieza estaban en verde, porque
+comprueban que **de este lado se manda lo correcto**.
+
+**Lo que salvó la prueba fue una decisión tomada por otra razón.** El correo ya traía la dirección
+escrita **también como texto suelto**, pensada para programas de correo que no muestran botones. Un
+texto suelto no es un enlace, así que el rastreador no lo toca.
+
+Se arregló de dos maneras, las dos con prueba: el botón lleva **`ses:no-track`** —la marca con la que
+Amazon lo deja afuera del rastreo—, y la dirección **dejó de ser el plan B** para presentarse en
+igualdad. **Y funcionó:** al volver a probar, el botón llevó bien. Un atributo de una línea resolvió
+un problema que parecía estar fuera de nuestro alcance.
+
+#### Dos cosas más de la sesión
+
+**Se construyó el «Recordarme» que la pieza 8 había dejado planteado.** Es **recordar el correo**, no
+la sesión, y **no aplica a la cuenta de Personal**, que vive en la computadora del mostrador. Como no
+lo pedía ningún requisito, **se escribió primero el requisito**: RF-24 y RN-28.
+
+**Y se borró `DISENO1.md`.** La idea del 17 de agosto era tener `DISENO.md` compacto y `DISENO1.md`
+completo. **Se dio vuelta solo:** `DISENO.md` creció hasta 692 líneas con las decisiones de cada
+pieza, y `DISENO1.md` se quedó en 256 sin actualizarse — todavía decía que la sesión duraba 7 días. Un
+documento que dice algo falso es peor que no tenerlo.
+
+**`npm test`: 302 de 302.**

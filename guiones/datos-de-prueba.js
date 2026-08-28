@@ -160,6 +160,7 @@ export function cargarDatosDePrueba(base) {
   base.exec(`
     -- \`correo_enviado\` va primero de todo (pieza 4): apunta a \`cita\` y a \`cliente\`, y con las
     -- llaves foráneas encendidas SQLite se niega a borrar una fila que alguien todavía señala.
+    DELETE FROM token_recuperacion;
     DELETE FROM correo_enviado;
     DELETE FROM cita;
     DELETE FROM servicio_proveedor;

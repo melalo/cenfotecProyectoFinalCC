@@ -173,8 +173,33 @@
                   />
                 </label>
 
+                <!--
+                  «Recordar mi correo» (RF-24, RN-28). Recuerda **el correo, no la sesión**: la
+                  sesión ya dura 7 días desde la pieza 1. Lo que esto ahorra es escribir el correo
+                  cuando sí hay que volver a entrar.
+
+                  Vive en el navegador de quien entra, no en la base. Y **no aplica a la cuenta de
+                  Personal** (RN-28): esa vive en la computadora del mostrador, donde se sienta más
+                  de una persona.
+                -->
+                <label class="campo campo--cuadrito">
+                  <input id="recordar-correo" class="campo__cuadrito" type="checkbox" checked />
+                  <span class="campo__etiqueta campo__etiqueta--cuadrito">Recordar mi correo</span>
+                </label>
+
                 <button class="boton" type="submit">Entrar</button>
                 <p id="aviso-entrar" class="aviso" role="alert" hidden></p>
+
+                <!--
+                  El enlace a la pieza 9. Va **abajo del botón**, no arriba: quien llega a esta
+                  pantalla viene a entrar, y solo si eso le falla necesita esta puerta.
+
+                  Es un `<button>` y no un `<a>` porque no lleva a otra página: cambia de pantalla
+                  dentro de la misma. La clase `enlace-en-texto` le da cara de enlace.
+                -->
+                <button id="boton-olvide" class="enlace-en-texto" type="button">
+                  ¿Olvidaste tu contraseña?
+                </button>
               </form>
             </article>
 
@@ -327,6 +352,114 @@
               </form>
 
               <button class="boton boton--suave" type="button" data-accion="salir">Salir</button>
+            </article>
+          </div>
+        </section>
+
+        <!--
+          ══ Pantalla de pedir el enlace (pieza 9, RF-3) ═══════════════════════════════════════
+
+          Una pantalla completa y no una tarjeta más, por la misma razón que la del cambio
+          obligatorio: quien llega acá no puede entrar, así que no hay menú ni nada más que hacer.
+        -->
+        <section id="pantalla-olvide" class="pantalla" hidden>
+          <div>
+            <article class="tarjeta tarjeta--sola">
+              <h2 class="tarjeta__titulo">¿Olvidaste tu contraseña?</h2>
+              <p class="tarjeta__nota">
+                Escribí el correo de tu cuenta y te mandamos un enlace para elegir una nueva. El
+                enlace vence en 1 hora y sirve una sola vez.
+              </p>
+
+              <form id="forma-olvide" class="forma" novalidate>
+                <label class="campo">
+                  <span class="campo__etiqueta">Correo</span>
+                  <input
+                    class="campo__control"
+                    type="email"
+                    name="correo"
+                    autocomplete="email"
+                    inputmode="email"
+                    required
+                  />
+                </label>
+
+                <button class="boton" type="submit">Mandarme el enlace</button>
+                <p id="aviso-olvide" class="aviso" role="alert" hidden></p>
+              </form>
+
+              <button class="boton boton--suave" type="button" data-accion="volver-a-entrar">
+                Volver a entrar
+              </button>
+            </article>
+          </div>
+        </section>
+
+        <!--
+          ══ Pantalla de elegir la contraseña nueva (pieza 9, RF-3) ════════════════════════════
+
+          Acá se llega **desde el enlace del correo**, que trae el código en la dirección después
+          del `#`. Es la única pantalla del proyecto que cambia una contraseña sin sesión abierta, y
+          tiene que ser así: quien la olvidó justamente no puede entrar. Lo que hace las veces de
+          identificación es el código (RN-27).
+        -->
+        <section id="pantalla-restablecer" class="pantalla" hidden>
+          <div>
+            <article class="tarjeta tarjeta--sola">
+              <h2 class="tarjeta__titulo">Elegí tu contraseña nueva</h2>
+              <p class="tarjeta__nota">
+                Esta va a ser tu contraseña de ahora en adelante. La anterior deja de funcionar.
+              </p>
+
+              <form id="forma-restablecer" class="forma" novalidate>
+                <label class="campo">
+                  <span class="campo__etiqueta">Contraseña nueva</span>
+                  <input
+                    class="campo__control"
+                    type="password"
+                    name="contrasenaNueva"
+                    autocomplete="new-password"
+                    aria-describedby="requisitos-contrasena-restablecer"
+                    required
+                  />
+                </label>
+
+                <!--
+                  Los mismos tres requisitos de siempre, con la misma clase y el mismo `aria-live`.
+                  Son un **espejo** de RN-23: el servidor es el que decide. Y se ven desde el
+                  principio, igual que en el cambio obligatorio, porque acá elegir una contraseña
+                  **es** la tarea.
+                -->
+                <ul id="requisitos-contrasena-restablecer" class="requisitos" aria-live="polite">
+                  <li class="requisito" data-requisito="largo">
+                    Al menos 6 caracteres<span class="solo-lectores"></span>
+                  </li>
+                  <li class="requisito" data-requisito="letra-y-numero">
+                    Una letra mayúscula y un número<span class="solo-lectores"></span>
+                  </li>
+                  <li class="requisito" data-requisito="sin-acentos">
+                    No tildes<span class="solo-lectores"></span>
+                  </li>
+                </ul>
+
+                <label class="campo">
+                  <span class="campo__etiqueta">Repetí la contraseña nueva</span>
+                  <input
+                    class="campo__control"
+                    type="password"
+                    name="contrasenaRepetida"
+                    autocomplete="new-password"
+                    required
+                  />
+                </label>
+
+                <button class="boton" type="submit">Guardar mi contraseña</button>
+                <p id="aviso-restablecer" class="aviso" role="alert" hidden></p>
+              </form>
+
+              <button class="boton boton--suave" type="button" data-accion="volver-a-entrar">
+                Volver a entrar
+              </button>
             </article>
           </div>
         </section>

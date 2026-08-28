@@ -220,3 +220,49 @@ test("los datos siguen ahí después de apagar y volver a levantar la aplicació
   assert.equal(entrada.estado, 200)
   assert.equal(entrada.cuerpo.nombre, ANA.nombre)
 })
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Cuánto dura la sesión (RN-29)
+//
+// Esta prueba no existía hasta el 2026-08-28, y su ausencia fue el problema: el número vivía en una
+// constante que nadie vigilaba, así que **cambiarlo por accidente no rompía nada**. Ahora sí.
+//
+// Mira el encabezado `Set-Cookie` en crudo, y por eso no usa `crearNavegador`: ese ayudante se
+// queda con la cookie y tira el resto, que es justamente lo que acá hace falta leer.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Las 4 horas de RN-29, escritas en segundos, que es como viajan en la cookie. */
+const SEGUNDOS_QUE_TIENE_QUE_DURAR = 4 * 60 * 60
+
+test("la sesión dura 4 horas, ni más ni menos (RN-29)", async (t) => {
+  const entorno = await crearEntornoDePrueba(t)
+
+  const respuesta = await fetch(entorno.direccion + "/api/registro", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(ANA),
+  })
+
+  const [galleta] = respuesta.headers.getSetCookie()
+  assert.match(
+    galleta,
+    new RegExp(`Max-Age=${SEGUNDOS_QUE_TIENE_QUE_DURAR}(;|$)`),
+    `la cookie tiene que decirle al navegador que la guarde ${SEGUNDOS_QUE_TIENE_QUE_DURAR} segundos`,
+  )
+})
+
+test("entrar con contraseña da una sesión de la misma duración que registrarse (RN-29)", async (t) => {
+  const entorno = await crearEntornoDePrueba(t)
+  await crearNavegador(entorno)("/api/registro", { method: "POST", cuerpo: ANA })
+
+  const respuesta = await fetch(entorno.direccion + "/api/sesion", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ correo: ANA.correo, contrasena: ANA.contrasena }),
+  })
+
+  // Las dos puertas que abren sesión tienen que dar lo mismo. Si se separaran, una de las dos
+  // quedaría vieja el día que el número cambie — que es exactamente lo que pasó con este número.
+  const [galleta] = respuesta.headers.getSetCookie()
+  assert.match(galleta, new RegExp(`Max-Age=${SEGUNDOS_QUE_TIENE_QUE_DURAR}(;|$)`))
+})

@@ -73,10 +73,17 @@ Estas te van a hacer construir lo incorrecto si no las sabés:
    modificar, y la ficha que el docente aprobó el 3 de agosto. **Construí siempre contra
    `ESPECIFICACION.md`.** La explicación completa está en la entrada del 2026-08-17 de
    `BITACORA.md`.
-2. **`DISENO1.md` y `SEGUIMIENTO.md` no están en el repositorio** — están excluidos por
-   `.gitignore`. Si los ves mencionados en algún documento y no los encontrás, no falta nada:
-   `DISENO1.md` es la versión larga de `DISENO.md` y vive solo en la máquina de la estudiante.
-   **`DISENO.md` es la versión válida y completa para trabajar.**
+2. **`SEGUIMIENTO.md` no está en el repositorio** — está excluido por `.gitignore`. Si lo ves
+   mencionado en algún documento y no lo encontrás, no falta nada: es el documento de seguimiento
+   personal de la estudiante y vive solo en su máquina.
+
+   **Y hubo un `DISENO1.md`, que se borró el 2026-08-28.** La idea original (2026-08-17) era tener
+   dos versiones del diseño: `DISENO.md` compacto —de dos páginas, para subir— y `DISENO1.md`
+   completo, para trabajar. **Eso se dio vuelta solo:** `DISENO.md` fue creciendo con las decisiones
+   de cada pieza hasta las 692 líneas, mientras que `DISENO1.md` se quedó en 256 y **dejó de
+   actualizarse** — todavía decía que la sesión duraba 7 días cuando ya duraba 4 horas (RN-29). Un
+   documento que dice algo falso es peor que no tenerlo, así que se borró. **`DISENO.md` es el
+   diseño, y el único.** Si lo ves nombrado en `BITACORA.md`, es historia y está bien que siga ahí.
 3. **Los documentos mandan sobre el código.** Si al construir descubrís que la especificación o el
    diseño están mal o incompletos, **se corrige primero ese documento, y después se escribe el
    código**. Nunca al revés, y nunca solo en el código.
@@ -305,7 +312,7 @@ Lo que carga hoy. El comando lo lista en pantalla al terminar:
 npm test
 ```
 
-**Hoy corre 277 pruebas**, todas en `pruebas/`:
+**Hoy corre 302 pruebas**, todas en `pruebas/`:
 
 - **14 de la pieza 1** (`autenticacion.test.js`): registrarse, entrar, el mensaje idéntico cuando el
   correo no existe y cuando la contraseña está mal, la contraseña cifrada, el correo repetido, la
@@ -383,7 +390,7 @@ tres reglas que el curso exige proteger:
 
 ### Corren solas en cada push
 
-Desde la pieza 3, **estas 277 pruebas se corren automáticamente en cada `push`**, sin que nadie escriba `npm test`. Lo hace GitHub Actions, configurado en
+Desde la pieza 3, **estas 302 pruebas se corren automáticamente en cada `push`**, sin que nadie escriba `npm test`. Lo hace GitHub Actions, configurado en
 `.github/workflows/pruebas.yml`.
 
 Ese archivo está en la **raíz del repositorio**, que es donde GitHub los busca: solo ejecuta los
@@ -393,7 +400,7 @@ que vivía afuera de su carpeta** — una excepción autorizada y explicada en `
 proyecto a su propio repositorio dejó de ser una excepción: ahora la raíz del repositorio y la raíz
 del proyecto son la misma.*
 
-Para ver el resultado: en GitHub, pestaña **Actions**. Verde es que las 277 pasaron, en las dos
+Para ver el resultado: en GitHub, pestaña **Actions**. Verde es que las 302 pasaron, en las dos
 versiones de Node. *(Este número decía «95» hasta el 2026-08-21 y «250» hasta el 2026-08-24: se había
 quedado viejo mientras las pruebas crecían pieza a pieza.)*
 
@@ -402,8 +409,8 @@ quedado viejo mientras las pruebas crecían pieza a pieza.)*
 - **`.env`** — las claves. Cada quien crea el suyo a partir de `.env.ejemplo`.
 - **La base de datos** — se genera con `npm run datos`.
 - **`node_modules/`** — se genera con `npm install`.
-- **`DISENO1.md` y `SEGUIMIENTO.md`** — documentos locales de la estudiante, excluidos por
-  `.gitignore`. No los necesitás.
+- **`SEGUIMIENTO.md`** — documento local de la estudiante, excluido por `.gitignore`. No lo
+  necesitás. *(Había también un `DISENO1.md`; se borró el 2026-08-28 — ver más arriba.)*
 - **`.claude/`** — la skill con la que se generó el enunciado del proyecto.
 
 ## Estructura del proyecto

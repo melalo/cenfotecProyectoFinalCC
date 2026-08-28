@@ -4,7 +4,6 @@
 # la estudiante — subirla sería devolverle al docente lo que él mismo dio.
 # *Cambiado el 2026-08-24: antes esta línea excluía `.claude/` entera.*
 .claude/skills/mi-proyecto/
-DISENO1.md
 SEGUIMIENTO.md
 
 # Se generan con un comando, no se suben al repositorio

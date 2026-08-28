@@ -8,12 +8,25 @@
 // servidor: si alguien cambia el contenido de la galleta —por ejemplo, para decir que es otra
 // persona— la firma deja de corresponder y el servidor la descarta.
 //
-// La sesión dura 7 días (`DISENO.md`, «Duración de la sesión de login»).
+// La sesión dura 4 horas (RN-29).
 
 import { createHmac, timingSafeEqual } from "node:crypto"
 
 const NOMBRE_DE_LA_COOKIE = "sesion"
-const SEGUNDOS_QUE_DURA = 7 * 24 * 60 * 60
+/**
+ * Cuánto dura la sesión sin volver a escribir la contraseña: **4 horas** (RN-29).
+ *
+ * **Eran 7 días hasta el 2026-08-28**, decididos el 2026-08-11 en la sesión de diseño. La estudiante
+ * los cambió después de vivirlo: abrió la aplicación dos días más tarde, se encontró adentro sin
+ * haber escrito nada, y le pareció mal. El razonamiento completo está en RN-29 de
+ * `ESPECIFICACION.md`.
+ *
+ * ⚠️ **Estas 4 horas no tienen NADA que ver con las otras 4 horas del proyecto**, la ventana para
+ * cancelar una cita (RN-5). Son dos reglas independientes que eligieron el mismo número por
+ * casualidad. Si un día una de las dos cambia, la otra **no** cambia con ella: son constantes
+ * distintas, en archivos distintos, y así tiene que seguir.
+ */
+const SEGUNDOS_QUE_DURA = 4 * 60 * 60
 
 export function crearSesiones(sesionSecreto) {
   function firmar(contenido) {

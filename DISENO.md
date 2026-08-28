@@ -28,11 +28,11 @@ Cliente (navegador)
 *Nota de alcance: el diseño agrega una cuenta de tipo Personal (la asistente del negocio), que
 usa la misma aplicación para registrar las citas que le llegan por teléfono — así no hay una
 segunda fuente de verdad que se pueda desincronizar con la de la app. No contradice
-`PROYECTO.md`; lo completa. Detalle completo en `DISENO1.md`.*
+`PROYECTO.md`; lo completa.*
 
 ## Componentes
 
-**1. Autenticación** — Login y sesión (7 días) para dos tipos de cuenta (Cliente y Personal,
+**1. Autenticación** — Login y sesión (**4 horas**, RN-29) para dos tipos de cuenta (Cliente y Personal,
 esta última precargada), y recuperación de contraseña por correo (enlace de un solo uso, vence
 en 1 hora). *Límite:* los demás componentes le preguntan quién es y de qué tipo antes de dejarla
 actuar; no sabe nada de citas ni servicios.
@@ -89,8 +89,8 @@ cada acción al backend por el API. *Límite:* no decide ninguna regla de negoci
   cliente o Personal), para poder distinguir las cancelaciones normales de las que Personal hizo
   dentro de las 4 horas; y si fue completada o no asistió: **qué cuenta de Personal la marcó y
   cuándo** (RN-17, RN-19).
-- **Correo enviado** — cliente destinatario, cita relacionada (no aplica a recuperación de
-  contraseña), tipo, fecha de envío, si tuvo éxito. *(Existe desde la pieza 4, como tabla
+- **Correo enviado** — **destinatario: un cliente o la cuenta de Personal, solo uno de los dos**,
+  cita relacionada (no aplica a recuperación de contraseña), tipo, fecha de envío, si tuvo éxito. *(Existe desde la pieza 4, como tabla
   `correo_enviado`. Guarda **también los envíos que fallaron**: un registro que solo anotara los
   exitosos no serviría para lo único que hace falta preguntarle, que es a quién no le llegó su
   aviso.)*
@@ -102,7 +102,8 @@ Categoría 1 ──> N Servicio
 Cliente 1 ──> N Cita          Servicio 1 ──> N Cita         Proveedor 1 ──> N Cita
 Servicio N <──> N Proveedor          Personal 1 ──> N Cita (canal "asistida")
 Cliente 1 ──> N Correo enviado     Cita 1 ──> N Correo enviado (opcional)
-Cliente 1 ──> N Token de recuperación
+Personal 1 ──> N Correo enviado (pieza 9: el de recuperar la contraseña)
+Cliente 1 ──> N Token de recuperación     Personal 1 ──> N Token de recuperación
 ```
 
 El campo **canal** es el mismo dato que necesita el reporte semestral de `NEGOCIO.md` (en línea
@@ -192,7 +193,7 @@ producción real.
 | Acceso a SQLite | `better-sqlite3`, un ORM | `better-sqlite3` | Más directo para un modelo de datos chico. |
 | Servicio de correo | Resend, SendGrid | Resend | Más simple de configurar a este tamaño. |
 | Vencimiento del enlace de recuperación | 15 min, 1 hora, 24 horas | 1 hora | Tiempo suficiente sin dejarlo abierto de más. |
-| Duración de la sesión de login | Hasta cerrar el navegador, 7 días, 30 días | 7 días | Evita reiniciar sesión seguido, sin dejarla abierta indefinidamente. |
+| ~~Duración de la sesión de login~~ **(esta fila ya no manda)** | Hasta cerrar el navegador, 7 días, 30 días | ~~7 días~~ → **4 horas** | **Superada el 2026-08-28: la regla se mudó a `ESPECIFICACION.md` y es RN-29.** Se eligieron 7 días el 2026-08-11; la estudiante los cambió a 4 horas después de vivirlo. **La fila se deja tachada y no se borra**, porque es la prueba de que la decisión original existió y de dónde salió. La razón completa del cambio está en RN-29. |
 
 ## Decisiones tomadas al construir la pieza 1
 
@@ -202,7 +203,7 @@ y quedan acá, con su razón, porque afectan a todas las piezas siguientes.
 | Decisión | Opciones consideradas | Elección | Razón |
 |---|---|---|---|
 | Cómo se cifra la contraseña | `scrypt` del módulo `crypto` que Node ya trae, `bcrypt` como dependencia aparte | `scrypt` de Node | No agrega ninguna dependencia y, sobre todo, no hay que compilar nada en la máquina de quien clone el repositorio — que es la condición que el `README.md` promete. Cada contraseña se guarda como `sal:huella`, con una sal distinta por cuenta, y se compara en tiempo constante. |
-| Cómo se sostiene la sesión de 7 días | Cookie firmada por el servidor, sesión guardada en la memoria del servidor, sesión guardada en la base | Cookie firmada con `SESION_SECRETO` | La memoria del servidor se pierde al reiniciar, y la comprobación 6 de la pieza 1 apaga y vuelve a levantar la aplicación. La cookie firmada sobrevive el reinicio y no obliga a montar un almacén de sesiones. La firma es lo que impide que alguien se fabrique una cookie a mano. |
+| Cómo se sostiene la sesión (7 días entonces, **4 horas** desde el 2026-08-28 — RN-29; la elección de abajo no cambió con el número) | Cookie firmada por el servidor, sesión guardada en la memoria del servidor, sesión guardada en la base | Cookie firmada con `SESION_SECRETO` | La memoria del servidor se pierde al reiniciar, y la comprobación 6 de la pieza 1 apaga y vuelve a levantar la aplicación. La cookie firmada sobrevive el reinicio y no obliga a montar un almacén de sesiones. La firma es lo que impide que alguien se fabrique una cookie a mano. |
 | Con qué corren las pruebas | `node --test`, que Node ya trae, Jest, Vitest | `node --test` | Misma razón que el cifrado: cero dependencias que instalar o configurar. Obliga a que los archivos de prueba se llamen `algo.test.js`, que es un requisito de la herramienta y no una elección de estilo. |
 | Cuándo se compilan los estilos SASS | Un comando aparte que haya que recordar, un paso automático dentro de `npm start` | Paso automático dentro de `npm start` | Mantiene el contrato de arranque del `README.md` en cuatro comandos. Quien clona el repositorio no tiene que saber que SASS existe. |
 | Cómo se lee el archivo `.env` | La dependencia `dotenv`, la bandera `--env-file` de Node | `dotenv` | La bandera pide Node 22.9 o superior, y el `README.md` promete que el proyecto corre desde Node 20. Cambiar el README sería cambiar una promesa del curso para acomodar una comodidad del código. |
@@ -550,6 +551,132 @@ lo dice y explica por qué — para la pieza 8 hacen falta citas pasadas, y la a
 crearlas** (RN-4): hay que insertarlas a mano en la base, igual que hacen las pruebas. Eso está
 permitido y explicado en `CLAUDE.md`, pero la skill no lo hace sin que se lo pidan.
 
+## Decisiones tomadas al construir la pieza 9
+
+*Del 2026-08-28. La pieza que restablece la contraseña olvidada (RF-3). Es corta porque el correo ya
+estaba resuelto desde la pieza 4 y la regla de qué contraseña se acepta desde la pieza 1: esta pieza
+**las llama, no las vuelve a escribir**.*
+
+| Qué se decidió | Alternativas | Elegida | Por qué |
+|---|---|---|---|
+| **Cuánto vive el enlace** | 15 min; **1 hora**; 24 horas | **1 hora** (RN-27) | **Ya estaba decidido desde el 2026-08-11**, en «Otras decisiones» de este mismo archivo. `PLAN.md` decía solo «con vencimiento», y `PROXIMA-SESION.md` mandaba preguntarlo — los dos se escribieron sin mirar esta tabla. El 2026-08-28 se volvió a preguntar y la estudiante eligió lo mismo, así que no hubo daño; lo que hubo fue **una búsqueda que falló dos veces sobre el mismo dato**. La lección está abajo. |
+| **Dónde apunta el enlace** | Una página nueva; **la misma página, con el código en la dirección** | **La misma página** | La aplicación es una sola página (`publico/index.html`) y toda la navegación ya se hace mostrando y escondiendo secciones. Una página nueva significaría un segundo HTML con su propio encabezado, su propio pie y su propia copia de los estilos, para una pantalla de un solo campo. El enlace es `http://localhost:3000/#restablecer=CÓDIGO`, y al abrir, la página lee esa parte de la dirección y muestra la pantalla. |
+| **Qué se guarda del código** | El código tal cual; **su huella cifrada** | **El código tal cual** | Es lo único de esta pieza que se aparta de lo más estricto, y se anota a propósito. Guardar la huella (como se hace con las contraseñas) protegería el enlace de alguien que consiguiera leer la base — pero quien puede leer la base ya puede cambiar cualquier contraseña directamente, así que no compra nada real acá. A cambio, el código tal cual deja **mirar la tabla y comprobar el vencimiento**, que es literalmente la comprobación 5 del plan. El token vive una hora y muere al usarse; la contraseña vive para siempre, y por eso ella sí va cifrada. |
+| **Qué pasa con la contraseña vieja mientras el enlace está vivo** | Se bloquea la cuenta; **sigue funcionando** | **Sigue funcionando** | Quien pidió el enlace por error, o se acordó de su contraseña, no tiene por qué quedar afuera de su cuenta. La contraseña vieja muere cuando el enlace **se usa**, no cuando se pide. |
+| **Qué contesta pedir un enlace para un correo que no existe** | `404`; **`204`, igual que si existiera** | **`204` siempre** | Es el mismo criterio del mensaje genérico de login (`DISENO.md`, «Login incorrecto»): contestar distinto convertiría este endpoint en una manera de averiguar qué correos están registrados. |
+| **Dónde se registra el correo que le llega a Personal** | No registrarlo; **agrandar `correo_enviado`** | **Agrandar la tabla** | REG-3 dice **cada** correo, y el de recuperación también le llega a Personal. La tabla exigía un cliente en cada fila. Ahora acepta `cliente_id` **o** `personal_id`, solo uno lleno — la misma forma que el plan ya le había dado a `token_recuperacion`. Ver abajo. |
+
+### La limitación del enlace, dicha en voz alta
+
+**Un enlace que apunta a `http://localhost:3000` solo abre en la computadora donde la aplicación está
+corriendo.** «localhost» quiere decir «esta máquina»: si el correo se abre en el teléfono, el enlace
+no lleva a ninguna parte. Para la demostración alcanza —se pide el enlace y se abre el correo en la
+misma computadora—, y es exactamente el mismo límite que tiene trabada a la pieza 6. **Se declara
+acá, no se descubre al final.** La dirección del enlace sale de una variable de entorno
+(`DIRECCION_PUBLICA`), así que el día que la aplicación viva en un servidor de verdad se arregla
+cambiando una línea del `.env`, sin tocar código.
+
+### Por qué la tabla `correo_enviado` tuvo que cambiar, y cómo se cambió sin perder nada
+
+`correo_enviado.cliente_id` era **obligatoria**: nació en la pieza 4, cuando el único correo del
+sistema era la confirmación de una cita y toda cita tiene un cliente. El correo de recuperación
+rompe ese supuesto: **también le llega a Personal**, que no es cliente de nadie.
+
+SQLite no sabe volver opcional una columna que ya existe —`ALTER TABLE` no llega hasta ahí—, así que
+la tabla se **rehace**: se crea la nueva con la forma correcta, se copian todas las filas viejas, se
+borra la vieja y la nueva toma su nombre, todo dentro de una sola transacción. Si algo falla en el
+medio, no queda nada a medias: vuelve todo como estaba. Las filas que ya existían pasan enteras, con
+su `cliente_id` donde siempre estuvo.
+
+Esto corre en `agregarColumnasQueFaltan` de `servidor/base-de-datos.js`, junto a lo que la pieza 10
+dejó ahí, y por la misma razón: `npm run datos` rehace la base desde cero y no lo necesita, pero la
+base de trabajo de alguien que ya venía usando la aplicación sí.
+
+### La lección: un dato ya decidido se buscó mal, dos veces
+
+**El vencimiento del enlace estaba decidido desde el primer día del proyecto** —11 de agosto,
+«Otras decisiones» de este archivo, junto al framework y al servicio de correo—. Aun así,
+`PLAN.md` escribió «con vencimiento» sin el número, `PROXIMA-SESION.md` anotó «no lo inventes:
+preguntá», y el 2026-08-28 se volvió a preguntar. **Tres pasos, y en ninguno se miró la tabla
+donde el dato ya estaba.**
+
+No hubo consecuencia técnica: la estudiante eligió lo mismo. Pero la falla es real y vale
+anotarla, porque el proyecto tiene una regla exactamente para esto («buscar antes de decidir», en
+`CLAUDE.md`).
+
+**Por qué se escapó, que es lo útil:** esa tabla se llama **«Otras decisiones»** y mezcla cosas de
+naturalezas distintas —qué framework se usa, qué servicio de correo, y **dos reglas de negocio con
+número**: el vencimiento del enlace y la duración de la sesión—. Buscar «cuánto dura el enlace»
+lleva a `ESPECIFICACION.md` y a la pieza 9 de `PLAN.md`; a nadie se le ocurre buscar una regla de
+negocio en la tabla donde se eligió Express.
+
+**Qué hacer distinto:** una decisión con un número que gobierna una regla de negocio **no vive en
+«Otras decisiones»**. Vive en `ESPECIFICACION.md`, como RN. Las dos que estaban ahí ya tienen su
+lugar propio: el vencimiento del enlace es **RN-27** desde el 2026-08-28. *(La duración de la
+sesión sigue solo en esa tabla — anotado como decisión abierta.)*
+
+### El hallazgo 21: un servicio de afuera reescribió nuestro enlace
+
+*Del 2026-08-28, encontrado por la estudiante probando la pieza 9. **Es el primero de los 21
+hallazgos del proyecto que no es visual ni del código**: los veinte anteriores salieron de mirar la
+pantalla, y este salió de mirar **la frontera con un servicio de afuera**.*
+
+**Qué pasó.** Llegó el correo, la estudiante tocó el botón «Elegir mi contraseña nueva», y el
+navegador mostró *«This site can't be reached»*. La dirección que había en la barra no era la
+nuestra:
+
+```
+vw9jhtlx.r.us-east-1.awstrack.me/L0/http:%2F%2Flocalhost:3000%2F%23restablecer=IqTguPLV…
+```
+
+**Resend reescribió el enlace.** Le puso encima un rastreador de clics de Amazon (`awstrack.me`)
+que cuenta el clic y después reenvía. **Nuestro enlace estaba adentro, entero** —se lee en el
+propio texto de la dirección que falló—, pero el rastreador no se pudo abrir.
+
+**Y el diagnóstico fino importa, porque cambia la conclusión.** Se comprobó con `nslookup` desde la
+misma máquina: el dominio `awstrack.me` a secas **no resuelve** con el DNS de esa red
+(`Server failed`), aunque el subdominio exacto del correo **sí resolvía** un rato después. O sea que
+la falla es **intermitente y del entorno** —el router, el DNS o una extensión que bloquea
+rastreadores—, no un error determinista. La estudiante volvió a intentarlo y falló otra vez. **Y eso
+alcanza para decidir: es la máquina donde se hace la demostración, así que la demostración no puede
+depender de ese botón.**
+
+**Lo que enseña, y es lo que vale de este hallazgo:**
+
+1. **Un servicio externo puede cambiar lo que mandamos.** El correo que sale de
+   `plantillas-de-correo.js` es correcto; lo que llega a la bandeja de entrada, no necesariamente.
+   El borde de nuestro sistema termina antes de lo que uno cree.
+2. **Ninguna prueba automática lo podía detectar**, y las 21 de la pieza 9 estaban en verde. Lo que
+   las pruebas comprueban es que **de este lado se manda lo correcto**; lo que pasa después está
+   fuera de su alcance, igual que la página dibujada.
+3. **Lo que salvó la prueba fue una decisión tomada por otra razón.** El correo ya traía la
+   dirección escrita **también como texto suelto**, para quien tenga un programa de correo que no
+   muestre botones. Un texto suelto **no es un enlace**, así que el rastreador no lo toca — y quedó
+   siendo el único camino que funciona.
+
+**Las dos cosas que se hicieron, decididas por la estudiante ese mismo día:**
+
+| Qué | Por qué |
+|---|---|
+| El botón lleva `ses:no-track` | Es la marca con la que Amazon —quien entrega los correos por debajo de Resend— deja un enlace **afuera** del rastreo. Es un atributo y no cambia nada más. **CONFIRMADO que funciona, el 2026-08-28.** La estudiante recibió el correo nuevo, tocó el botón —el mismo que media hora antes la había llevado a una página de error— y esta vez la llevó bien; después probó la dirección copiada y también funcionó. **Los dos caminos andan.** Es un arreglo de un atributo que resolvió un problema que parecía estar fuera de nuestro alcance. |
+| La dirección deja de ser el plan B | Antes decía «si el botón no funciona, copiá y pegá…», en letra chica. Ahora los dos caminos se presentan **en igualdad** («usá cualquiera de estas dos») y la dirección tiene su propia caja. **No se presenta como el arreglo del botón**, porque no lo es: es el camino que ningún servicio de afuera puede tocar. |
+
+**Lo que NO se puede hacer, y queda declarado:** apagar el rastreo de clics de raíz. Se apaga **por
+dominio propio**, en la configuración de Resend, y este proyecto usa la dirección prestada
+`onboarding@resend.dev`, que no es del negocio. Con la cuenta gratuita, la opción no existe.
+*(Apagar el rastreo en los correos de contraseña es práctica estándar en la industria, justamente
+por este problema.)*
+
+**Y hay dos pruebas nuevas que cuidan lo que sí está de este lado**: que el botón lleve la marca, y
+que la dirección aparezca **dos veces** en el correo —en el botón y a la vista—. Si alguien saca la
+segunda para «limpiar» el correo, la prueba se pone roja.
+
+### La regla del token vive en un archivo, no en el endpoint
+
+`servidor/recuperacion.js` es el único lugar donde se decide si un código sirve. Es la misma razón
+por la que `credenciales.js` existe desde la pieza 1: **una regla, un lugar**. El endpoint pregunta y
+obedece; no sabe qué es una hora ni qué significa «usado».
+
 ## El sistema visual
 
 La apariencia de la aplicación no se inventa en el código: sale de **`VISUALS.md`**, el sistema
@@ -615,5 +742,7 @@ consolidaron en un solo `VISUALS.md`.
 |---|---|
 | Dónde alojar la aplicación en producción real (Render, Vercel, u otro) | La estudiante, si el proyecto sigue después del curso. |
 | Migrar el disparador del recordatorio de GitHub Actions al sistema de tareas programadas del hosting elegido | Junto con la decisión anterior. |
-| Un «Recordarme» en la pantalla de entrar: si se hace, cuál de las dos cosas es (recordar la sesión —que **ya existe y dura 7 días**— o recordar el correo, que no existe), si vale igual para la cuenta de Personal en la computadora del mostrador, cuánto dura, y si viene marcado | La estudiante, **al construir la pieza 9**, que es la que toca esa misma pantalla. Lo planteó el 2026-08-24 al cerrar la pieza 8 y eligió no meterlo ahí. **No está en `ESPECIFICACION.md`: si se hace, el requisito se escribe primero ahí.** |
+| ~~Un «Recordarme» en la pantalla de entrar~~ | **RESUELTA el 2026-08-28**, al arrancar la pieza 9. Se hace, y es **recordar el correo**, no la sesión. El requisito se escribió primero en `ESPECIFICACION.md` —**RF-24** y **RN-28**— antes de tocar una línea de código. El detalle está en «Decisiones tomadas al construir la pieza 9». |
+| ~~Subir a `ESPECIFICACION.md`, como RN, la duración de la sesión de login~~ | **RESUELTA el 2026-08-28, el mismo día que se planteó.** Es **RN-29**, y de paso el número cambió: de 7 días a **4 horas**. Con esto, **ninguna regla de negocio con número queda escondida** en la tabla «Otras decisiones» de este archivo. |
+| Que restablecer la contraseña **cierre las sesiones que ya estaban abiertas** | La estudiante. Hoy no las cierra: la nota firmada del navegador no guarda la contraseña, así que no se entera de que cambió, y quien ya estuviera adentro con esa cuenta se queda hasta que se le venzan sus 4 horas (RN-29). **El cambio de 7 días a 4 horas del 2026-08-28 achicó mucho este problema** —de una semana a media jornada— pero no lo cierra. Planteado el 2026-08-28 al terminar la pieza 9. |
 | Parametrizar la política de cancelación (hoy fija en 4 horas) por negocio | Ya señalado en la hoja de ruta de `PROYECTO.md`; fuera de esta entrega. |

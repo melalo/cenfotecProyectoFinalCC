@@ -322,19 +322,28 @@ body {
   // estuviera, la página se ve igual de bien con el gris azulado del sistema, nunca en blanco.
   background-color: $canvas;
 
-  // Las flores van al **75%**, un cuarto más tenues que la imagen original (pedido de la estudiante
-  // el 2026-08-19, para que el fondo no compita con el contenido).
+  // Las flores se van **desvaneciendo hacia abajo**: arriba se ven casi enteras (75%) y abajo casi
+  // desaparecen (10%). *(Pedido de la estudiante el 2026-08-28. Hasta ese día el velo era parejo,
+  // 25% de arriba a abajo, decidido el 2026-08-19 para que el fondo no compitiera con el
+  // contenido.)*
+  //
+  // **Por qué el degradado y no un velo parejo:** la página crece hacia abajo, y es abajo donde se
+  // acumula el contenido —los formularios largos, las listas de citas, el calendario—. Un fondo
+  // parejo compite justo ahí. Así, la imagen se ve donde hay aire y se va del camino donde hay algo
+  // que leer.
   //
   // No se hace con `opacity`, y la razón importa: `opacity` sobre el `body` volvería translúcido
   // **todo** lo que hay adentro —los textos, las tarjetas, los botones—, no solo el fondo. Lo que se
-  // hace en cambio es poner **una capa del color del lienzo, al 25%, encima de la imagen**. El
-  // resultado en pantalla es exactamente el mismo que si la imagen estuviera al 75% sobre ese color,
-  // y no toca ni un pixel del contenido.
+  // hace en cambio es poner **una capa del color del lienzo encima de la imagen**, más opaca a
+  // medida que baja. El resultado en pantalla es el que se busca, y no toca ni un pixel del
+  // contenido.
   //
   // Las dos capas van en la misma línea, separadas por coma, y **la primera es la de arriba**:
-  // primero el velo de color, después la imagen debajo.
+  // primero el velo de color, después la imagen debajo. El color no se escribe a mano: es `$canvas`,
+  // el mismo `#F4F6F8` del `background-color` de arriba, así que si un día cambia, cambia en los dos
+  // lados a la vez.
   background-image:
-    linear-gradient(rgba($canvas, 0.25), rgba($canvas, 0.25)),
+    linear-gradient(rgba($canvas, 0.25), rgba($canvas, 0.9)),
     url("/img/bg-img.jpg");
   background-repeat: no-repeat;
   background-position: center top;
@@ -821,6 +830,73 @@ body {
       outline: 2px solid transparent; // se mantiene visible en modo de alto contraste
       outline-offset: 2px;
     }
+  }
+}
+
+// ── El cuadrito de «Recordar mi correo» (pieza 9, RF-24) ────────────────────────────────────
+//
+// Es un modificador de `.campo` y no una clase nueva: sigue siendo una etiqueta con su control
+// adentro, y lo único que cambia es que van **lado a lado** en vez de uno debajo del otro. Es la
+// regla del proyecto — un cambio que vale para una sola cosa va como modificador, no tocando la
+// clase compartida.
+.campo--cuadrito {
+  flex-direction: row;
+  align-items: center;
+  gap: $stack-xs;
+  // El cuadrito y su texto son una sola cosa que se toca, así que el cursor lo dice.
+  cursor: pointer;
+}
+
+.campo__cuadrito {
+  // 16px de lado. Es la medida del sistema ($stack-sm) y también la que hace que el área tocable
+  // no quede por debajo de lo que un dedo alcanza cómodo, porque el texto de al lado también
+  // activa el cuadrito: los dos están adentro del mismo `<label>`.
+  width: $stack-sm;
+  height: $stack-sm;
+  // `accent-color` es la manera moderna de pintar un cuadrito con el color de la marca sin tener
+  // que dibujarlo a mano. Un navegador que no la entienda muestra el cuadrito azul de siempre, que
+  // funciona igual.
+  accent-color: $navy;
+  cursor: pointer;
+}
+
+.campo__etiqueta--cuadrito {
+  // El texto de al lado del cuadrito **no es la etiqueta de un campo que hay que llenar**: es la
+  // opción misma. Por eso va en el color del texto normal y sin el gris apagado de las etiquetas,
+  // que le daría cara de aclaración secundaria.
+  color: $texto;
+  font-weight: 500;
+}
+
+// ── Un botón con cara de enlace ─────────────────────────────────────────────────────────────
+//
+// Lo usa «¿Olvidaste tu contraseña?» (pieza 9). Es un `<button>` de verdad y no un `<a>` porque no
+// lleva a otra página: cambia de pantalla dentro de la misma. Pero **se ve como un enlace**, que
+// es lo que una persona espera de algo así: si tuviera cara de botón competiría con «Entrar», que
+// es lo que la pantalla quiere que se toque primero.
+.enlace-en-texto {
+  align-self: flex-start;
+  padding: 0;
+  // `label-sm` de VISUALS.md: 12px con interlineado de 16. El mismo tamaño de todo texto de guía
+  // en este proyecto.
+  font-family: inherit;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: $navy;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    color: $navy-oscuro;
+  }
+
+  // El contorno del foco se deja igual que el de los botones: quien navega con el tabulador tiene
+  // que ver dónde está parado.
+  &:focus-visible {
+    outline: 2px solid $navy;
+    outline-offset: 2px;
   }
 }
 

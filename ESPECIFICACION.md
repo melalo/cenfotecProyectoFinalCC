@@ -298,6 +298,84 @@ solo calendario y no dos agendas que se puedan desincronizar.
     esta regla el motivo pasa a ser **`ya_paso`**, que es lo que de verdad ocurre, y vale para los
     dos actores.
 
+27. **RN-27:** El enlace para restablecer la contraseña olvidada (RF-3) **vence a la hora de haberse
+    pedido** y **sirve una sola vez**. Usado o vencido, deja de servir para siempre y hay que pedir
+    uno nuevo.
+
+    *(La hora la decidió la estudiante el **2026-08-11**, en la sesión de diseño, y está escrita
+    desde entonces en `DISENO.md` → «Otras decisiones»: «Vencimiento del enlace de recuperación —
+    15 min, 1 hora, 24 horas → 1 hora». El 2026-08-28, al construir la pieza 9, se le volvió a
+    preguntar sin haber encontrado esa fila, y **eligió lo mismo**. Queda anotado así y no como una
+    decisión nueva, porque el proyecto no reescribe su historia: lo que pasó es que la decisión ya
+    estaba tomada y la búsqueda falló.)*
+
+    **Por qué una hora.** Es el tiempo que tarda alguien en ir a su correo y volver, con lugar de
+    sobra para distraerse en el medio, y es lo bastante corto como para que un correo viejo que
+    quede abierto en una pantalla ajena ya no abra ninguna puerta. Media hora se le vencería a quien
+    revisa el correo en el teléfono mientras hace otra cosa; un día entero convertiría cada correo
+    viejo en una llave que todavía funciona.
+
+    **El vencimiento y el uso único son dos protecciones distintas y hacen falta las dos.** El uso
+    único cierra la puerta después de que la persona entró; el vencimiento la cierra aunque nunca
+    haya entrado — que es el caso de quien pidió el enlace, se olvidó, y lo dejó dando vueltas en la
+    bandeja de entrada.
+
+    **Pedir un enlace no cambia la contraseña vieja.** Sigue funcionando hasta que alguien use el
+    enlace de verdad. Así, quien pidió el enlace por error —o quien lo pidió y después se acordó de
+    su contraseña— no queda afuera de su cuenta por nada.
+
+    **Pedir el enlace para un correo que no existe responde exactamente lo mismo** que para uno que
+    sí existe, y tarda parecido. Es el mismo criterio del mensaje genérico de login: el sistema no
+    revela qué correos están registrados.
+
+28. **RN-28:** El correo que se recuerda en el navegador (RF-24) es **solo el de las cuentas de
+    Cliente**. **La cuenta de Personal nunca se recuerda**, y después de entrar con ella el cuadrito
+    de «Recordar mi correo» queda **desmarcado** en esa computadora.
+
+    *(Decidido por la estudiante el 2026-08-28, al escribir RF-24.)*
+
+    **Por qué la diferencia.** Un cliente entra desde su propia computadora o su teléfono: recordar
+    su correo le ahorra escribirlo y no se lo muestra a nadie. La cuenta de Personal vive en **la
+    computadora del mostrador**, donde se sienta más de una persona a lo largo del día; dejar ahí el
+    correo del negocio escrito en la pantalla no es una comodidad, es un descuido. Y no es una
+    excepción a favor de Personal ni en contra: es que **no es la misma computadora**.
+
+    **El cuadrito viene marcado la primera vez**, porque quien llega primero a esa pantalla es un
+    cliente en su propia máquina. Si quien entra resulta ser Personal, el correo **no se guarda** —la
+    regla gana sobre el cuadrito— y a partir de ahí esa computadora muestra el cuadrito desmarcado,
+    que es lo que de verdad está pasando.
+
+29. **RN-29:** La sesión dura **4 horas** desde que se entra. Pasadas las 4 horas hay que volver a
+    escribir la contraseña. Vale igual para las cuentas de Cliente y de Personal.
+
+    *(Decidido por la estudiante el 2026-08-28. **Eran 7 días**, elegidos por ella misma el
+    2026-08-11 en la sesión de diseño, entre «hasta cerrar el navegador», «7 días» y «30 días».)*
+
+    **Por qué cambió, y la razón es la mejor que puede tener una regla: se vivió.** El 2026-08-28 la
+    estudiante abrió la aplicación para probar la pieza 9, se encontró **ya adentro sin haber escrito
+    nada** —su última sesión había sido dos días antes— y le pareció mal. Una decisión elegida de una
+    lista de tres opciones, 17 días antes y sin haberla visto funcionar, pesa menos que haberla usado.
+
+    **Por qué 4 horas y no menos ni más.** Es lo que dura una tarde de trabajo: quien entra a la
+    mañana sigue adentro hasta el mediodía sin que la aplicación le estorbe, y al día siguiente
+    empieza escribiendo su contraseña. «Hasta cerrar el navegador» sonaba más seguro pero **el
+    navegador puede no cumplirlo**: Chrome, con «continuar donde lo dejaste» activado, conserva esas
+    sesiones igual — habría sido una regla que dice una cosa y hace otra según la computadora.
+
+    ⚠️ **Estas 4 horas no tienen ninguna relación con las otras 4 horas del proyecto**, la ventana
+    para cancelar o reagendar una cita (RN-5, RN-6). Son dos reglas independientes que eligieron el
+    mismo número por casualidad, en momentos distintos y por razones distintas. **Si una cambia, la
+    otra no cambia con ella**, y en el código son dos constantes separadas en archivos separados.
+
+    **Esta regla no cierra las sesiones que ya estaban abiertas cuando alguien restablece su
+    contraseña** (RF-3). Está anotado como decisión abierta en `DISENO.md`.
+
+    **Y esta regla existe como RN desde hoy, no desde el principio, y eso también es la lección.**
+    Hasta el 2026-08-28 el número vivía **solo** en una tabla de `DISENO.md` llamada «Otras
+    decisiones», entre el framework de backend y el servicio de correo. Ahí nadie lo encontraba: ni la
+    propia estudiante se acordaba de haberlo elegido. **Una regla de negocio con un número va en este
+    archivo, como RN.**
+
 ## Qué queda registrado
 
 1. **REG-1:** De cada cita: el cliente, el servicio, el proveedor, la fecha y hora de inicio, su
@@ -315,6 +393,12 @@ solo calendario y no dos agendas que se puedan desincronizar.
    edad guardada como número queda vieja en el próximo cumpleaños y nadie la va a ir a corregir.)*
 3. **REG-3:** De cada correo que el sistema envía: a quién, de qué cita (no aplica a los correos de
    contraseña), de qué tipo, cuándo se envió y si el envío tuvo éxito.
+
+   **«A quién» puede ser un cliente o la cuenta de Personal**, y solo uno de los dos. *(Precisado el
+   2026-08-28 con la pieza 9: hasta entonces todo correo que el sistema mandaba era para un cliente,
+   porque el único que existía era la confirmación de una cita. El de recuperar la contraseña también
+   le llega a Personal, que no es cliente de nadie, y el registro tiene que poder decirlo. La misma
+   forma que ya tenía el Token de recuperación.)*
 4. **REG-4:** El catálogo del negocio: **qué categorías existen y qué servicios tiene cada una**
    (agregado el 2026-08-19 con la pieza 11), qué proveedores atiende cada servicio, y
    la configuración del negocio (**nombre**, **teléfono**, horario semanal, feriados, ubicación,
@@ -456,8 +540,10 @@ igual a las cuentas de Personal.
 
 1. **RF-1:** El sistema permite que un cliente cree su propia cuenta con su nombre, su correo y una
    contraseña.
-2. **RF-2:** El sistema permite entrar con correo y contraseña, y mantiene la sesión abierta un
-   tiempo, para que el cliente no tenga que volver a entrar cada vez.
+2. **RF-2:** El sistema permite entrar con correo y contraseña, y mantiene la sesión abierta
+   **4 horas** (RN-29), para que no haya que volver a entrar cada vez. *(Hasta el 2026-08-28 este
+   requisito decía «un tiempo», sin número: el número existía pero vivía escondido en `DISENO.md`.
+   Ahora es RN-29.)*
 3. **RF-3:** El sistema permite restablecer la contraseña por correo, mediante un enlace de un solo
    uso que vence.
 4. **RF-4:** El sistema obliga a cambiar la contraseña en el primer ingreso cuando la cuenta fue
@@ -562,6 +648,27 @@ igual a las cuentas de Personal.
     negocio—, y sin ella bastaría con mandarle un pedido al API por fuera de la pantalla para
     saltarse la regla entera.
 
+24. **RF-24:** El sistema **recuerda en esa computadora el correo con el que se entró**, y lo trae
+    ya escrito la próxima vez que se abre la pantalla de entrar, para que solo haya que poner la
+    contraseña. Se controla con un cuadrito «Recordar mi correo» debajo de los dos campos, y **solo
+    aplica a las cuentas de Cliente** (RN-28). *(Pedido por la estudiante el 2026-08-24 al cerrar la
+    pieza 8, y decidido el 2026-08-28 al arrancar la pieza 9. No estaba en el encargo original.)*
+
+    **Se recuerda el correo, no la sesión, y eso es lo que hace falta aclarar**, porque las dos
+    cosas suelen llamarse igual. La sesión **ya** se recuerda sola desde la pieza 1, y dura **4
+    horas** (RN-29): al volver dentro de ese rato ya se está adentro sin escribir nada. Lo que hasta
+    ahora no existía es lo de acá: que **cuando sí hay que volver a entrar**, el campo del correo no
+    esté vacío. *(Cuando esto se escribió, la sesión duraba 7 días; ese mismo día la estudiante los
+    bajó a 4 horas, y el argumento no cambia — al contrario, ahora hay que volver a entrar más
+    seguido, así que recordar el correo sirve más.)*
+
+    **No es un dato del sistema: vive en el navegador de quien entra**, junto con la preferencia del
+    cuadrito. No se guarda en la base, no viaja al servidor y no se comparte entre computadoras — es
+    una comodidad de esa máquina, y por eso quien entre desde otra la va a encontrar vacía.
+
+    **Nunca se recuerda la contraseña.** Ni marcado el cuadrito ni de ninguna otra forma: lo único
+    que se ahorra es escribir el correo.
+
 ## Requisitos no funcionales
 
 1. **RNF-1: Disponibilidad — no se garantiza.** Si el sistema deja de funcionar un rato, el negocio
@@ -607,8 +714,9 @@ automáticas que corran en cada cambio.
 
 - `PROYECTO.md` — el enunciado del proyecto: recorrido principal (sección 3), reglas del negocio
   (sección 4), datos (sección 5), frontera técnica (sección 6) y supuestos declarados (sección 10).
-- `DISENO.md` y `DISENO1.md` — arquitectura, modelo de datos y manejo de errores de los que se
-  derivaron varios recorridos que terminan mal.
+- `DISENO.md` — arquitectura, modelo de datos y manejo de errores de los que se derivaron varios
+  recorridos que terminan mal. *(Hasta el 2026-08-28 acá también figuraba `DISENO1.md`, una segunda
+  copia más larga que nunca se subió al repositorio. Se borró: ver la nota en `README.md`.)*
 - `NEGOCIO.md` — la oportunidad, el riesgo de las dos fuentes de verdad y la hoja de ruta.
 - `SEGUIMIENTO.md` — el estado del proyecto y los pendientes de diseño.
 - `FICHA-APROBACION.md` — el riesgo técnico aceptado del disparador del recordatorio.

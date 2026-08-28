@@ -49,6 +49,11 @@ const enviador = crearEnviadorResend({
   remitente: process.env.CORREO_REMITENTE,
 })
 
-crearAplicacion({ base, sesionSecreto, enviador }).listen(puerto, () => {
+// Con qué dirección se escriben los enlaces que salen por correo (pieza 9). Si no se pone, se arma
+// con el puerto de esta máquina — y eso quiere decir que **el enlace solo abre acá**. Está
+// declarado en `DISENO.md`, «La limitación del enlace, dicha en voz alta».
+const direccionPublica = process.env.DIRECCION_PUBLICA || `http://localhost:${puerto}`
+
+crearAplicacion({ base, sesionSecreto, enviador, direccionPublica }).listen(puerto, () => {
   console.log(`Reservas en línea levantada en http://localhost:${puerto}`)
 })

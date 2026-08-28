@@ -7,6 +7,13 @@ import { Router } from "express"
 
 import { cifrarContrasena, contrasenaCoincide } from "../contrasenas.js"
 import { correoTieneForma, queLeFaltaALaContrasena } from "../credenciales.js"
+import { enviarEnlaceDeRecuperacion } from "../correo.js"
+import {
+  armarLaDireccionDelEnlace,
+  buscarEnlaceQueTodaviaSirve,
+  crearEnlaceDeRecuperacion,
+  marcarEnlaceComoUsado,
+} from "../recuperacion.js"
 
 // Una huella de relleno, de una contraseña que nadie tiene. Sirve para que entrar con un correo
 // que no existe tarde lo mismo que entrar con la contraseña equivocada: si el caso «no existe»
@@ -14,7 +21,19 @@ import { correoTieneForma, queLeFaltaALaContrasena } from "../credenciales.js"
 // justo lo que el mensaje genérico de `DISENO.md` («Login incorrecto») quiere evitar.
 const HUELLA_DE_RELLENO = cifrarContrasena("ninguna-cuenta-usa-esta-contrasena")
 
-export function crearRutasDeAutenticacion({ base, sesiones }) {
+/**
+ * `reloj`, `enviador` y `direccionPublica` llegan desde la pieza 9: hasta entonces esta parte del
+ * API no necesitaba saber qué hora es, no mandaba correos y no tenía que escribir ninguna dirección.
+ * Las tres entran como dato, igual que en el resto del proyecto, para que las pruebas puedan parar
+ * el tiempo y comprobar el vencimiento sin mandarle un correo a nadie.
+ */
+export function crearRutasDeAutenticacion({
+  base,
+  sesiones,
+  reloj,
+  enviador,
+  direccionPublica,
+}) {
   const rutas = Router()
 
   // RF-1: una persona sin cuenta crea la suya con nombre, correo y contraseña.
@@ -175,6 +194,111 @@ export function crearRutasDeAutenticacion({ base, sesiones }) {
 
     // 204 es «lo hice y no tengo nada que contarte». La pantalla ya sabe qué cambió, y devolver la
     // cuenta entera acá sería mandar algo que nadie va a leer.
+    return respuesta.status(204).end()
+  })
+
+  // ── Pieza 9: la contraseña olvidada (RF-3, RN-27) ─────────────────────────────────────────
+  //
+  // Pedir el enlace. **Devuelve siempre 204**, exista la cuenta o no.
+  //
+  // Eso último es la regla, no un descuido: contestar distinto convertiría esta puerta en una
+  // manera de averiguar qué correos están registrados, que es exactamente lo que el mensaje
+  // genérico del login evita desde la pieza 1 (`DISENO.md`, «Login incorrecto»).
+  rutas.post("/contrasena/olvide", async (pedido, respuesta) => {
+    const correo = normalizarCorreo(pedido.body?.correo)
+    const encontrada = buscarCuentaPorCorreo(base, correo)
+
+    if (encontrada) {
+      const cuenta = { id: encontrada.cuenta.id, tipo: encontrada.tipo }
+      const ahora = reloj()
+
+      const codigo = crearEnlaceDeRecuperacion({ base, cuenta, ahora })
+
+      // El correo se manda **después** de que el token está guardado, nunca antes: si se hiciera al
+      // revés, un correo que sale y un token que no se guardó dejarían un enlace que no abre nada.
+      // Es la misma regla de orden que la pieza 4 fijó para la confirmación de una cita.
+      await enviarEnlaceDeRecuperacion({
+        base,
+        enviador,
+        ahora,
+        cuenta: { ...cuenta, nombre: encontrada.cuenta.nombre, correo: encontrada.cuenta.correo },
+        enlace: armarLaDireccionDelEnlace(direccionPublica, codigo),
+      })
+    }
+
+    return respuesta.status(204).end()
+  })
+
+  // Usar el enlace: elegir la contraseña nueva.
+  //
+  // **No hace falta tener la sesión abierta**, y es la única puerta del proyecto que cambia una
+  // contraseña sin ella. Tiene que ser así: quien la olvidó justamente no puede entrar. Lo que hace
+  // las veces de identificación es el código, que es imposible de adivinar, vive una hora y muere
+  // al usarse (RN-27).
+  rutas.post("/contrasena/restablecer", (pedido, respuesta) => {
+    const codigo = String(pedido.body?.codigo ?? "")
+    const contrasena = String(pedido.body?.contrasena ?? "")
+    const ahora = reloj()
+
+    // El enlace se comprueba **primero**: si no sirve, quien lo mandó no tiene por qué enterarse de
+    // nada más. Es el mismo orden con el que `POST /api/contrasena/cambiar` pide la contraseña
+    // actual antes de mirar la nueva.
+    const encontrado = buscarEnlaceQueTodaviaSirve({ base, codigo, ahora })
+    if (!encontrado) {
+      return respuesta.status(422).json({ error: "token_invalido" })
+    }
+
+    if (contrasena === "") {
+      return respuesta.status(422).json({ error: "datos_incompletos" })
+    }
+
+    // RN-23, la misma regla del registro y del cambio, llamada al mismo lugar de siempre.
+    const leFaltaALaContrasena = queLeFaltaALaContrasena(contrasena)
+    if (leFaltaALaContrasena.length > 0) {
+      // El enlace **no se gasta acá**, a propósito: quien escribió una contraseña que no cumple se
+      // equivocó escribiendo, no usó su enlace. Gastarlo la dejaría afuera de su cuenta por un
+      // error de tipeo, y tendría que pedir otro.
+      return respuesta.status(422).json({
+        error: "contrasena_invalida",
+        faltan: leFaltaALaContrasena,
+      })
+    }
+
+    // Marcar el enlace como usado y guardar la contraseña son **un solo movimiento**. Separados, un
+    // corte en el medio dejaría el enlace gastado y la contraseña sin cambiar: la persona no podría
+    // entrar ni con la vieja —creería que ya no vale— ni con la nueva.
+    //
+    // Y el orden adentro también importa: **primero se gasta el enlace**. Si dos pedidos llegaran
+    // con el mismo código a la vez, el segundo encuentra que ya no queda nada por marcar y se va
+    // sin tocar la contraseña.
+    const cambiar = base.transaction(() => {
+      if (!marcarEnlaceComoUsado({ base, token: encontrado.token, ahora })) return false
+
+      if (encontrado.cuenta.tipo === "personal") {
+        base
+          .prepare("UPDATE personal SET contrasena_cifrada = ? WHERE id = ?")
+          .run(cifrarContrasena(contrasena), encontrado.cuenta.id)
+      } else {
+        // `debe_cambiar_contrasena = 0` es la parte que se puede pasar por alto: si quien olvidó su
+        // contraseña era alguien con una temporal puesta por Personal (RN-11), la que acaba de
+        // elegir **la eligió ella**, así que ya no hay nada temporal que obligarla a cambiar.
+        base
+          .prepare(
+            "UPDATE cliente SET contrasena_cifrada = ?, debe_cambiar_contrasena = 0 WHERE id = ?",
+          )
+          .run(cifrarContrasena(contrasena), encontrado.cuenta.id)
+      }
+
+      return true
+    })
+
+    if (!cambiar()) {
+      return respuesta.status(422).json({ error: "token_invalido" })
+    }
+
+    // 204, igual que el cambio de contraseña: se hizo y no hay nada que contar. La pantalla manda a
+    // entrar con la contraseña nueva — **no se abre la sesión sola**, porque escribirla una vez es
+    // lo que confirma que quedó donde la persona cree que quedó.
     return respuesta.status(204).end()
   })
 

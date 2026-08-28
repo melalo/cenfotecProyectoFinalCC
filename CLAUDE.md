@@ -130,13 +130,16 @@ Un slice no se da por cerrado hasta que ese bloque de "cómo probarlo" está esc
 | `npm install` | Instala las dependencias. |
 | `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita, ninguna cuenta de cliente y ningún correo registrado: esos se crean desde la aplicación, a partir de las piezas 3, 4 y 7. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
-| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **277**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4, 26 de la pieza 12, 39 de la pieza 5, 76 de la pieza 7 (58 en `personal.test.js` y 18 en `cambio-de-contrasena.test.js`) y **27 de la pieza 8** (`cierre-de-citas.test.js`). **Los tres criterios de aceptación están cubiertos por completo**: CA-1 y CA-2 desde la pieza 3, y **CA-3 entero desde la pieza 7** — la parte del cliente la trajo la 5, la de Personal la 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
+| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **302**: 14 de la pieza 1, 27 de la pieza 2, 23 de la pieza 3, 19 de la pieza 10, 12 de la pieza 11, 14 de la pieza 4, 26 de la pieza 12, 39 de la pieza 5, 76 de la pieza 7 (58 en `personal.test.js` y 18 en `cambio-de-contrasena.test.js`), 27 de la pieza 8 (`cierre-de-citas.test.js`) y **21 de la pieza 9** (`recuperacion.test.js`), **más 2 que vigilan cuánto dura la sesión** (RN-29, en `autenticacion.test.js`): ese número vivía en una constante que ninguna prueba miraba, así que cambiarlo por accidente no rompía nada. **Los tres criterios de aceptación están cubiertos por completo**: CA-1 y CA-2 desde la pieza 3, y **CA-3 entero desde la pieza 7** — la parte del cliente la trajo la 5, la de Personal la 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
 | `npm run estado` | **Cuenta en qué estado está el proyecto, leyéndolo de la base de datos.** Cuatro revisiones antes de arrancar —puerto libre, `.env`, clave del correo, base creada— y después qué cuentas hay, cuántas citas y de qué tipo, y qué se puede mostrar. **Solo lee** (abre la base en modo `readonly`), así que se puede correr con la aplicación levantada. Existe desde el 2026-08-24, y lo usa la skill `/launch`. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
-`PORT` y `SESION_SECRETO` (desde la pieza 1), `RESEND_API_KEY` y `CORREO_REMITENTE` (desde la 4), y
-`RECORDATORIOS_SECRETO` (previsto para la 6, que todavía no está construida). Sin `RESEND_API_KEY` la aplicación tiene que levantar igual:
+`PORT` y `SESION_SECRETO` (desde la pieza 1), `RESEND_API_KEY` y `CORREO_REMITENTE` (desde la 4),
+`DIRECCION_PUBLICA` (desde la 9) y `RECORDATORIOS_SECRETO` (previsto para la 6, que todavía no está
+construida). **`DIRECCION_PUBLICA` es con qué dirección se escriben los enlaces que salen por
+correo**; si se deja vacía se arma sola con el puerto, y eso quiere decir `http://localhost:3000` —
+o sea «esta computadora», así que el enlace **solo abre donde la aplicación está corriendo**. Sin `RESEND_API_KEY` la aplicación tiene que levantar igual:
 los correos fallan y quedan registrados como fallidos, pero las citas se siguen creando (RF-19).
 
 ## Convenciones
@@ -165,6 +168,8 @@ cenfotecProyectoFinalCC/
 │   ├── disponibilidad.js  qué horarios están libres — la regla, en un solo lugar
 │   ├── reservas.js        crear, cancelar, mover y **cerrar** una cita — el único que toca su
 │   │                      estado, y donde viven la ventana de 4 horas (RN-5) y RN-26
+│   ├── recuperacion.js    los enlaces para restablecer la contraseña: cuánto viven y cuándo
+│   │                      sirven (RN-27). Una regla, un lugar
 │   ├── correo.js          los correos: armarlos, entregarlos y dejar constancia
 │   ├── plantillas-de-correo.js  qué dice cada correo — solo arma texto, no manda nada
 │   ├── enviador-resend.js el único archivo que habla con un servicio de afuera
@@ -345,6 +350,15 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
 - **Al crear una cita se manda la confirmación, y eso está escrito en un solo lugar:**
   `crearCitaYConfirmar` de `servidor/reservas.js`. Una pieza nueva que reserve —la 7— llama a esa,
   no arma el correo por su cuenta.
+- **Un enlace que sale por correo puede llegar reescrito, y hay que escribir el correo contando
+  con eso.** *(Hallazgo 21, 2026-08-28.)* Resend le pone encima un rastreador de clics
+  (`awstrack.me`) a **los enlaces y botones**; si ese rastreador no abre, el botón no lleva a ningún
+  lado aunque nuestro enlace sea perfecto. Dos defensas, y las dos tienen prueba: el enlace lleva
+  **`ses:no-track`**, la marca con la que Amazon lo deja afuera del rastreo; y **la dirección va
+  además como texto suelto, a la vista** — un texto suelto no es un enlace, así que nadie lo
+  reescribe. **Esa segunda no es un plan B ni se presenta como tal**: es el único camino que no
+  depende de un tercero. Apagar el rastreo de raíz pide un dominio propio, y este proyecto usa la
+  dirección prestada de Resend.
 - **El correo viaja en dos versiones, HTML y texto plano, diciendo lo mismo.** Un correo que solo
   viaja en HTML lo marcan como sospechoso varios servicios.
 - **El HTML del correo se escribe con `<table>` y estilos pegados en cada etiqueta.** Los programas
@@ -396,6 +410,16 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   se hubiera ido a la esquina de arriba en cuanto la pantalla pasara los 768px. **Se encontró leyendo
   el CSS compilado, no la pantalla**, y por eso vale la pena leerlo: dos reglas que pesan lo mismo se
   resuelven por cuál está más abajo en el archivo, y eso en el `.scss` no se ve.
+- **Qué pantalla se ve lo decide una sola función: `mostrarSoloEstaPantalla`.** *(Desde la pieza 9,
+  2026-08-28.)* Antes había tres pantallas y cada función escondía las otras dos nombrándolas una por
+  una; con cinco eso es una trampa — alcanza con olvidarse de nombrar una para que queden dos
+  dibujadas encima de la otra, **y no lo detectaría ninguna prueba**. Una pantalla nueva se agrega a
+  la lista `TODAS_LAS_PANTALLAS` y queda cubierta. Es «una cosa, un lugar» aplicado al frontend, la
+  misma lección del hallazgo número 20.
+- **Lo que deja lista la pantalla de entrar va todo en `mostrarPantallaEntrada`**, no repartido entre
+  el arranque y otro lado. Es la misma regla de arriba: el correo recordado (RF-24) se puso ahí y no
+  solo en `arrancar()`, porque si no, salir y volver mostraría el cuadrito marcado aunque acabara de
+  entrar Personal — justo lo que RN-28 dice que no tiene que pasar.
 - **Un cambio visual que vale para una sola pantalla va como modificador, no cambiando la clase
   compartida.** La pieza 5 creó `paso--titulo-pegado` para no mover los otros cinco títulos, y la 7
   creó `confirmacion__botones--fila-centrada` para no mover las otras tres filas de dos botones —que
@@ -526,10 +550,17 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   escrito primero y la imagen encima. Si la imagen tarda o falta, la página se ve igual y nunca en
   blanco.
 - **Para atenuar una imagen de fondo no se usa `opacity`:** se le pone encima una capa del color del
-  lienzo con la transparencia que haga falta (`linear-gradient(rgba($canvas, 0.25), …)`). `opacity`
-  sobre un contenedor vuelve translúcido **todo lo que tiene adentro** —textos, tarjetas, botones—,
-  no solo su fondo. El resultado en pantalla es idéntico y no toca el contenido. *Aplicado el
-  2026-08-19, cuando la estudiante pidió bajarle un 25% a las flores del fondo.*
+  lienzo con la transparencia que haga falta. `opacity` sobre un contenedor vuelve translúcido **todo
+  lo que tiene adentro** —textos, tarjetas, botones—, no solo su fondo. El velo hace lo mismo en
+  pantalla y no toca el contenido. *Aplicado el 2026-08-19, cuando la estudiante pidió bajarle un
+  25% a las flores del fondo.*
+  - **Y desde el 2026-08-28 el velo del `body` es un degradado, no un valor parejo:**
+    `linear-gradient(rgba($canvas, 0.25), rgba($canvas, 0.9))`. Arriba la imagen se ve casi entera,
+    abajo casi desaparece. *(Pedido de la estudiante ese día.)* La razón: **la página crece hacia
+    abajo, y es abajo donde se junta el contenido** —formularios largos, listas de citas, el
+    calendario—. La imagen se queda donde hay aire y se va del camino donde hay algo que leer.
+  - **El color del velo se escribe con la variable `$canvas`, nunca a mano.** Es el mismo `#F4F6F8`
+    del `background-color` que va debajo, así que si un día cambia, cambia en los dos lados a la vez.
 - Los colores y el logo del **negocio** (los que se cargan como configuración, REG-4) **existen
   desde la pieza 2, y la aplicación no los aplica**: se guardan en `configuracion_negocio` y se
   devuelven en `GET /api/negocio`, pero ninguna pantalla los usa para pintarse. Son otra cosa:
@@ -552,6 +583,14 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
 - **Los comandos también hay que correrlos.** `npm test` no ejecuta `npm run datos` ni `npm start`, así
   que un error en esos guiones no lo detecta ninguna prueba. Pasó en la pieza 11: `npm run datos` quedó
   roto por un nombre que había cambiado, y solo se vio al correrlo.
+- **Volver opcional una columna que ya existe NO se puede con `ALTER TABLE`: hay que rehacer la
+  tabla.** *(Aprendido en la pieza 9, 2026-08-28, con `correo_enviado.cliente_id`.)* Agregar una
+  columna sí se puede —`agregarColumnaSiFalta` lo hace desde la pieza 10—, pero quitarle el
+  «obligatoria» a una que ya está, no. Se crea la nueva con la forma correcta, se copian todas las
+  filas nombrando las columnas una por una (nunca `SELECT *`, que depende del orden), se borra la
+  vieja, la nueva toma su nombre y **se vuelve a crear el índice**, que se fue con la tabla. Todo
+  dentro de una transacción, y con las llaves foráneas apagadas mientras dura. Y **se comprueba
+  contra una copia de la base de trabajo real antes de tocar la de verdad**.
 - **Una tabla nueva que apunte a otra hay que agregarla al borrado de `guiones/datos-de-prueba.js`,
   y primero de todo.** La base tiene las llaves foráneas encendidas: SQLite se niega a borrar una
   fila que alguien todavía señala. Pasó en la pieza 4 con `correo_enviado`, que apunta a `cita` y a
@@ -575,12 +614,19 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   que ya había ocurrido, y las pruebas estaban todas en verde, porque comprobaban la regla y la regla
   estaba bien. Por eso **una pieza no se cierra sin que una persona abra el navegador y mire.** Los
   **diecinueve** defectos visuales encontrados hasta hoy salieron todos de ahí, ninguno de una prueba,
-  **más un vigésimo hallazgo que no era de apariencia** —ver abajo—. La cuenta: **doce** hasta la
-  pieza 5, **seis** de la revisión de la pieza 7, **uno** que no estaba roto pero se veía (la etiqueta
-  que partía en dos líneas) y **uno** de la revisión de la pieza 8. *(Este número decía «ocho» hasta el
+  **más dos hallazgos que no eran de apariencia** —el 20 y el 21, los dos abajo—. La cuenta de los
+  visuales: **doce** hasta la pieza 5, **seis** de la revisión de la pieza 7, **uno** que no estaba
+  roto pero se veía (la etiqueta que partía en dos líneas) y **uno** de la revisión de la pieza 8. *(Este número decía «ocho» hasta el
   2026-08-21 y «doce» hasta el 2026-08-24: se quedó viejo tres veces, las tres porque la revisión
   visual siguió encontrando cosas después de que alguien anotó el número. Si volvés a tocarlo, mirá
   primero el final de `BITACORA.md`.)*
+- **El hallazgo 21 tampoco fue de apariencia, y fue todavía más afuera: lo hizo un servicio de
+  terceros** (pieza 9, 2026-08-28). El botón del correo de recuperación llevaba a una página de
+  error porque **Resend había reescrito el enlace** con un rastreador de clics propio. Del lado
+  nuestro no había nada roto y las 21 pruebas de la pieza estaban en verde. La lección: **el borde
+  del sistema termina antes de lo que uno cree** — lo que sale de `plantillas-de-correo.js` es
+  correcto, lo que llega a la bandeja de entrada no necesariamente. El detalle y las dos defensas
+  están en `DISENO.md`, «El hallazgo 21».
 - **Y el hallazgo número 20 no fue de apariencia: fue una regla escrita en dos mitades** (pieza 8,
   2026-08-24). Al salir y volver a entrar con la cuenta de Personal, la tarjeta «Atendiendo a» seguía
   mostrando a la persona de la sesión anterior. **Del lado del API no había nada roto** —la sesión se
@@ -600,7 +646,7 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
 
 ### Integración continua
 
-Existe desde la pieza 3. Las 277 pruebas corren solas en **cada push**, a cualquier rama, en
+Existe desde la pieza 3. Las 302 pruebas corren solas en **cada push**, a cualquier rama, en
 **Node 20 y Node 24**, configuradas en `.github/workflows/pruebas.yml`.
 
 - **Corre solo en push, no en pull request.** *Cambiado el 2026-08-25, a pedido de la estudiante:

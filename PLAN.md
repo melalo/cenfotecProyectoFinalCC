@@ -1346,6 +1346,106 @@ vacías desde la pieza 3—, ninguna dependencia nueva, y **CA-1, CA-2 y CA-3 in
 
 **Evidencia**
 
+*Construida el 2026-08-28.*
+
+**Las dos decisiones que el plan dejaba abiertas se resolvieron ANTES de escribir código**, y las dos
+quedaron escritas primero en `ESPECIFICACION.md`:
+
+- **Cuánto dura el enlace: 1 hora.** ⚠️ **Y acá el plan estaba equivocado: no era una decisión
+  abierta.** Estaba tomada desde el **2026-08-11**, en `DISENO.md` → «Otras decisiones». Este bloque
+  «Con qué se comprueba» escribió «con vencimiento» sin el número, y `PROXIMA-SESION.md` mandó
+  preguntarlo; el 2026-08-28 se preguntó y la estudiante **eligió lo mismo**, así que el código quedó
+  bien. Lo que falló fue la búsqueda, tres veces sobre el mismo dato. Ahora es **RN-27**, que es donde
+  tiene que vivir una regla de negocio con un número. La lección está en `DISENO.md`.
+- **Dónde apunta: a la misma página**, `http://localhost:3000/#restablecer=CÓDIGO`. Y **la limitación
+  se dijo en voz alta antes de construir, no al final**: `localhost` quiere decir «esta computadora»,
+  así que el enlace **solo abre en la máquina donde la aplicación corre**. Está en `DISENO.md`, y la
+  dirección sale de una variable de entorno (`DIRECCION_PUBLICA`) para que el día que la aplicación
+  viva en un servidor de verdad se arregle cambiando una línea del `.env`.
+
+**Y se construyó además el «Recordarme» que la pieza 8 había dejado planteado** *(decidido el
+2026-08-28: es **recordar el correo**, no la sesión —que ya se recuerda sola desde la pieza 1—, y **no
+aplica a la cuenta de Personal**, que vive en la computadora del mostrador)*. Como no lo pedía ningún
+requisito, **se escribió primero el requisito**: **RF-24** y **RN-28**.
+
+**Pruebas automáticas — `npm test`: 298 pruebas, 298 pasan, 0 fallan.** De esas, **21 son nuevas de
+esta pieza** (las otras 277 son las de las piezas anteriores, que siguen pasando). Se escribieron
+antes del código y **se vieron fallar primero**: la corrida previa dio «tests 19, pass 0, fail 19», y
+las 19 fallaban por la razón correcta —los endpoints no existían, así que el servidor devolvía la
+página en vez de JSON—. Viven en `pruebas/recuperacion.test.js`.
+
+**Su reloj se puede mover, y es lo que las distingue del resto del proyecto.** Las demás pruebas paran
+el tiempo en un martes y no lo mueven nunca, porque lo que comprueban no cambia con los minutos. Acá
+**el paso del tiempo es la regla**: hay una prueba que adelanta el reloj 61 minutos y comprueba que el
+enlace ya no sirve, y otra que lo adelanta 59 y comprueba que todavía sí. Sin eso, comprobar RN-27
+obligaría a esperar una hora de verdad.
+
+Cubren, además de las ocho comprobaciones de abajo: que un código que nunca existió se rechaza igual
+que uno usado; que la contraseña nueva tiene que cumplir RN-23 **y que el enlace no se gasta si no la
+cumple** (quien se equivoca escribiendo no puede quedar afuera de su cuenta); que pedir el enlace **no
+toca la contraseña vieja** mientras tanto; que el token queda marcado con la hora exacta en que se
+usó; que **el enlace de una persona no le sirve a otra**; que restablecer **apaga la obligación de
+cambiar la contraseña temporal** (RN-11), porque la nueva la eligió ella; que un correo mal escrito no
+rompe nada; y que el correo viaja en sus dos versiones, con diseño y sin él, las dos con el enlace y
+diciendo cuánto dura.
+
+**Y dos pruebas que no son de la pieza sino de la mudanza que la pieza obligó a hacer**: que una base
+creada antes del 2026-08-28 se pone al día **sin perder los correos ya registrados**, y que el índice
+`correo_por_cita` sobrevive a esa mudanza. Las dos se comprobaron rompiendo a propósito el código que
+las cubre, para ver que se ponían rojas.
+
+**Las 8 comprobaciones del plan, corridas contra la aplicación escuchando en
+`http://localhost:3000` y sobre la base real `datos/reservas.sqlite`**, el 2026-08-28:
+
+| # | Resultado |
+|---|---|
+| 1 | `POST /api/contrasena/olvide` con `ana@ejemplo.com` → **`204`**. Se guardó el token con `vence_en: 2026-08-28T11:04:00-06:00` contra un `enviado_en: 10:04:00` — **una hora exacta**, que es RN-27. |
+| 2 | `POST /api/contrasena/restablecer` con ese código y `Nueva456` → **`204`**, y entrar con `ana@ejemplo.com` / `Nueva456` → **`200`**. Y de paso se ve RN-11: volvió `debeCambiarContrasena: false`, porque ana tenía una contraseña temporal pendiente y la que acaba de elegir **la eligió ella**. |
+| 3 | Entrar con la contraseña anterior → **`401 credenciales_invalidas`**. |
+| 4 | El **mismo** código otra vez → **`422 token_invalido`**. |
+| 5 | Token insertado a mano con `vence_en: 2026-08-27T10:00:00-06:00` (ayer) → **`422 token_invalido`**, y la contraseña **no cambió**: se sigue entrando con la de antes. |
+| 6 | `noexiste@ejemplo.com` → **`204` y el cuerpo vacío, exactamente igual que el paso 1**. Y no se guardó ningún token ni salió ningún correo: los contadores quedaron iguales. |
+| 7 | Lo mismo con `personal@ejemplo.com`: **`204`**, token con **`cliente_id: null, personal_id: 1`**, restablecer → `204`, entrar → `200` con `tipo: "personal"`, y la vieja → `401`. *(Al terminar se le devolvió su `Personal123` con un segundo enlace, para no dejar la cuenta documentada con otra contraseña.)* |
+| 8 | La fila de `correo_enviado` quedó con **`tipo: "recuperacion"` y `cita_id: null`** (REG-3). El `exito: 0` es lo esperado y no es un defecto: a los `@ejemplo.com` el correo **falla a propósito** desde la pieza 4, y la fila queda igual — que es justamente para lo que la tabla existe. |
+
+**La mudanza se comprobó además contra una copia de la base de trabajo real**, antes de tocar nada:
+sus **8 correos, 11 citas y 7 clientes** quedaron intactos, `cliente_id` pasó a ser opcional, apareció
+`personal_id`, el índice se recreó y `token_recuperacion` se creó.
+
+**Hallazgo 21, encontrado por la estudiante el 2026-08-28 mientras probaba: el botón del correo no
+funcionó.** No era del código: **Resend le puso encima un rastreador de clics** (`awstrack.me`) que
+en esa máquina no se pudo abrir. Es **el primer hallazgo del proyecto que no es visual ni del
+código**, y ninguna prueba automática lo podía detectar. Se arregló de dos maneras —el botón pide no
+ser rastreado, y la dirección copiable dejó de ser el plan B para pasar a ser un camino en igualdad—
+y se agregaron **2 pruebas** que cuidan las dos cosas. El detalle completo está en `DISENO.md`.
+
+**Revisión visual — hecha por la estudiante el 2026-08-28, y con eso la pieza 9 queda CERRADA.**
+Recorrió los 20 pasos: la pantalla de entrar con sus dos cosas nuevas, el «Recordar mi correo»
+marcado y desmarcado, pedir el enlace, la respuesta idéntica con un correo que no existe, **el correo
+llegando de verdad a `melalo9@gmail.com`**, la pantalla de la contraseña nueva con sus requisitos y
+sus dos «ojitos», las dos contraseñas que no coinciden, entrar con la nueva, y el enlace rechazado la
+segunda vez. **Un solo defecto, el hallazgo 21, encontrado y arreglado el mismo día** — y al volver a
+probarlo, **el botón del correo funcionó**, lo que confirmó que el arreglo servía.
+
+**Lo que se construyó además, y no era parte del encargo de la pieza:**
+
+- **`correo_enviado` tuvo que cambiar de forma.** `cliente_id` era obligatoria desde la pieza 4,
+  cuando el único correo del sistema era la confirmación de una cita y toda cita tiene un cliente. El
+  de recuperación **también le llega a Personal**, que no es cliente de nadie, y REG-3 dice **cada**
+  correo. Ahora acepta `cliente_id` **o** `personal_id`, solo uno lleno — la misma forma que el plan
+  ya le había dado a `token_recuperacion`, y garantizada por un `CHECK` de la base y no por un
+  comentario. Como SQLite no sabe volver opcional una columna que ya existe, **la tabla se rehace**
+  copiando todas sus filas, dentro de una transacción. El detalle está en `DISENO.md`.
+- **Una sola función decide qué pantalla se ve** (`mostrarSoloEstaPantalla`). Hasta esta pieza había
+  tres pantallas y cada función escondía las otras dos **nombrándolas una por una**. Con las dos que
+  trae la pieza 9 son cinco, y ahí alcanza con olvidarse de nombrar una para que queden dos pantallas
+  dibujadas encima de la otra — **y no lo detectaría ninguna prueba**, porque ninguna mira la página
+  dibujada. Es la regla de siempre, «una cosa, un lugar», aplicada al frontend.
+- **El código del enlace viaja después del `#`**, que es la parte de la dirección que el navegador
+  **no le manda al servidor**. Eso no es casualidad: así el código **no queda escrito en el registro
+  de pedidos**. Y al usarlo se borra de la barra de direcciones con `replaceState`, para que recargar
+  no vuelva a abrir esa pantalla y para que no quede en el historial del navegador.
+
 ---
 
 ### Pieza 10: La información del cliente

@@ -23,6 +23,16 @@ const CARPETA_PUBLICA = join(CARPETA_DE_ESTE_ARCHIVO, "..", "publico")
 const RELOJ_DE_VERDAD = () => new Date()
 
 /**
+ * Con qué dirección se escriben los enlaces que salen por correo (pieza 9).
+ *
+ * **`localhost` quiere decir «esta computadora»**, así que un enlace escrito así solo abre en la
+ * máquina donde la aplicación está corriendo. Para la demostración alcanza, y está declarado en
+ * `DISENO.md`. El día que la aplicación viva en un servidor de verdad se cambia `DIRECCION_PUBLICA`
+ * en el `.env`, sin tocar código.
+ */
+const DIRECCION_PUBLICA_POR_OMISION = "http://localhost:3000"
+
+/**
  * `reloj` es una función que devuelve el momento actual. Existe para que las pruebas puedan parar
  * el tiempo en un miércoles, en un sábado o en un feriado concreto y comprobar siempre lo mismo:
  * sin eso, «mañana hay horarios» fallaría los sábados. Si no se pasa, la aplicación usa la hora de
@@ -39,6 +49,7 @@ export function crearAplicacion({
   sesionSecreto,
   reloj = RELOJ_DE_VERDAD,
   enviador = ENVIADOR_SIN_CONFIGURAR,
+  direccionPublica = DIRECCION_PUBLICA_POR_OMISION,
 }) {
   const aplicacion = express()
 
@@ -46,7 +57,10 @@ export function crearAplicacion({
   aplicacion.use(express.json())
 
   const sesiones = crearSesiones(sesionSecreto)
-  aplicacion.use("/api", crearRutasDeAutenticacion({ base, sesiones }))
+  aplicacion.use(
+    "/api",
+    crearRutasDeAutenticacion({ base, sesiones, reloj, enviador, direccionPublica }),
+  )
   aplicacion.use("/api", crearRutasDeCatalogo({ base, sesiones, reloj }))
   aplicacion.use("/api", crearRutasDeCitas({ base, sesiones, reloj, enviador }))
   aplicacion.use("/api", crearRutasDeUsuario({ base, sesiones, reloj }))
