@@ -248,11 +248,10 @@ test("todo servicio pertenece a una categoría", async (t) => {
 
   // Un servicio sin categoría no aparecería en ninguna parte de la pantalla: existiría en la base y
   // sería invisible. La base lo hace imposible, y esto lo comprueba.
-  assert.throws(
-    () =>
-      entorno.base
-        .prepare("INSERT INTO servicio (nombre, duracion_minutos) VALUES ('Suelto', 60)")
-        .run(),
+  // Es `rejects` y no `throws` porque la consulta ahora se espera: el error llega como una promesa
+  // rechazada, y un `throws` no vería nada y la prueba pasaría sin comprobar nada.
+  await assert.rejects(
+    () => entorno.base.correr("INSERT INTO servicio (nombre, duracion_minutos) VALUES ('Suelto', 60)"),
     /NOT NULL/,
     "la base tiene que negarse a guardar un servicio sin categoría",
   )

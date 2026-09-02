@@ -44,7 +44,7 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
   // Es el endpoint que usa la pantalla. Trae el árbol completo de una, y cada categoría dice si hay
   // que mostrar el paso de elegir el servicio (RN-22) — eso lo decide el servidor, no la pantalla.
   rutas.get("/categorias", exigirSesion, async (pedido, respuesta) => {
-    return respuesta.status(200).json(listarCategorias(base))
+    return respuesta.status(200).json(await listarCategorias(base))
   })
 
   // Los servicios de una categoría, por separado. La pantalla no lo necesita —ya los recibe todos en
@@ -53,18 +53,18 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
   rutas.get("/categorias/:categoriaId/servicios", exigirSesion, async (pedido, respuesta) => {
     const categoriaId = Number(pedido.params.categoriaId)
 
-    if (!existeLaCategoria(base, categoriaId)) {
+    if (!(await existeLaCategoria(base, categoriaId))) {
       return respuesta.status(404).json({ error: "categoria_no_encontrada" })
     }
 
-    return respuesta.status(200).json(listarServiciosDeCategoria(base, categoriaId))
+    return respuesta.status(200).json(await listarServiciosDeCategoria(base, categoriaId))
   })
 
   // Todos los servicios del negocio, en una lista plana. Existe desde la pieza 2 y se conserva tal
   // cual porque es parte de un contrato ya cerrado; desde la pieza 11 cada servicio trae además el
   // nombre de su categoría. La pantalla usa `/api/categorias`.
   rutas.get("/servicios", exigirSesion, async (pedido, respuesta) => {
-    return respuesta.status(200).json(listarServicios(base))
+    return respuesta.status(200).json(await listarServicios(base))
   })
 
   // RF-5, último paso: quién atiende el servicio elegido. Cuando hay más de uno, el cliente
@@ -72,19 +72,18 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
   rutas.get("/servicios/:servicioId/proveedores", exigirSesion, async (pedido, respuesta) => {
     const servicioId = Number(pedido.params.servicioId)
 
-    if (!existeElServicio(base, servicioId)) {
+    if (!(await existeElServicio(base, servicioId))) {
       return respuesta.status(404).json({ error: "servicio_no_encontrado" })
     }
 
-    const proveedores = base
-      .prepare(
-        `SELECT proveedor.id, proveedor.nombre
-           FROM proveedor
-           JOIN servicio_proveedor ON servicio_proveedor.proveedor_id = proveedor.id
-          WHERE servicio_proveedor.servicio_id = ?
-          ORDER BY proveedor.nombre`,
-      )
-      .all(servicioId)
+    const proveedores = await base.todas(
+      `SELECT proveedor.id, proveedor.nombre
+         FROM proveedor
+         JOIN servicio_proveedor ON servicio_proveedor.proveedor_id = proveedor.id
+        WHERE servicio_proveedor.servicio_id = ?
+        ORDER BY proveedor.nombre`,
+      servicioId,
+    )
 
     return respuesta.status(200).json(proveedores)
   })
@@ -103,7 +102,7 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
     // la limpieza facial, que él no atiende, mostraría horarios que nadie puede tomar. La pregunta
     // se le hace a `servidor/catalogo.js`, que es donde vive: desde la pieza 3 la reserva necesita
     // la misma respuesta, y no puede estar escrita dos veces.
-    if (!eseProveedorAtiendeEseServicio(base, servicioId, proveedorId)) {
+    if (!(await eseProveedorAtiendeEseServicio(base, servicioId, proveedorId))) {
       return respuesta.status(404).json({ error: "servicio_o_proveedor_no_encontrado" })
     }
 
@@ -124,13 +123,11 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
   // porque el pie de página muestra el nombre también en la pantalla de entrar. Solo devuelve la
   // configuración del negocio: nada de cuentas ni de citas.
   rutas.get("/negocio", async (pedido, respuesta) => {
-    const negocio = base
-      .prepare(
-        `SELECT nombre, telefono, ubicacion, logo, color_principal, color_secundario
-           FROM configuracion_negocio
-          LIMIT 1`,
-      )
-      .get()
+    const negocio = await base.uno(
+      `SELECT nombre, telefono, ubicacion, logo, color_principal, color_secundario
+         FROM configuracion_negocio
+        LIMIT 1`,
+    )
 
     if (!negocio) return respuesta.status(404).json({ error: "negocio_no_configurado" })
 

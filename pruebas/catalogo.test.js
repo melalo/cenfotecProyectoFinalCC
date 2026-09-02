@@ -110,20 +110,19 @@ test("un servicio con un solo proveedor igual dice quién lo atiende", async (t)
   // categoría, así que esta prueba crea también la suya. Lo que comprueba sigue siendo exactamente lo
   // mismo —la segunda mitad de RN-8, que con un solo proveedor igual se diga quién es— y sigue
   // creándose sus propios datos en vez de depender de los de demostración.
-  const categoria = entorno.base
-    .prepare("INSERT INTO categoria (nombre) VALUES ('Terapias')")
-    .run()
-  const servicio = entorno.base
-    .prepare(
-      "INSERT INTO servicio (nombre, duracion_minutos, categoria_id) VALUES ('Reflexología', 60, ?)",
-    )
-    .run(Number(categoria.lastInsertRowid))
-  const proveedor = entorno.base.prepare("INSERT INTO proveedor (nombre) VALUES ('Sofía')").run()
-  entorno.base
-    .prepare("INSERT INTO servicio_proveedor (servicio_id, proveedor_id) VALUES (?, ?)")
-    .run(servicio.lastInsertRowid, proveedor.lastInsertRowid)
+  const categoria = await entorno.base.correr("INSERT INTO categoria (nombre) VALUES ('Terapias')")
+  const servicio = await entorno.base.correr(
+    "INSERT INTO servicio (nombre, duracion_minutos, categoria_id) VALUES ('Reflexología', 60, ?)",
+    categoria.idInsertado,
+  )
+  const proveedor = await entorno.base.correr("INSERT INTO proveedor (nombre) VALUES ('Sofía')")
+  await entorno.base.correr(
+    "INSERT INTO servicio_proveedor (servicio_id, proveedor_id) VALUES (?, ?)",
+    servicio.idInsertado,
+    proveedor.idInsertado,
+  )
 
-  const respuesta = await navegador(`/api/servicios/${servicio.lastInsertRowid}/proveedores`)
+  const respuesta = await navegador(`/api/servicios/${servicio.idInsertado}/proveedores`)
 
   assert.equal(respuesta.estado, 200)
   assert.equal(respuesta.cuerpo.length, 1)

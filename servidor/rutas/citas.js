@@ -89,7 +89,7 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
       return respuesta.status(422).json({ error: "datos_incompletos" })
     }
 
-    if (!eseProveedorAtiendeEseServicio(base, servicioId, proveedorId)) {
+    if (!(await eseProveedorAtiendeEseServicio(base, servicioId, proveedorId))) {
       return respuesta.status(404).json({ error: "servicio_o_proveedor_no_encontrado" })
     }
 

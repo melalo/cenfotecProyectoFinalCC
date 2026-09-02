@@ -21,32 +21,38 @@
  * la convención del proyecto, que el frontend no decida reglas de negocio y reciba el *por qué* junto
  * con el *qué*.
  */
-export function listarCategorias(base) {
-  const categorias = base.prepare("SELECT id, nombre FROM categoria ORDER BY nombre").all()
+export async function listarCategorias(base) {
+  const categorias = await base.todas("SELECT id, nombre FROM categoria ORDER BY nombre")
 
-  return categorias.map((categoria) => {
-    const servicios = listarServiciosDeCategoria(base, categoria.id)
+  // Esto era un `.map`, y ahora es un bucle: un `.map` con una función `async` adentro devuelve un
+  // arreglo de promesas y no de categorías. Se recorren **una tras otra**, no con `Promise.all`,
+  // porque a la base de este proyecto se le habla de a una consulta.
+  const conSusServicios = []
 
-    return {
+  for (const categoria of categorias) {
+    const servicios = await listarServiciosDeCategoria(base, categoria.id)
+
+    conSusServicios.push({
       id: categoria.id,
       nombre: categoria.nombre,
       // Con un solo servicio no hay nada que elegir, así que ese paso no se muestra (RN-22).
       pideElegirTipo: servicios.length > 1,
       servicios,
-    }
-  })
+    })
+  }
+
+  return conSusServicios
 }
 
 /** Los servicios de una categoría, ordenados por nombre. */
-export function listarServiciosDeCategoria(base, categoriaId) {
-  return base
-    .prepare(
-      `SELECT id, nombre, duracion_minutos AS duracionMinutos
-         FROM servicio
-        WHERE categoria_id = ?
-        ORDER BY nombre`,
-    )
-    .all(categoriaId)
+export async function listarServiciosDeCategoria(base, categoriaId) {
+  return await base.todas(
+    `SELECT id, nombre, duracion_minutos AS duracionMinutos
+       FROM servicio
+      WHERE categoria_id = ?
+      ORDER BY nombre`,
+    categoriaId,
+  )
 }
 
 /**
@@ -56,28 +62,26 @@ export function listarServiciosDeCategoria(base, categoriaId) {
  * parte de un contrato ya cerrado. La pantalla ya no lo usa —usa las categorías—, pero los dos leen
  * de acá, así que no hay dos consultas que se puedan desincronizar.
  */
-export function listarServicios(base) {
-  return base
-    .prepare(
-      `SELECT servicio.id, servicio.nombre, servicio.duracion_minutos AS duracionMinutos,
-              categoria.nombre AS categoria
-         FROM servicio
-         JOIN categoria ON categoria.id = servicio.categoria_id
-        ORDER BY categoria.nombre, servicio.nombre`,
-    )
-    .all()
+export async function listarServicios(base) {
+  return await base.todas(
+    `SELECT servicio.id, servicio.nombre, servicio.duracion_minutos AS duracionMinutos,
+            categoria.nombre AS categoria
+       FROM servicio
+       JOIN categoria ON categoria.id = servicio.categoria_id
+      ORDER BY categoria.nombre, servicio.nombre`,
+  )
 }
 
 /** ¿Existe esa categoría? */
-export function existeLaCategoria(base, categoriaId) {
+export async function existeLaCategoria(base, categoriaId) {
   if (!categoriaId) return false
-  return Boolean(base.prepare("SELECT id FROM categoria WHERE id = ?").get(categoriaId))
+  return Boolean(await base.uno("SELECT id FROM categoria WHERE id = ?", categoriaId))
 }
 
 /** ¿Existe ese servicio? */
-export function existeElServicio(base, servicioId) {
+export async function existeElServicio(base, servicioId) {
   if (!servicioId) return false
-  return Boolean(base.prepare("SELECT id FROM servicio WHERE id = ?").get(servicioId))
+  return Boolean(await base.uno("SELECT id FROM servicio WHERE id = ?", servicioId))
 }
 
 /**
@@ -87,12 +91,14 @@ export function existeElServicio(base, servicioId) {
  * mostraría horarios que nadie puede tomar, y reservar esa combinación crearía una cita imposible
  * de atender.
  */
-export function eseProveedorAtiendeEseServicio(base, servicioId, proveedorId) {
+export async function eseProveedorAtiendeEseServicio(base, servicioId, proveedorId) {
   if (!servicioId || !proveedorId) return false
 
-  const fila = base
-    .prepare("SELECT 1 FROM servicio_proveedor WHERE servicio_id = ? AND proveedor_id = ?")
-    .get(servicioId, proveedorId)
+  const fila = await base.uno(
+    "SELECT 1 FROM servicio_proveedor WHERE servicio_id = ? AND proveedor_id = ?",
+    servicioId,
+    proveedorId,
+  )
 
   return Boolean(fila)
 }
