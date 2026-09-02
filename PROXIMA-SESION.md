@@ -1,7 +1,7 @@
-# Próxima sesión — la pieza 6, o la presentación
+# Próxima sesión — publicar en Vercel y cerrar la pieza 6
 
-*Escrito el 2026-08-28, al cerrar la pieza 9. **La pieza 9 está cerrada.** Esta es la hoja para
-retomar sin releer nada.*
+*Escrito el 2026-08-28, al cerrar la pieza 9. **Actualizado el 2026-08-29**, cuando la estudiante
+decidió publicar la aplicación. Esta es la hoja para retomar sin releer nada.*
 
 ---
 
@@ -11,6 +11,10 @@ retomar sin releer nada.*
 
 Con eso alcanza. El agente tiene que leer por su cuenta `ESPECIFICACION.md`, `DISENO.md`, la pieza
 que se vaya a construir de `PLAN.md`, `VISUALS.md` y el `CLAUDE.md` del repositorio.
+
+**Y la sesión se abre DENTRO de esta carpeta, no en la de arriba.** Si se abre en
+`Desktop/claudeCodeCenfotec`, el `CLAUDE.md` del repositorio no se carga y la skill `/launch`
+**no aparece en la lista**, aunque exista. Pasó el 2026-08-29 y costó una conversación entera.
 
 ---
 
@@ -23,32 +27,67 @@ que se vaya a construir de `PLAN.md`, `VISUALS.md` y el `CLAUDE.md` del reposito
 | **CA-1, CA-2 y CA-3** | **Los tres completos**, cubiertos por pruebas que corren en cada push, en Node 20 y Node 24 |
 | **Git** | **Todo subido el 2026-08-28** |
 | **Piezas hechas** | 1, 2, 3, 4, 5, **7, 8, 9**, 10, 11 y 12 — **once de doce** |
-| **Piezas que faltan** | **Solo la 6**, y está trabada por una decisión, no por tiempo |
+| **Piezas que faltan** | **Solo la 6.** Estuvo trabada por una decisión; **la decisión se tomó el 2026-08-29** y está abajo |
 | **Del curso** | Falta **preparar la presentación** de la sesión 8 |
 | **Tiempo** | Hasta la entrega del **8 de setiembre** |
+| **Despliegue** | **Decidido el 2026-08-29:** la aplicación se publica en **Vercel con Turso**. Todavía no empezó |
 
 ---
 
-## Las dos cosas que quedan, y hay que elegir por cuál empezar
+## Lo que queda, y en qué orden
 
-### 1. La pieza 6 — «Recordatorio de 24 horas»
+### 1. Publicar la aplicación en Vercel — DECIDIDO el 2026-08-29
 
-**Sigue trabada por una decisión, no por tiempo.** Su plan dice que una tarea programada de GitHub
-Actions llama al backend. Pero la aplicación corre en `http://localhost:3000`, que quiere decir «esta
-computadora»: **GitHub no puede llamar a tu computadora**. No hay clave ni configuración que lo
-arregle.
+**Va primero, porque la pieza 6 depende de esto.**
 
-**Es el mismo problema que apareció en la pieza 9 con el enlace del correo**, y esa vez se resolvió
-declarándolo en voz alta antes de construir, no descubriéndolo al final. Acá conviene hacer lo mismo.
+El problema era este: el plan de la pieza 6 dice que una tarea programada de GitHub Actions llama al
+backend. Pero la aplicación corre en `http://localhost:3000`, que quiere decir «esta computadora»:
+**GitHub no puede llamar a tu computadora**. No hay clave ni configuración que lo arregle.
 
-Tres caminos, y la elección es de la estudiante:
+**La razón de fondo de la decisión no es la pieza 6**, sino que **sin dirección pública la
+aplicación no se puede mostrar en la presentación de la sesión 8**. Eso pesó más que cualquier
+comprobación del plan.
 
-1. **Recortarla**, que es lo que `FICHA-APROBACION.md` ya anticipaba.
-2. **Alojar la aplicación** en algún servicio gratuito. Suma tiempo aparte del de la pieza.
-3. **Adaptarla:** construir el endpoint y su regla completos, con sus pruebas, y disparar la revisión
-   **a mano**. Se cumplirían 7 de sus 8 comprobaciones; la 8 quedaría anotada como no cumplida.
+**Se evaluó y se descartó** alojarla en un servicio de contenedor (tipo Render), donde la aplicación
+correría tal como está y SQLite seguiría funcionando con **cero cambios de código**. La estudiante
+eligió Vercel sabiendo el costo. **La decisión está tomada: no volver a proponer otra plataforma.**
 
-### 2. La presentación de la sesión 8
+**Lo que cuesta, ya medido el 2026-08-28 sobre este código:**
+
+| | |
+|---|---|
+| Puntos que consultan la base | **107** — 47 en `servidor/`, 49 en `pruebas/`, 11 en `guiones/` |
+| Transacciones a rearmar | **5**, incluida `comprobarYGuardar` de `servidor/reservas.js`, que es lo que impide reservar dos veces el mismo horario |
+| Además | Adaptar el arranque: hoy `servidor/index.js` levanta un Express con `listen()`, y Vercel corre funciones, no servidores |
+| Red de seguridad | Las **302 pruebas** tienen que quedar en verde **al final de cada etapa**, para poder parar sin dejar el proyecto roto |
+
+El cambio de fondo es que `better-sqlite3` es **sincrónico** y Turso es **asincrónico**: cada
+consulta pasa a ser esperada, y eso se contagia hacia arriba por toda la aplicación.
+
+**Lo que juega a favor, y es más de lo que parecía:** la aplicación ya lee `PORT` del entorno,
+**`DIRECCION_PUBLICA` ya existe como variable** —la dejó puesta la pieza 9 para los enlaces del
+correo— y lo único que escribe a disco es la carpeta de la base. Las variables de entorno son solo
+cinco: `PORT`, `SESION_SECRETO`, `RESEND_API_KEY`, `CORREO_REMITENTE`, `DIRECCION_PUBLICA`.
+
+**Esta migración ya se hizo una vez**, en `semana6/cancha-total` del repo del curso. Su bitácora
+está en `Desktop/claudeCodeCenfotec/cursoCenfotecClaude/semana6/cancha-total/DESPLIEGUE.md`, que
+**este repositorio no puede ver**: hay que abrirla aparte. Tres trampas ya pagadas allí:
+
+1. El **Root Directory** de Vercel no se lee ni se escribe con la CLI; hay que usar la API.
+2. Turso inyecta `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` **con esos nombres exactos**.
+3. Una función de Vercel **no aguanta muchas consultas seguidas dentro de una misma visita**.
+
+El token de Vercel está en `Desktop/connectVercel.txt`.
+
+### 2. La pieza 6 — «Recordatorio de 24 horas», completa
+
+**Ya publicada, el obstáculo desaparece:** la tarea programada sí alcanza la aplicación, así que se
+apunta a **las 8 comprobaciones**, no a 7. Sería la pieza **12 de 12**.
+
+**El correo no es parte del problema.** Resend funciona desde local y está comprobado contra el
+servicio real desde la pieza 4. Si aparece una duda sobre esto, ya está contestada.
+
+### 3. La presentación de la sesión 8
 
 **Y hoy hay bastante más para contar que hace una semana.** Tres cosas de la sesión del 2026-08-28
 que se defienden solas, porque las tres muestran el método funcionando y no solo el resultado:
