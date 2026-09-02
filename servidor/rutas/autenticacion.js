@@ -37,7 +37,7 @@ export function crearRutasDeAutenticacion({
   const rutas = Router()
 
   // RF-1: una persona sin cuenta crea la suya con nombre, correo y contraseña.
-  rutas.post("/registro", (pedido, respuesta) => {
+  rutas.post("/registro", async (pedido, respuesta) => {
     const nombre = String(pedido.body?.nombre ?? "").trim()
     const correo = normalizarCorreo(pedido.body?.correo)
     const contrasena = String(pedido.body?.contrasena ?? "")
@@ -105,7 +105,7 @@ export function crearRutasDeAutenticacion({
   // poder seguir entrando con la contraseña que tenía, y obligarla a cambiarla la dejaría afuera de
   // su propia cuenta sin haber hecho nada. Aparte, rechazar acá por «esa contraseña no cumple el
   // formato» le regalaría a quien intenta adivinar una pista que hoy no tiene.
-  rutas.post("/sesion", (pedido, respuesta) => {
+  rutas.post("/sesion", async (pedido, respuesta) => {
     const correo = normalizarCorreo(pedido.body?.correo)
     const contrasena = String(pedido.body?.contrasena ?? "")
 
@@ -123,7 +123,7 @@ export function crearRutasDeAutenticacion({
     return respuesta.status(200).json(comoSeVeLaCuenta(encontrada))
   })
 
-  rutas.delete("/sesion", (pedido, respuesta) => {
+  rutas.delete("/sesion", async (pedido, respuesta) => {
     sesiones.cerrar(respuesta)
     return respuesta.status(204).end()
   })
@@ -137,7 +137,7 @@ export function crearRutasDeAutenticacion({
   // **Queda abierto mientras la contraseña temporal está pendiente**, a diferencia de todos los
   // endpoints del cliente, que en ese estado se cierran (ver `crearGuardiaDeCliente`). Es la puerta
   // de salida de esa pantalla: si también se cerrara, la persona quedaría encerrada.
-  rutas.post("/contrasena/cambiar", (pedido, respuesta) => {
+  rutas.post("/contrasena/cambiar", async (pedido, respuesta) => {
     const sesion = sesiones.leer(pedido)
     if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })
 
@@ -235,7 +235,7 @@ export function crearRutasDeAutenticacion({
   // contraseña sin ella. Tiene que ser así: quien la olvidó justamente no puede entrar. Lo que hace
   // las veces de identificación es el código, que es imposible de adivinar, vive una hora y muere
   // al usarse (RN-27).
-  rutas.post("/contrasena/restablecer", (pedido, respuesta) => {
+  rutas.post("/contrasena/restablecer", async (pedido, respuesta) => {
     const codigo = String(pedido.body?.codigo ?? "")
     const contrasena = String(pedido.body?.contrasena ?? "")
     const ahora = reloj()
@@ -303,7 +303,7 @@ export function crearRutasDeAutenticacion({
   })
 
   // Quién está actuando. Toda pieza posterior usa el campo `tipo` de acá.
-  rutas.get("/yo", (pedido, respuesta) => {
+  rutas.get("/yo", async (pedido, respuesta) => {
     const sesion = sesiones.leer(pedido)
     if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })
 

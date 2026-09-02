@@ -28,7 +28,7 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
    * El catálogo y el calendario no se pueden ver sin cuenta: no existe la reserva como invitado
    * (RN-9), así que un calendario que se pudiera mirar sin entrar no llevaría a ninguna parte.
    */
-  function exigirSesion(pedido, respuesta, seguir) {
+  async function exigirSesion(pedido, respuesta, seguir) {
     const sesion = sesiones.leer(pedido)
     if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })
 
@@ -43,14 +43,14 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
   //
   // Es el endpoint que usa la pantalla. Trae el árbol completo de una, y cada categoría dice si hay
   // que mostrar el paso de elegir el servicio (RN-22) — eso lo decide el servidor, no la pantalla.
-  rutas.get("/categorias", exigirSesion, (pedido, respuesta) => {
+  rutas.get("/categorias", exigirSesion, async (pedido, respuesta) => {
     return respuesta.status(200).json(listarCategorias(base))
   })
 
   // Los servicios de una categoría, por separado. La pantalla no lo necesita —ya los recibe todos en
   // `/api/categorias`—, pero el contrato de la pieza 11 lo fija y hace comprobable el caso de una
   // categoría que no existe.
-  rutas.get("/categorias/:categoriaId/servicios", exigirSesion, (pedido, respuesta) => {
+  rutas.get("/categorias/:categoriaId/servicios", exigirSesion, async (pedido, respuesta) => {
     const categoriaId = Number(pedido.params.categoriaId)
 
     if (!existeLaCategoria(base, categoriaId)) {
@@ -63,13 +63,13 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
   // Todos los servicios del negocio, en una lista plana. Existe desde la pieza 2 y se conserva tal
   // cual porque es parte de un contrato ya cerrado; desde la pieza 11 cada servicio trae además el
   // nombre de su categoría. La pantalla usa `/api/categorias`.
-  rutas.get("/servicios", exigirSesion, (pedido, respuesta) => {
+  rutas.get("/servicios", exigirSesion, async (pedido, respuesta) => {
     return respuesta.status(200).json(listarServicios(base))
   })
 
   // RF-5, último paso: quién atiende el servicio elegido. Cuando hay más de uno, el cliente
   // elige; cuando hay uno solo, igual se dice quién es (RN-8).
-  rutas.get("/servicios/:servicioId/proveedores", exigirSesion, (pedido, respuesta) => {
+  rutas.get("/servicios/:servicioId/proveedores", exigirSesion, async (pedido, respuesta) => {
     const servicioId = Number(pedido.params.servicioId)
 
     if (!existeElServicio(base, servicioId)) {
@@ -90,7 +90,7 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
   })
 
   // RF-6 y RF-7: el calendario del mes, con los horarios libres y los que no lo están.
-  rutas.get("/disponibilidad", exigirSesion, (pedido, respuesta) => {
+  rutas.get("/disponibilidad", exigirSesion, async (pedido, respuesta) => {
     const servicioId = Number(pedido.query.servicioId)
     const proveedorId = Number(pedido.query.proveedorId)
     const mes = pedido.query.mes
@@ -123,7 +123,7 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
   // Los datos del negocio (REG-4). Es el único endpoint de esta pieza que se lee **sin sesión**,
   // porque el pie de página muestra el nombre también en la pantalla de entrar. Solo devuelve la
   // configuración del negocio: nada de cuentas ni de citas.
-  rutas.get("/negocio", (pedido, respuesta) => {
+  rutas.get("/negocio", async (pedido, respuesta) => {
     const negocio = base
       .prepare(
         `SELECT nombre, telefono, ubicacion, logo, color_principal, color_secundario

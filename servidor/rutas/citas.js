@@ -131,7 +131,7 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
   //
   // Desde la pieza 5 recibe `ahora`, porque cada cita viene con si se puede cancelar o mover, y eso
   // depende de qué hora es.
-  rutas.get("/citas", exigirCliente, (pedido, respuesta) => {
+  rutas.get("/citas", exigirCliente, async (pedido, respuesta) => {
     return respuesta
       .status(200)
       .json(citasDelCliente({ base, clienteId: pedido.clienteId, ahora: reloj() }))
@@ -143,7 +143,7 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
   // Desde la pieza 7 también RF-18: **con la sesión de Personal la ventana de las 4 horas no
   // aplica** (RN-6). Acá no hay ningún `if` que diga eso: lo único que cambia es el `quien` que baja
   // a `reservas.js`, y la regla vive allá, escrita una sola vez. Eso es CA-3.
-  rutas.delete("/citas/:citaId", exigirClienteOPersonal, (pedido, respuesta) => {
+  rutas.delete("/citas/:citaId", exigirClienteOPersonal, async (pedido, respuesta) => {
     const citaId = Number(pedido.params.citaId)
 
     // Un `:citaId` que no es un número no es una cita que exista: se contesta lo mismo que para una

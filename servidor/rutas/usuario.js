@@ -28,12 +28,12 @@ export function crearRutasDeUsuario({ base, sesiones, reloj }) {
   const exigirCliente = crearGuardiaDeCliente(sesiones, base)
 
   // RF-22: lo que la sección «Usuario» muestra.
-  rutas.get("/mi-informacion", exigirCliente, (pedido, respuesta) => {
+  rutas.get("/mi-informacion", exigirCliente, async (pedido, respuesta) => {
     return respuesta.status(200).json(armarLaRespuesta(base, pedido.clienteId, reloj()))
   })
 
   // RF-22, la otra mitad: completar o corregir el nombre, el teléfono y la fecha de nacimiento.
-  rutas.put("/mi-informacion", exigirCliente, (pedido, respuesta) => {
+  rutas.put("/mi-informacion", exigirCliente, async (pedido, respuesta) => {
     const resultado = guardarDatosDelCliente({
       base,
       clienteId: pedido.clienteId,

@@ -102,7 +102,7 @@ export function crearSesiones(sesionSecreto) {
  * sin que su sesión se entere.
  */
 export function crearGuardiaDeCliente(sesiones, base) {
-  return function exigirCliente(pedido, respuesta, seguir) {
+  return async function exigirCliente(pedido, respuesta, seguir) {
     const sesion = sesiones.leer(pedido)
 
     if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })
@@ -126,7 +126,7 @@ export function crearGuardiaDeCliente(sesiones, base) {
  * con la sesión de un cliente `403` («sé quién sos y esto no te toca»).
  */
 export function crearGuardiaDePersonal(sesiones) {
-  return function exigirPersonal(pedido, respuesta, seguir) {
+  return async function exigirPersonal(pedido, respuesta, seguir) {
     const sesion = sesiones.leer(pedido)
 
     if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })
@@ -156,7 +156,7 @@ export function crearGuardiaDePersonal(sesiones) {
  * tiene contraseña temporal que cambiar.
  */
 export function crearGuardiaDeClienteOPersonal(sesiones, base) {
-  return function exigirClienteOPersonal(pedido, respuesta, seguir) {
+  return async function exigirClienteOPersonal(pedido, respuesta, seguir) {
     const sesion = sesiones.leer(pedido)
 
     if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })

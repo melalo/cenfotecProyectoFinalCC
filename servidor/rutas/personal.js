@@ -57,7 +57,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   //
   // La contraseña temporal **viaja en la respuesta y en ningún otro lado**: es la única vez que
   // existe fuera de la cabeza de quien la dicte. En la base solo queda su huella cifrada.
-  rutas.post("/personal/clientes", exigirPersonal, (pedido, respuesta) => {
+  rutas.post("/personal/clientes", exigirPersonal, async (pedido, respuesta) => {
     const resultado = crearClienteDesdePersonal({
       base,
       nombre: pedido.body?.nombre,
@@ -77,7 +77,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   //
   // Con menos de dos letras devuelve la lista vacía, y quién decide eso es `servidor/personal.js`,
   // no esta ruta: es una regla, y las reglas no viven en los archivos de rutas.
-  rutas.get("/personal/clientes", exigirPersonal, (pedido, respuesta) => {
+  rutas.get("/personal/clientes", exigirPersonal, async (pedido, respuesta) => {
     return respuesta.status(200).json(buscarClientes({ base, busqueda: pedido.query.busqueda }))
   })
 
@@ -87,7 +87,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   // que empieza dentro de dos horas le llega a Personal con `sePuedeCambiar: true` (RN-6) mientras al
   // cliente le llega en `false`. **La regla no está escrita dos veces**: es la misma, preguntada por
   // dos actores distintos, y eso es exactamente CA-3.
-  rutas.get("/personal/clientes/:clienteId/citas", exigirPersonal, (pedido, respuesta) => {
+  rutas.get("/personal/clientes/:clienteId/citas", exigirPersonal, async (pedido, respuesta) => {
     const clienteId = Number(pedido.params.clienteId)
 
     if (!eseClienteExiste(base, clienteId)) {
@@ -106,7 +106,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   // **No recibe ningún cliente**, a diferencia de la de arriba: son las de todo el negocio juntas, de
   // gente distinta, y por eso cada una viene con el nombre de su dueño. Es la lista de trabajo
   // pendiente de la asistente, no el expediente de una persona.
-  rutas.get("/personal/citas-por-cerrar", exigirPersonal, (pedido, respuesta) => {
+  rutas.get("/personal/citas-por-cerrar", exigirPersonal, async (pedido, respuesta) => {
     return respuesta.status(200).json(citasPorCerrar({ base, ahora: reloj() }))
   })
 
@@ -115,7 +115,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   // Quién la marcó sale de `pedido.personalId`, que lo deja puesto el guardia, **no del cuerpo del
   // pedido**. Es el mismo criterio con el que la pieza 7 decide de quién es una cita al reservar: un
   // dato que dice «quién soy» nunca se lee de lo que manda el navegador.
-  rutas.patch("/personal/citas/:citaId/cierre", exigirPersonal, (pedido, respuesta) => {
+  rutas.patch("/personal/citas/:citaId/cierre", exigirPersonal, async (pedido, respuesta) => {
     const citaId = Number(pedido.params.citaId)
     const estado = pedido.body?.estado
 

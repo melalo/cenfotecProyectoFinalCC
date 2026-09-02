@@ -33,6 +33,19 @@ const RELOJ_DE_VERDAD = () => new Date()
 const DIRECCION_PUBLICA_POR_OMISION = "http://localhost:3000"
 
 /**
+ * ── Por qué los manejadores pueden ser `async` (2026-09-02) ────────────────────────────────────
+ *
+ * Desde el despliegue, cada consulta a la base se **espera**, así que todos los manejadores de este
+ * proyecto son `async`. Eso es seguro **por la versión de Express que usa el proyecto, y no en
+ * general**: en Express 4, un manejador `async` que fallaba dejaba la petición colgada para siempre,
+ * porque nadie recogía la promesa rechazada. Express 5 —que es la que declara `package.json`— la
+ * lleva sola al manejador de errores, y contesta 500 en vez de quedarse callado.
+ *
+ * Si alguna vez alguien piensa en bajar Express a la 4, esto es lo que se rompe, y no se ve en
+ * ninguna prueba que pase: se ve en una petición que nunca contesta.
+ */
+
+/**
  * `reloj` es una función que devuelve el momento actual. Existe para que las pruebas puedan parar
  * el tiempo en un miércoles, en un sábado o en un feriado concreto y comprobar siempre lo mismo:
  * sin eso, «mañana hay horarios» fallaría los sábados. Si no se pasa, la aplicación usa la hora de
