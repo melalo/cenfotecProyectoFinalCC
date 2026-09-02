@@ -4,6 +4,7 @@ import "dotenv/config"
 import { randomBytes } from "node:crypto"
 
 import { abrirBase, RUTA_DE_LA_BASE } from "./base-de-datos.js"
+import { crearEsquema } from "./esquema.js"
 import { crearAplicacion } from "./aplicacion.js"
 import { crearEnviadorResend } from "./enviador-resend.js"
 
@@ -22,7 +23,8 @@ if (!sesionSecreto) {
   )
 }
 
-const base = abrirBase(RUTA_DE_LA_BASE)
+const base = await abrirBase(RUTA_DE_LA_BASE)
+await crearEsquema(base)
 
 const { cuantas } = base.prepare("SELECT COUNT(*) AS cuantas FROM personal").get()
 if (cuantas === 0) {

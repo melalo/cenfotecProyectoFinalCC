@@ -11,6 +11,7 @@ import { join } from "node:path"
 import { once } from "node:events"
 
 import { abrirBase } from "../servidor/base-de-datos.js"
+import { crearEsquema } from "../servidor/esquema.js"
 import { crearAplicacion } from "../servidor/aplicacion.js"
 import { cargarDatosDePrueba } from "../guiones/datos-de-prueba.js"
 
@@ -69,7 +70,8 @@ export async function crearEntornoDePrueba(contexto, opciones = {}) {
     },
 
     async levantar() {
-      base = abrirBase(rutaBase)
+      base = await abrirBase(rutaBase)
+      await crearEsquema(base)
       servidor = crearAplicacion({
         base,
         sesionSecreto: SESION_SECRETO_DE_PRUEBA,

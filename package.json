@@ -12,10 +12,12 @@
     "prestart": "npm run estilos",
     "start": "node servidor/index.js",
     "datos": "node guiones/cargar-datos.js",
+    "esquema": "node guiones/esquema.js",
     "estado": "node guiones/estado.js",
     "test": "node --test"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

@@ -1,4 +1,4 @@
-// Abre el archivo SQLite y se asegura de que las tablas existan.
+// Abre el archivo SQLite. Las tablas ya no se crean acá: viven en `esquema.js`.
 //
 // La base de datos de este proyecto es un solo archivo dentro de la carpeta `datos/`. No hay
 // ningún servidor de base de datos que instalar: `better-sqlite3` lo trae adentro (decidido en
@@ -15,338 +15,131 @@ const CARPETA_DE_ESTE_ARCHIVO = dirname(fileURLToPath(import.meta.url))
 export const RUTA_DE_LA_BASE = join(CARPETA_DE_ESTE_ARCHIVO, "..", "datos", "reservas.sqlite")
 
 /**
- * Abre la base en la ruta indicada y crea las tablas que falten. Se puede llamar sobre una base
- * que ya existe: no borra ni cambia nada de lo que haya guardado.
+ * Abre la base en la ruta indicada. **Ya no crea las tablas**: eso lo hace `crearEsquema` de
+ * `esquema.js`, y quien abre la base decide si lo llama. La razón está escrita ahí.
+ *
+ * Es `async` aunque hoy no espere nada, a propósito: en la Etapa 3 el motor de abajo pasa a ser una
+ * base de la red y conectarse sí va a llevar tiempo. Poniendo el `async` desde ahora, ese día no
+ * hay que volver a tocar a ninguno de los que la llaman.
  */
-export function abrirBase(rutaArchivo) {
+export async function abrirBase(rutaArchivo) {
   mkdirSync(dirname(rutaArchivo), { recursive: true })
 
-  const base = new Database(rutaArchivo)
+  const cruda = new Database(rutaArchivo)
 
   // WAL deja que alguien lea mientras otro escribe. Hace falta desde la pieza 3, donde dos
   // clientes pueden intentar reservar el mismo horario en el mismo instante (CA-1).
-  base.pragma("journal_mode = WAL")
-  base.pragma("foreign_keys = ON")
+  cruda.pragma("journal_mode = WAL")
 
-  crearTablas(base)
-  agregarColumnasQueFaltan(base)
+  // `busy_timeout` es nuevo acá (2026-09-02) y no estaba antes: si la base está ocupada, se espera
+  // hasta 5 segundos en vez de fallar en el acto. Hoy no cambia nada porque hay una sola conexión.
+  // Se pone desde ahora porque en la Etapa 3 sí va a haber dos programas escribiendo el mismo
+  // archivo durante las pruebas —la aplicación y la prueba que la vigila—, y sin esto la suite se
+  // pondría intermitente. Ponerlo con el motor conocido debajo es la manera de comprobar que no
+  // rompe nada.
+  cruda.pragma("busy_timeout = 5000")
+
+  cruda.pragma("foreign_keys = ON")
+
+  return envolver(cruda)
+}
+
+/**
+ * ── La segunda cara de la base (2026-09-02, al preparar el despliegue) ─────────────────────────
+ *
+ * Este objeto tiene **dos caras al mismo tiempo**, y es a propósito y es temporal.
+ *
+ * La cara **vieja** —`prepare`, `exec`, `transaction`, `pragma`, `close`— es la de `better-sqlite3`
+ * y responde en el acto. Es la que hoy usan los 107 puntos del código.
+ *
+ * La cara **nueva** —`uno`, `todas`, `correr`, `ejecutar`, `enTransaccion`, `cerrar`— responde
+ * **esperada**, como responde una base que vive en la red. Hoy, por debajo, es la misma de siempre:
+ * los `await` que la esperan no esperan nada. Y ahí está el truco de toda la migración: se puede
+ * mudar el código a este idioma con el motor conocido debajo, y comprobar que nada cambió, antes de
+ * cambiar el motor.
+ *
+ * **La cara vieja se borra al final de la Etapa 2**, cuando no quede nadie usándola. Mientras las
+ * dos existan, el proyecto se puede dejar a medias sin quedar roto.
+ */
+function envolver(cruda) {
+  /**
+   * Aplana una fila a un objeto común.
+   *
+   * Con `better-sqlite3` esto no hace nada: ya devuelve objetos comunes. Existe por la Etapa 3:
+   * `@libsql/client` devuelve filas con **su propia clase**, y `assert.deepEqual` contra un objeto
+   * escrito a mano falla aunque los datos sean idénticos. Aplanarlas acá es lo que hace que las dos
+   * implementaciones sean de verdad intercambiables, y hay una prueba que lo fija.
+   */
+  const aplanar = (fila) => (fila === undefined ? undefined : { ...fila })
+
+  const base = {
+    // ── La cara vieja. Se borra al final de la Etapa 2 ──────────────────────────────────────
+    prepare: (sql) => cruda.prepare(sql),
+    exec: (sql) => cruda.exec(sql),
+    pragma: (texto) => cruda.pragma(texto),
+    transaction: (hacer) => cruda.transaction(hacer),
+    close: () => cruda.close(),
+
+    // ── La cara nueva ───────────────────────────────────────────────────────────────────────
+
+    /** Una fila suelta, o `undefined` si la consulta no encontró ninguna. */
+    async uno(sql, ...parametros) {
+      return aplanar(cruda.prepare(sql).get(...parametros))
+    },
+
+    /** Todas las filas, como arreglo. Vacío si no hay ninguna. */
+    async todas(sql, ...parametros) {
+      return cruda.prepare(sql).all(...parametros).map(aplanar)
+    },
+
+    /** Escribe. Devuelve cuántas filas cambió y, si insertó, el id que le tocó. */
+    async correr(sql, ...parametros) {
+      const resultado = cruda.prepare(sql).run(...parametros)
+      return {
+        cambios: resultado.changes,
+        idInsertado: Number(resultado.lastInsertRowid),
+      }
+    },
+
+    /** Varias sentencias de una sola vez, sin parámetros. Es para el esquema. */
+    async ejecutar(sql) {
+      cruda.exec(sql)
+    },
+
+    /**
+     * Todo lo de adentro se guarda junto o no se guarda nada.
+     *
+     * `hacer` recibe un objeto con **la misma cara nueva** que este, y por eso las funciones que ya
+     * reciben `{ base }` —como `revisarHorario`— sirven adentro de una transacción sin cambiarles
+     * nada: se les pasa el `tx` donde antes iba la base.
+     *
+     * `BEGIN IMMEDIATE` pide el permiso de escritura al empezar y no a mitad de camino, que es lo
+     * que corresponde: se sabe de antemano que se va a escribir. Es el mismo `.immediate()` que
+     * usaba `comprobarYGuardar`.
+     *
+     * ⚠️ **Nada de red adentro de una transacción.** Ni un correo, ni un `fetch`. Acá abajo el
+     * `BEGIN`/`COMMIT` es a mano, y una espera de verdad en el medio dejaría la transacción abierta
+     * mientras pasan otras cosas. Y en la Etapa 3 la razón se vuelve más fuerte todavía: cada
+     * sentencia es un viaje a la red, y una transacción larga es una visita lenta. Hoy el proyecto
+     * ya cumple esta regla —el correo de confirmación se manda **afuera**, en `crearCitaYAvisar`—
+     * y hay que seguir cumpliéndola.
+     */
+    async enTransaccion(hacer) {
+      cruda.exec("BEGIN IMMEDIATE")
+      try {
+        const resultado = await hacer(base)
+        cruda.exec("COMMIT")
+        return resultado
+      } catch (falla) {
+        cruda.exec("ROLLBACK")
+        throw falla
+      }
+    },
+
+    async cerrar() {
+      cruda.close()
+    },
+  }
+
   return base
 }
-
-/**
- * Las columnas que se agregaron después de que la tabla ya existía.
- *
- * `CREATE TABLE IF NOT EXISTS` sirve para una tabla nueva, pero **no toca una que ya está**: en una
- * base creada antes de la pieza 10, la tabla `cliente` existe sin `telefono` ni `fecha_nacimiento`,
- * y el `CREATE` de arriba no las agrega. Esto sí, y sin borrar nada de lo que haya guardado.
- *
- * `npm run datos` rehace la base desde cero y no lo necesita. Esto es para la base de trabajo de
- * alguien que ya venía usando la aplicación.
- */
-function agregarColumnasQueFaltan(base) {
-  agregarColumnaSiFalta(base, "cliente", "telefono", "TEXT")
-  agregarColumnaSiFalta(base, "cliente", "fecha_nacimiento", "TEXT")
-  ponerAlDiaElRegistroDeCorreos(base)
-  exigirQueElCatalogoEsteAlDia(base)
-}
-
-/**
- * Rehace `correo_enviado` con su forma de hoy, en una base creada antes de la pieza 9.
- *
- * **Por qué no alcanza con agregar una columna.** Lo que cambió no es solo que ahora exista
- * `personal_id`: es que `cliente_id` **dejó de ser obligatoria**. Nació obligatoria en la pieza 4,
- * cuando el único correo del sistema era la confirmación de una cita y toda cita tiene un cliente.
- * El correo de recuperar la contraseña también le llega a Personal, que no es cliente de nadie
- * (REG-3). Y volver opcional una columna que ya existe es justo lo que `ALTER TABLE` no sabe hacer
- * en SQLite.
- *
- * Así que se hace lo que la documentación de SQLite recomienda para este caso: **se rehace la
- * tabla**. Se crea la nueva con la forma correcta, se copian todas las filas, se borra la vieja y
- * la nueva toma su nombre. Todo adentro de una transacción: si algo falla en el medio no queda
- * nada a medias, vuelve todo como estaba.
- *
- * Las llaves foráneas se apagan mientras dura, y esa es la parte que parece peligrosa y no lo es:
- * apagadas, `DROP TABLE` no sale a reescribir las tablas que apuntan a esta. Se vuelven a encender
- * al terminar.
- *
- * `npm run datos` rehace la base desde cero y no necesita nada de esto. Es para la base de trabajo
- * de alguien que ya venía usando la aplicación.
- */
-function ponerAlDiaElRegistroDeCorreos(base) {
-  const columnas = base.prepare("PRAGMA table_info(correo_enviado)").all()
-
-  // Una base recién creada ya nace con la forma nueva: no hay nada que mudar.
-  if (columnas.some((una) => una.name === "personal_id")) return
-
-  base.pragma("foreign_keys = OFF")
-
-  try {
-    base.transaction(() => {
-      base.exec(formaDelRegistroDeCorreos("correo_enviado_nueva"))
-
-      // Las columnas se nombran una por una a propósito: un `INSERT ... SELECT *` dependería del
-      // orden en que están escritas, y bastaría con que alguien agregara una en el medio para que
-      // los datos entraran corridos de lugar.
-      base.exec(`
-        INSERT INTO correo_enviado_nueva
-          (id, destinatario_correo, cliente_id, cita_id, tipo, enviado_en, exito)
-        SELECT id, destinatario_correo, cliente_id, cita_id, tipo, enviado_en, exito
-          FROM correo_enviado
-      `)
-
-      base.exec("DROP TABLE correo_enviado")
-      base.exec("ALTER TABLE correo_enviado_nueva RENAME TO correo_enviado")
-
-      // El índice se fue con la tabla vieja. Esta línea lo vuelve a crear, igualito.
-      base.exec(INDICE_DE_CORREOS_POR_CITA)
-    })()
-  } finally {
-    base.pragma("foreign_keys = ON")
-  }
-}
-
-/**
- * La pieza 11 le agregó a `servicio` una columna **obligatoria**, `categoria_id`, y esa no se puede
- * agregar a una tabla que ya tiene filas: habría que inventar a qué categoría pertenece cada
- * servicio que ya existía, y este proyecto no inventa datos.
- *
- * Así que en vez de arreglarlo a medias —dejando servicios sin categoría, que no aparecerían en
- * ninguna pantalla— la aplicación **se niega a arrancar y dice qué hacer**. No se pierde nada de
- * valor: el catálogo es configuración que se carga con un comando, no algo que alguien escribió a
- * mano desde la aplicación (`ESPECIFICACION.md`, «Fuera de alcance»).
- */
-function exigirQueElCatalogoEsteAlDia(base) {
-  const columnas = base.prepare("PRAGMA table_info(servicio)").all()
-  if (columnas.some((una) => una.name === "categoria_id")) return
-
-  throw new Error(
-    "Esta base de datos es de antes de que existieran las categorías de servicio.\n" +
-      "Apagá la aplicación y corré `npm run datos` para volver a cargar el catálogo.",
-  )
-}
-
-function agregarColumnaSiFalta(base, tabla, columna, tipo) {
-  // `PRAGMA table_info` es cómo se le pregunta a SQLite qué columnas tiene una tabla.
-  const columnas = base.prepare(`PRAGMA table_info(${tabla})`).all()
-  if (columnas.some((una) => una.name === columna)) return
-
-  base.exec(`ALTER TABLE ${tabla} ADD COLUMN ${columna} ${tipo}`)
-}
-
-function crearTablas(base) {
-  // Los nombres de las tablas y de las columnas no se eligen acá: los fija el bloque «Produce» de
-  // cada pieza en `PLAN.md`, y se copian de ahí tal cual.
-
-  // ── Pieza 1: las cuentas ────────────────────────────────────────────────────────────────────
-  base.exec(`
-    CREATE TABLE IF NOT EXISTS cliente (
-      id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre                  TEXT    NOT NULL,
-      correo                  TEXT    NOT NULL UNIQUE,
-      contrasena_cifrada      TEXT    NOT NULL,
-      debe_cambiar_contrasena INTEGER NOT NULL DEFAULT 0,
-      -- Las dos que agregó la pieza 10, para la sección «Usuario» (REG-2). Son opcionales: una
-      -- cuenta se crea sin ellas y se completan después. La fecha se escribe 1990-03-15.
-      -- No hay ninguna columna de edad: la edad se calcula, porque un número guardado queda viejo
-      -- en el próximo cumpleaños.
-      telefono                TEXT,
-      fecha_nacimiento        TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS personal (
-      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre             TEXT    NOT NULL,
-      correo             TEXT    NOT NULL UNIQUE,
-      contrasena_cifrada TEXT    NOT NULL
-    );
-  `)
-
-  // ── Pieza 2: el catálogo y la configuración del negocio ─────────────────────────────────────
-  //
-  // No hay pantalla para editar nada de esto: se carga como configuración con `npm run datos`
-  // (`ESPECIFICACION.md`, «Fuera de alcance»).
-  base.exec(`
-    -- Las categorías agrupan servicios: «Masaje», «Facial». Las agregó la pieza 11. No se reserva
-    -- una categoría: se reserva un servicio de adentro, y es el servicio lo que queda en la cita.
-    CREATE TABLE IF NOT EXISTS categoria (
-      id     INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre TEXT    NOT NULL
-    );
-
-    -- \`categoria_id\` es OBLIGATORIA (pieza 11). Un servicio sin categoría no aparecería en ninguna
-    -- parte de la pantalla: existiría en la base y sería invisible, que es peor que no existir.
-    CREATE TABLE IF NOT EXISTS servicio (
-      id               INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre           TEXT    NOT NULL,
-      duracion_minutos INTEGER NOT NULL,
-      categoria_id     INTEGER NOT NULL REFERENCES categoria(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS proveedor (
-      id     INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre TEXT    NOT NULL
-    );
-
-    -- Qué proveedor atiende qué servicio. Un servicio puede tener varios proveedores y un
-    -- proveedor puede atender varios servicios (glosario de \`ESPECIFICACION.md\`), y eso no entra
-    -- en una columna: hace falta una tabla que junte los dos.
-    CREATE TABLE IF NOT EXISTS servicio_proveedor (
-      servicio_id  INTEGER NOT NULL REFERENCES servicio(id),
-      proveedor_id INTEGER NOT NULL REFERENCES proveedor(id),
-      PRIMARY KEY (servicio_id, proveedor_id)
-    );
-
-    -- Los datos del negocio. Es una sola fila: hay un solo negocio y una sola ubicación.
-    CREATE TABLE IF NOT EXISTS configuracion_negocio (
-      id                INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre            TEXT NOT NULL,
-      telefono          TEXT NOT NULL,
-      ubicacion         TEXT NOT NULL,
-      logo              TEXT,
-      color_principal   TEXT,
-      color_secundario  TEXT
-    );
-
-    -- El horario semanal, un tramo por cada rato que el negocio atiende. Entre semana son dos
-    -- (9–12 y 13–18) y el almuerzo es el hueco entre ellos, no un dato aparte. El sábado es uno
-    -- solo (9–13). El domingo no tiene ninguno, y por eso está cerrado (RN-3).
-    -- \`dia_semana\`: 0 domingo, 1 lunes … 6 sábado. \`hora_inicio\` y \`hora_fin\`: la hora del día.
-    CREATE TABLE IF NOT EXISTS horario_negocio (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      dia_semana  INTEGER NOT NULL,
-      hora_inicio INTEGER NOT NULL,
-      hora_fin    INTEGER NOT NULL
-    );
-
-    -- Los feriados, uno por fila, con la fecha escrita como 2026-09-15 (RN-2). Se precargan como
-    -- dato fijo: no se le pregunta a ningún servicio en línea (\`CLAUDE.md\`, Restricciones).
-    CREATE TABLE IF NOT EXISTS feriado (
-      id     INTEGER PRIMARY KEY AUTOINCREMENT,
-      fecha  TEXT NOT NULL UNIQUE,
-      nombre TEXT NOT NULL
-    );
-  `)
-
-  // ── La tabla de citas ───────────────────────────────────────────────────────────────────────
-  //
-  // Las citas se crean en la pieza 3, pero la tabla nace acá, vacía. La razón: la comprobación 11
-  // de la pieza 2 pide insertar a mano una cita activa y ver que su horario deja de aparecer
-  // libre; sin la tabla, esa comprobación no se puede correr. Las columnas no se inventaron acá:
-  // se copiaron del bloque «Produce» de la pieza 3, que es donde el plan las fija.
-  //
-  // Las cinco últimas columnas quedan vacías hasta que las llenen las piezas 5, 7 y 8.
-  base.exec(`
-    CREATE TABLE IF NOT EXISTS cita (
-      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-      cliente_id          INTEGER NOT NULL REFERENCES cliente(id),
-      servicio_id         INTEGER NOT NULL REFERENCES servicio(id),
-      proveedor_id        INTEGER NOT NULL REFERENCES proveedor(id),
-      inicio              TEXT    NOT NULL,
-      estado              TEXT    NOT NULL,
-      creada_en           TEXT    NOT NULL,
-      canal               TEXT    NOT NULL,
-      personal_id_creador INTEGER REFERENCES personal(id),
-      cancelada_en        TEXT,
-      cancelada_por       TEXT,
-      cerrada_en          TEXT,
-      cerrada_por         INTEGER REFERENCES personal(id)
-    );
-
-    -- El calendario pregunta muy seguido «¿qué tiene reservado este proveedor?». Este índice es
-    -- el atajo para que no tenga que recorrer la tabla entera cada vez.
-    CREATE INDEX IF NOT EXISTS cita_por_proveedor ON cita (proveedor_id, estado, inicio);
-
-    -- ── El candado de CA-1, agregado por la pieza 3 ───────────────────────────────────────────
-    --
-    -- Un horario solo puede tener UNA cita activa por proveedor (RN-1). Esta línea es la que lo
-    -- garantiza de verdad: la base se niega a guardar la segunda. El código igual comprueba antes
-    -- si el horario está libre, pero comprobar y después insertar son dos movimientos, y entre uno
-    -- y otro cabe la reserva de otra persona — que es exactamente la carrera de CA-1. Acá no cabe
-    -- nada: la segunda inserción no es improbable, es imposible.
-    --
-    -- Es un índice **parcial** (el \`WHERE\` del final): solo vigila las citas activas. Si vigilara
-    -- todas, una cita cancelada seguiría bloqueando su horario para siempre y RN-7 —«cancelar
-    -- libera el horario de inmediato»— no se podría cumplir nunca.
-    CREATE UNIQUE INDEX IF NOT EXISTS cita_horario_unico
-      ON cita (proveedor_id, inicio) WHERE estado = 'activa';
-  `)
-
-  // ── Pieza 4: el registro de los correos enviados (REG-3) ────────────────────────────────────
-  //
-  // Una fila por cada correo que el sistema intentó mandar, haya salido bien o no. Las columnas no
-  // se inventaron acá: se copiaron del bloque «Produce» de la pieza 4 de `PLAN.md`.
-  //
-  // Que las fallas también queden guardadas es lo que hace útil a esta tabla. Un registro que solo
-  // anotara los envíos exitosos no serviría para lo único que hace falta preguntarle: «¿a quién no
-  // le llegó su aviso?».
-  base.exec(formaDelRegistroDeCorreos("correo_enviado"))
-  base.exec(INDICE_DE_CORREOS_POR_CITA)
-
-  // ── Pieza 9: los enlaces para restablecer la contraseña olvidada (RF-3, RN-27) ──────────────
-  //
-  // Un token es un enlace de un solo uso con fecha de vencimiento. Las columnas no se inventaron
-  // acá: se copiaron del bloque «Produce» de la pieza 9 de `PLAN.md`.
-  //
-  // **El código se guarda tal cual, sin cifrar**, y es lo único de esta pieza que se aparta de lo
-  // más estricto. La razón está escrita en `DISENO.md` («Decisiones tomadas al construir la pieza
-  // 9»): quien pueda leer esta tabla ya puede cambiar cualquier contraseña directamente, así que
-  // cifrarlo no compra nada real, y a cambio se puede mirar la tabla y comprobar el vencimiento —
-  // que es literalmente la comprobación 5 del plan.
-  base.exec(`
-    CREATE TABLE IF NOT EXISTS token_recuperacion (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      -- Una cuenta de cliente **o** la de Personal, nunca las dos y nunca ninguna. El \`CHECK\` es
-      -- lo que lo garantiza de verdad: sin él, «solo uno de los dos viene lleno» sería una
-      -- intención escrita en un comentario, y la base aceptaría igual una fila con los dos vacíos.
-      cliente_id  INTEGER REFERENCES cliente(id),
-      personal_id INTEGER REFERENCES personal(id),
-      codigo      TEXT    NOT NULL UNIQUE,
-      vence_en    TEXT    NOT NULL,
-      -- Vacío mientras el enlace no se haya usado. Cuando se usa, guarda el momento exacto: sirve
-      -- para rechazarlo la segunda vez y para saber cuándo alguien restableció su contraseña.
-      usado_en    TEXT,
-      CHECK ((cliente_id IS NULL) <> (personal_id IS NULL))
-    );
-  `)
-}
-
-/**
- * La forma que tiene hoy el registro de correos.
- *
- * Es una función que recibe el nombre de la tabla, y no un texto fijo, porque hacen falta **dos**
- * cosas con esta misma forma: crear `correo_enviado` en una base nueva, y crear la tabla
- * provisional con la que se rehace la de una base vieja (ver `ponerAlDiaElRegistroDeCorreos`).
- * Escrita dos veces, un día una de las dos se quedaría atrás.
- */
-function formaDelRegistroDeCorreos(tabla) {
-  return `
-    CREATE TABLE IF NOT EXISTS ${tabla} (
-      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-      destinatario_correo TEXT    NOT NULL,
-      -- A quién le llegó: un cliente **o** la cuenta de Personal, solo uno de los dos (REG-3).
-      -- \`cliente_id\` era obligatoria hasta la pieza 9, cuando el único correo del sistema era la
-      -- confirmación de una cita y toda cita tiene un cliente. El de recuperar la contraseña
-      -- también le llega a Personal, que no es cliente de nadie.
-      cliente_id          INTEGER REFERENCES cliente(id),
-      personal_id         INTEGER REFERENCES personal(id),
-      -- Vacío para los correos que no son de una cita: el de recuperar la contraseña (pieza 9).
-      cita_id             INTEGER REFERENCES cita(id),
-      -- \`confirmacion\`, \`recordatorio\` (pieza 6) o \`recuperacion\` (pieza 9).
-      tipo                TEXT    NOT NULL,
-      enviado_en          TEXT    NOT NULL,
-      -- SQLite no tiene un tipo «sí o no»: se guarda 1 o 0, igual que \`debe_cambiar_contrasena\`.
-      exito               INTEGER NOT NULL,
-      CHECK ((cliente_id IS NULL) <> (personal_id IS NULL))
-    );
-  `
-}
-
-/**
- * La pieza 6 pregunta muy seguido «¿a esta cita ya le mandé el recordatorio?», y ese es justamente
- * el atajo que evita recorrer la tabla entera en cada revisión.
- *
- * Va aparte de la tabla porque un índice **se va con la tabla que vigila**: al rehacer el registro
- * hay que volver a crearlo, y hacerlo con esta misma línea es lo que garantiza que quede igual.
- */
-const INDICE_DE_CORREOS_POR_CITA =
-  "CREATE INDEX IF NOT EXISTS correo_por_cita ON correo_enviado (cita_id, tipo)"

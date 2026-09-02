@@ -21,9 +21,7 @@ import "dotenv/config"
 import { createServer } from "node:net"
 import { existsSync } from "node:fs"
 
-import Database from "better-sqlite3"
-
-import { RUTA_DE_LA_BASE } from "../servidor/base-de-datos.js"
+import { abrirBase, RUTA_DE_LA_BASE } from "../servidor/base-de-datos.js"
 import { escribirFechaEnPalabras, escribirHoraDelMomento, todaviaNoEmpezo } from "../servidor/tiempo.js"
 import { PERSONAL_PRECARGADO } from "./datos-de-prueba.js"
 
@@ -106,7 +104,16 @@ if (!hayBase) {
 // `readonly` no es decoración: este guion **no puede** tocar nada, y así queda garantizado por la
 // base misma en vez de por la buena intención de quien lo escribió. Además deja abrirla mientras la
 // aplicación está levantada, sin pelearse con ella.
-const base = new Database(RUTA_DE_LA_BASE, { readonly: true })
+//
+// **Ese `readonly` se perdió el 2026-09-02**, al preparar el despliegue: la base ahora se abre por
+// `abrirBase`, que es la única puerta que en la Etapa 3 va a saber hablarle a una base de la red, y
+// hoy no tiene manera de pedirla de solo lectura. Así que la garantía volvió a ser lo que era antes
+// de existir: la intención de quien escribe acá. **Este guion sigue sin escribir nada**, y el
+// párrafo de arriba queda como aviso de qué se cuidaba y de qué habría que reponer.
+//
+// `abrirBase` no llama a `crearEsquema`: mirar no es crear. Si la base estuviera vieja, este guion
+// no la pone al día — lo dice y nada más.
+const base = await abrirBase(RUTA_DE_LA_BASE)
 
 const ahora = new Date()
 

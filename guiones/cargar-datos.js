@@ -4,6 +4,7 @@
 import { rmSync } from "node:fs"
 
 import { abrirBase, RUTA_DE_LA_BASE } from "../servidor/base-de-datos.js"
+import { crearEsquema } from "../servidor/esquema.js"
 import {
   cargarDatosDePrueba,
   CATEGORIAS,
@@ -33,9 +34,10 @@ try {
   throw error
 }
 
-const base = abrirBase(RUTA_DE_LA_BASE)
+const base = await abrirBase(RUTA_DE_LA_BASE)
+await crearEsquema(base)
 cargarDatosDePrueba(base)
-base.close()
+await base.cerrar()
 
 console.log("Base de datos creada desde cero, con los datos de prueba cargados:")
 console.log("")

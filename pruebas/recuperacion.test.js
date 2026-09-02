@@ -29,6 +29,7 @@ import { join } from "node:path"
 import Database from "better-sqlite3"
 
 import { abrirBase } from "../servidor/base-de-datos.js"
+import { crearEsquema } from "../servidor/esquema.js"
 import { escribirMomento } from "../servidor/tiempo.js"
 import {
   crearEntornoDePrueba,
@@ -480,7 +481,8 @@ test("una base de antes de la pieza 9 se pone al día sin perder los correos ya 
   `)
   vieja.close()
 
-  const base = abrirBase(rutaBase)
+  const base = await abrirBase(rutaBase)
+  await crearEsquema(base)
 
   // Cerrar y borrar van en el mismo lugar, y en ese orden: Windows no deja borrar un archivo que
   // otro programa todavía tiene abierto. Es el mismo motivo por el que `npm run datos` exige que la
@@ -541,7 +543,8 @@ test("el índice de correos por cita sobrevive a la mudanza", async (contexto) =
   `)
   vieja.close()
 
-  const base = abrirBase(rutaBase)
+  const base = await abrirBase(rutaBase)
+  await crearEsquema(base)
   contexto.after(() => {
     base.close()
     rmSync(carpeta, { recursive: true, force: true })
