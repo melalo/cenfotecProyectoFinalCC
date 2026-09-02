@@ -840,16 +840,20 @@ y **no** llama a `crearEsquema` — sólo mira, no crea. Sus 3 consultas se muda
 > `levantar()`. Eso sigue igual acá porque `cargarDatosDePrueba` todavía usa la cara vieja. Se muda
 > en la Etapa 2H, y ahí pasa a `await cargarDatosDePrueba(base)`.
 
-- [ ] **Paso 8: agregar el comando del esquema a `package.json`**
+- [x] ~~**Paso 8: agregar el comando del esquema a `package.json`**~~ — **BORRADO el 2026-09-02**
 
-En `scripts`, después de `"datos"`:
+*Este paso decía que había que agregar `"esquema": "node guiones/esquema.js"` a `package.json` ya en
+esta etapa, «para no volver a abrir el archivo». **Era un error y se quitó.** `guiones/esquema.js` no
+existe hasta la Etapa 5, así que la línea publicaba un comando que revienta con `MODULE_NOT_FOUND`:*
 
-```json
-    "esquema": "node guiones/esquema.js",
+```
+$ npm run esquema
+Error: Cannot find module '.../guiones/esquema.js'
 ```
 
-El archivo `guiones/esquema.js` se escribe en la Etapa 5, que es cuando hay una base remota a la que
-apuntarle. Poner la línea ahora es sólo para no volver a abrir `package.json`.
+*En un proyecto que se defiende en voz alta, un comando ofrecido que no corre es de lo peor que puede
+pasar. **La lección, que vale para las seis etapas que quedan:** no se anuncia una capacidad antes de
+tenerla, ni para ahorrarse abrir un archivo. La línea se agrega en la Etapa 5, junto con su archivo.*
 
 - [ ] **Paso 9: la puerta de calidad**
 
@@ -857,7 +861,7 @@ apuntarle. Poner la línea ahora es sólo para no volver a abrir `package.json`.
 npm test
 ```
 
-`fail 0`, y `pass` ahora es **311** (302 + las 9 del adaptador).
+`fail 0`, y `pass` ahora es **320** (302 + las 18 de `pruebas/adaptador.test.js`: 9 escritas al construir la etapa y 9 más que salieron de la revisión de calidad).
 
 - [ ] **Paso 10: comprobar que la aplicación de verdad levanta**
 
@@ -880,7 +884,7 @@ git add servidor/base-de-datos.js servidor/esquema.js servidor/index.js \
 git commit -m "refactor: la base gana una cara asincronica, y el esquema sale a su propio archivo"
 ```
 
-**Si parás en la Etapa 1:** la aplicación funciona exactamente igual que antes, 11 de 12 piezas, 311
+**Si parás en la Etapa 1:** la aplicación funciona exactamente igual que antes, 11 de 12 piezas, 320
 pruebas en verde, y existe una manera asincrónica de hablarle a la base **probada y sin usar**. Nada
 roto. Ni una consulta se mudó.
 
@@ -922,6 +926,26 @@ una promesa donde antes venía un dato, y eso casi siempre se ve como `undefined
 `revisarHorario({ base, … })` o `buscarCitaParaCambiar({ base, … })`— se llaman con
 `{ base: tx, … }`. No hay que cambiarles la firma: `tx` tiene la misma cara.
 
+> ⚠️ **Y esto es lo más peligroso de toda la Etapa 2, así que leelo dos veces.** *(Agregado el
+> 2026-09-02, después de que la revisión de calidad de la Etapa 1 lo encontrara.)*
+>
+> Las cinco transacciones del proyecto están escritas hoy usando **`base`** adentro:
+> `revisarHorario({ base, … })`, `base.prepare("INSERT INTO cita …")`. La Etapa 2 tiene que
+> **enhebrar `tx`** por `revisarHorario`, `buscarCitaParaCambiar`, `revisarSiSePuedeCambiar` y
+> `marcarEnlaceComoUsado`.
+>
+> **Si se olvida en uno solo, la Etapa 2 pasa las pruebas y la Etapa 3 rompe CA-1 en silencio:** ese
+> `INSERT INTO cita` sale **afuera** de la transacción, el «comprobar y guardar en un solo
+> movimiento» deja de ser uno solo, y un `ROLLBACK` ya no deshace la cita.
+>
+> **La red que lo caza está puesta desde la Etapa 1:** mientras una transacción está abierta, usar
+> la cara nueva de `base` **tira un error que dice qué hacer**. Así el olvido revienta acá, con el
+> motor conocido debajo y una prueba roja que lo señala, en vez de aparecer en producción cuatro
+> etapas después. **Si ves ese error, no lo silencies: es la red haciendo su trabajo.**
+>
+> Esa red es andamio y se quita en la Etapa 3, donde las esperas son de verdad y dos peticiones sí
+> se pisan — ahí una bandera compartida daría errores falsos.
+
 - [ ] **Paso 2A: los 21 manejadores y los 4 permisos pasan a `async`**
 
 Este paso **no toca una sola consulta**. Sólo pone `async`, y por eso es el más seguro de todos —
@@ -953,7 +977,7 @@ Esto es seguro **por la versión de Express**, y conviene dejarlo escrito. Agreg
 ```
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git add servidor/rutas/ servidor/sesion.js servidor/aplicacion.js
 git commit -m "refactor: los manejadores y los permisos pasan a async, sin tocar consultas"
 ```
@@ -964,7 +988,7 @@ Muda: `servidor/sesion.js:203` (1 punto).
 Toca además: los manejadores del paso anterior que llaman a un permiso, para ponerle `await`.
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git commit -am "refactor: sesion.js consulta esperando"
 ```
 
@@ -986,7 +1010,7 @@ const fila = await entorno.base.uno("SELECT * FROM servicio WHERE id = ?", id)
 ```
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git commit -am "refactor: el catalogo consulta esperando"
 ```
 
@@ -999,7 +1023,7 @@ Va después del catálogo porque lo usa. `servidor/tiempo.js` **no se toca**: no
 hace cuentas con fechas — y por eso sus 16 funciones se quedan sincrónicas, que es lo correcto.
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git commit -am "refactor: la disponibilidad consulta esperando"
 ```
 
@@ -1016,7 +1040,7 @@ sólo lo que usa `personal.js` y `clientes.js`; lo de reservas se termina en el 
 un archivo de rutas se toque en dos pasos.
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git commit -am "refactor: clientes y personal consultan esperando"
 ```
 
@@ -1034,7 +1058,7 @@ habla con la red. Ya está así hoy —el correo sale en `crearCitaYAvisar`, des
 guardó— y hay que dejarlo así.
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git commit -am "refactor: el registro de correos consulta esperando"
 ```
 
@@ -1120,7 +1144,7 @@ Desde la Etapa 3 hay esperas de verdad y las dos peticiones **sí** se pisan, as
 `[201, 409]`. Lo que cambia es que ahora comprueba algo más difícil.
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git commit -am "refactor: las reservas y sus cuatro transacciones, esperando"
 ```
 
@@ -1155,7 +1179,7 @@ paso se dejan con `new Database` —siguen funcionando— y se mudan en la Etapa
 `better-sqlite3` desaparece.
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git commit -am "refactor: la autenticacion y la recuperacion, esperando"
 ```
 
@@ -1175,7 +1199,7 @@ npm run estado    # tiene que contar el estado sin levantar nada
 ```
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 git commit -am "refactor: los tres guiones consultan esperando"
 ```
 
@@ -1198,12 +1222,12 @@ Cuando la lista esté limpia, **borrar las cinco líneas de la cara vieja** de `
 anunciaba que eran temporales.
 
 ```bash
-npm test    # fail 0, pass 311
+npm test    # fail 0, pass 320
 npm start   # y abrirla en el navegador: entrar, ver el catálogo, reservar, cancelar
 git commit -am "refactor: se borra la cara sincronica de la base, ya no la usa nadie"
 ```
 
-**Si parás en la Etapa 2:** la aplicación funciona igual que el primer día, 11 de 12 piezas, 311
+**Si parás en la Etapa 2:** la aplicación funciona igual que el primer día, 11 de 12 piezas, 320
 pruebas en verde, y **todo el código está listo para una base de la red** aunque todavía use el
 archivo de siempre. No hay dirección pública. Nada roto. Y lo más pesado del trabajo ya está hecho.
 
@@ -1219,7 +1243,7 @@ uno, algo quedó mal cortado.
 
 **Por qué el mismo motor también en las pruebas, y no sólo en producción:** porque `@libsql/client`
 sabe hablarle a un archivo del disco (`file:…`). Dejar `better-sqlite3` para la computadora y las
-pruebas, y Turso sólo para el despliegue, significaría que **las 311 pruebas nunca probarían el
+pruebas, y Turso sólo para el despliegue, significaría que **las 320 pruebas nunca probarían el
 código que de verdad corre para la gente**. Un motor en los dos lados es lo que hace que verde
 signifique algo. De paso desaparece `better-sqlite3`, que hay que compilar al instalar y ya rompió
 la integración continua una vez por exigir Node 22.
@@ -1357,22 +1381,25 @@ async function conectarA(destino) {
 function envolver(cliente) {
   return {
     async uno(sql, ...parametros) {
-      const resultado = await cliente.execute({ sql, args: parametros })
+      const resultado = await cliente.execute({ sql, args: normalizar(parametros) })
       return aplanar(resultado.rows[0])
     },
 
     async todas(sql, ...parametros) {
-      const resultado = await cliente.execute({ sql, args: parametros })
+      const resultado = await cliente.execute({ sql, args: normalizar(parametros) })
       return resultado.rows.map(aplanar)
     },
 
     async correr(sql, ...parametros) {
-      const resultado = await cliente.execute({ sql, args: parametros })
+      const resultado = await cliente.execute({ sql, args: normalizar(parametros) })
       return {
         cambios: resultado.rowsAffected,
-        // Viene como número grande (`BigInt`) y el resto del proyecto trabaja con números comunes.
-        idInsertado:
-          resultado.lastInsertRowid === undefined ? undefined : Number(resultado.lastInsertRowid),
+        // Sólo un INSERT deja un id nuevo, y el número viene como `BigInt` mientras el resto del
+        // proyecto trabaja con números comunes. La misma regla que la Etapa 1, para que las dos
+        // implementaciones prometan lo mismo — hay una prueba que lo fija.
+        idInsertado: /^\s*(INSERT|REPLACE)/i.test(sql)
+          ? Number(resultado.lastInsertRowid)
+          : undefined,
       }
     },
 
@@ -1397,7 +1424,18 @@ function envolver(cliente) {
         await transaccion.commit()
         return resultado
       } catch (falla) {
-        await transaccion.rollback()
+        try {
+          await transaccion.rollback()
+        } catch {
+          // Si el ROLLBACK también falla, la falla que importa es la de arriba: es la que dice qué
+          // salió mal de verdad, y `servidor/reservas.js` la lee —mira `falla.code`— para decidir si
+          // le contesta al cliente «ese horario ya no está libre» o un 500. Taparla convertiría el
+          // aviso claro de CA-1 en un error del servidor, y encima el registro diría una causa
+          // falsa, que es el defecto más caro de diagnosticar que hay.
+          //
+          // No es hipotético: la base puede deshacer la transacción **sola** ante un tropiezo, y
+          // entonces este ROLLBACK llega y ya no hay nada que deshacer, así que tira.
+        }
         throw falla
       }
     },
@@ -1418,6 +1456,22 @@ function envolver(cliente) {
  */
 function aplanar(fila) {
   return fila === undefined ? undefined : { ...fila }
+}
+
+/**
+ * Convierte `undefined` en `null` antes de mandarle los parámetros a la base.
+ *
+ * Hace falta porque las dos bibliotecas no se comportan igual: `better-sqlite3` guardaba un
+ * `undefined` como vacío, y `@libsql/client` **se niega** («undefined cannot be passed as argument
+ * to the database»). Y en JavaScript un campo de formulario que no vino **es** `undefined`: sin esta
+ * línea, un `PUT /api/mi-informacion` sin teléfono pasaría de guardar vacío a devolver un 500.
+ *
+ * El proyecto ya se cuidaba de esto **en cada sitio** —`normalizarTelefono`,
+ * `revisarFechaDeNacimiento`, `buscarClientes`—, y por eso no explotó. Pero cuidado repetido en 107
+ * lugares no es una garantía: alcanza con que un sitio nuevo se olvide. Acá vive en uno.
+ */
+function normalizar(parametros) {
+  return parametros.map((uno) => (uno === undefined ? null : uno))
 }
 ```
 
@@ -1474,7 +1528,7 @@ El `grep` tiene que devolver **nada**, salvo comentarios que cuenten la historia
 npm test
 ```
 
-`fail 0`, `pass 311`. **Y ésta es la corrida donde por primera vez los `await` esperan de verdad**,
+`fail 0`, `pass 320`. **Y ésta es la corrida donde por primera vez los `await` esperan de verdad**,
 así que acá es donde puede aparecer un `await` olvidado en la Etapa 2. Si algo falla, casi seguro es
 eso: un dato que llega como promesa. Correr la suite **tres veces** antes de creerle:
 
@@ -1509,7 +1563,7 @@ Y **mirar la pestaña Actions de GitHub**: tiene que quedar verde en Node 20 y e
 credencial configurada. Si sólo pasa en 24, es cosa de la biblioteca nueva y hay que resolverlo acá
 mismo, no más adelante.
 
-**Si parás en la Etapa 3:** la aplicación funciona igual, 11 de 12 piezas, 311 pruebas en verde en
+**Si parás en la Etapa 3:** la aplicación funciona igual, 11 de 12 piezas, 320 pruebas en verde en
 las dos versiones de Node, y **corriendo sobre la misma biblioteca que va a usar en el despliegue**.
 Sigue sin dirección pública. Nada roto. Y lo difícil ya pasó.
 
@@ -1686,7 +1740,7 @@ TURSO_AUTH_TOKEN=
 npm test
 ```
 
-`fail 0`, `pass 311`. Nada de esta etapa toca el camino que corren las pruebas — y comprobarlo es
+`fail 0`, `pass 320`. Nada de esta etapa toca el camino que corren las pruebas — y comprobarlo es
 justamente el punto.
 
 - [ ] **Paso 7: publicar, y esperar que falle bien**
@@ -1726,7 +1780,7 @@ git commit -m "feat: la puerta de Vercel, que falla diciendo que le falta la bas
 git push
 ```
 
-**Si parás en la Etapa 4:** la aplicación funciona igual en la computadora, 11 de 12 piezas, 311
+**Si parás en la Etapa 4:** la aplicación funciona igual en la computadora, 11 de 12 piezas, 320
 pruebas en verde, y hay una dirección pública que **contesta diciendo qué le falta**. No sirve para
 la presentación todavía. Nada roto.
 
@@ -1916,7 +1970,7 @@ que se borraron.
 npm test
 ```
 
-`fail 0`, `pass 311`, **y sin ninguna variable de Turso configurada en esta computadora**. Que las
+`fail 0`, `pass 320`, **y sin ninguna variable de Turso configurada en esta computadora**. Que las
 pruebas sigan corriendo contra el archivo local, sin internet y sin credenciales, es lo que mantiene
 verde la integración continua de GitHub.
 
@@ -1937,7 +1991,7 @@ git push
 ```
 
 **Si parás en la Etapa 5:** **hay dirección pública y la presentación se puede dar.** 11 de 12
-piezas, 311 pruebas en verde, y la razón de fondo de toda la decisión del 2026-08-29 está cumplida.
+piezas, 320 pruebas en verde, y la razón de fondo de toda la decisión del 2026-08-29 está cumplida.
 Nada roto.
 
 ---
@@ -2036,7 +2090,7 @@ justo la clase de cosa que después parece un error del código.
 npm test
 ```
 
-`fail 0`, y `pass` ahora es **318** (311 + 7).
+`fail 0`, y `pass` ahora es **327** (320 + 7).
 
 Y a mano, contra el sitio publicado:
 
@@ -2065,7 +2119,7 @@ git commit -m "feat: pieza 6, el recordatorio de 24 horas, con su tarea programa
 git push
 ```
 
-**Si parás en la Etapa 6:** **12 de 12 piezas**, 318 pruebas en verde, dirección pública, y una tarea
+**Si parás en la Etapa 6:** **12 de 12 piezas**, 327 pruebas en verde, dirección pública, y una tarea
 programada que corre sola. El proyecto está terminado.
 
 ---
@@ -2075,12 +2129,12 @@ programada que corre sola. El proyecto está terminado.
 | Si parás en | Piezas | `npm test` | Dirección pública | ¿Se puede presentar? |
 |---|---|---|---|---|
 | **Etapa 0** | 11 de 12 | 302 | no | Sí, en la computadora |
-| **Etapa 1** | 11 de 12 | 311 | no | Sí, en la computadora |
-| **Etapa 2** | 11 de 12 | 311 | no | Sí, en la computadora |
-| **Etapa 3** | 11 de 12 | 311 | no | Sí, en la computadora |
-| **Etapa 4** | 11 de 12 | 311 | sí, diciendo qué le falta | En la computadora |
-| **Etapa 5** | 11 de 12 | 311 | **sí, funcionando** | **Sí, publicada** |
-| **Etapa 6** | **12 de 12** | 318 | sí, funcionando | **Sí, completa** |
+| **Etapa 1** | 11 de 12 | 320 | no | Sí, en la computadora |
+| **Etapa 2** | 11 de 12 | 320 | no | Sí, en la computadora |
+| **Etapa 3** | 11 de 12 | 320 | no | Sí, en la computadora |
+| **Etapa 4** | 11 de 12 | 320 | sí, diciendo qué le falta | En la computadora |
+| **Etapa 5** | 11 de 12 | 320 | **sí, funcionando** | **Sí, publicada** |
+| **Etapa 6** | **12 de 12** | 327 | sí, funcionando | **Sí, completa** |
 
 **En ninguna fila hay un proyecto roto.** Es la condición que pediste y es lo que decidió cómo se
 cortaron las etapas.
