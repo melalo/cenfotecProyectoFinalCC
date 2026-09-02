@@ -861,7 +861,7 @@ tenerla, ni para ahorrarse abrir un archivo. La línea se agrega en la Etapa 5, 
 npm test
 ```
 
-`fail 0`, y `pass` ahora es **320** (302 + las 18 de `pruebas/adaptador.test.js`: 9 escritas al construir la etapa y 9 más que salieron de la revisión de calidad).
+`fail 0`, y `pass` ahora es **321** (302 + las 19 de `pruebas/adaptador.test.js`: 9 escritas al construir la etapa y 10 más que salieron de las dos revisiones).
 
 - [ ] **Paso 10: comprobar que la aplicación de verdad levanta**
 
@@ -884,7 +884,7 @@ git add servidor/base-de-datos.js servidor/esquema.js servidor/index.js \
 git commit -m "refactor: la base gana una cara asincronica, y el esquema sale a su propio archivo"
 ```
 
-**Si parás en la Etapa 1:** la aplicación funciona exactamente igual que antes, 11 de 12 piezas, 320
+**Si parás en la Etapa 1:** la aplicación funciona exactamente igual que antes, 11 de 12 piezas, 321
 pruebas en verde, y existe una manera asincrónica de hablarle a la base **probada y sin usar**. Nada
 roto. Ni una consulta se mudó.
 
@@ -946,6 +946,29 @@ una promesa donde antes venía un dato, y eso casi siempre se ve como `undefined
 > Esa red es andamio y se quita en la Etapa 3, donde las esperas son de verdad y dos peticiones sí
 > se pisan — ahí una bandera compartida daría errores falsos.
 
+**Y la regla que hace que esa red no moleste, que hay que respetar en los 10 pasos:**
+
+> **A `enTransaccion` se le hace `await` en el acto.** Nunca dentro de un `Promise.all`, nunca
+> guardando la promesa para esperarla más tarde.
+
+*Medido el 2026-09-02, no supuesto.* Este código, con la red puesta, **rechaza la lectura de la
+derecha** aunque no tenga nada que ver con la transacción:
+
+```js
+const [cita, servicios] = await Promise.all([
+  base.enTransaccion(async (tx) => { … }),
+  base.todas("SELECT id FROM servicio"),   // ← se rechaza con «usá tx», y es legítima
+])
+```
+
+La razón es fina y vale saberla: `Promise.all` evalúa sus argumentos **en orden y de una vez**. El
+primero enciende la bandera y se suspende en su primer `await` — porque **`await` sobre una promesa
+ya resuelta suspende igual**, agenda una microtarea. El segundo corre con la bandera encendida.
+
+Hoy no hay ni un `Promise.all` de consultas en el proyecto, así que la regla no cuesta nada. Y es
+una buena regla por sí sola: correr otra consulta en paralelo con una transacción, sobre una sola
+conexión, no es algo que uno quiera de verdad.
+
 - [ ] **Paso 2A: los 21 manejadores y los 4 permisos pasan a `async`**
 
 Este paso **no toca una sola consulta**. Sólo pone `async`, y por eso es el más seguro de todos —
@@ -977,7 +1000,7 @@ Esto es seguro **por la versión de Express**, y conviene dejarlo escrito. Agreg
 ```
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git add servidor/rutas/ servidor/sesion.js servidor/aplicacion.js
 git commit -m "refactor: los manejadores y los permisos pasan a async, sin tocar consultas"
 ```
@@ -988,7 +1011,7 @@ Muda: `servidor/sesion.js:203` (1 punto).
 Toca además: los manejadores del paso anterior que llaman a un permiso, para ponerle `await`.
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git commit -am "refactor: sesion.js consulta esperando"
 ```
 
@@ -1010,7 +1033,7 @@ const fila = await entorno.base.uno("SELECT * FROM servicio WHERE id = ?", id)
 ```
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git commit -am "refactor: el catalogo consulta esperando"
 ```
 
@@ -1023,7 +1046,7 @@ Va después del catálogo porque lo usa. `servidor/tiempo.js` **no se toca**: no
 hace cuentas con fechas — y por eso sus 16 funciones se quedan sincrónicas, que es lo correcto.
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git commit -am "refactor: la disponibilidad consulta esperando"
 ```
 
@@ -1040,7 +1063,7 @@ sólo lo que usa `personal.js` y `clientes.js`; lo de reservas se termina en el 
 un archivo de rutas se toque en dos pasos.
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git commit -am "refactor: clientes y personal consultan esperando"
 ```
 
@@ -1058,7 +1081,7 @@ habla con la red. Ya está así hoy —el correo sale en `crearCitaYAvisar`, des
 guardó— y hay que dejarlo así.
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git commit -am "refactor: el registro de correos consulta esperando"
 ```
 
@@ -1144,7 +1167,7 @@ Desde la Etapa 3 hay esperas de verdad y las dos peticiones **sí** se pisan, as
 `[201, 409]`. Lo que cambia es que ahora comprueba algo más difícil.
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git commit -am "refactor: las reservas y sus cuatro transacciones, esperando"
 ```
 
@@ -1179,7 +1202,7 @@ paso se dejan con `new Database` —siguen funcionando— y se mudan en la Etapa
 `better-sqlite3` desaparece.
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git commit -am "refactor: la autenticacion y la recuperacion, esperando"
 ```
 
@@ -1199,7 +1222,7 @@ npm run estado    # tiene que contar el estado sin levantar nada
 ```
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 git commit -am "refactor: los tres guiones consultan esperando"
 ```
 
@@ -1222,12 +1245,12 @@ Cuando la lista esté limpia, **borrar las cinco líneas de la cara vieja** de `
 anunciaba que eran temporales.
 
 ```bash
-npm test    # fail 0, pass 320
+npm test    # fail 0, pass 321
 npm start   # y abrirla en el navegador: entrar, ver el catálogo, reservar, cancelar
 git commit -am "refactor: se borra la cara sincronica de la base, ya no la usa nadie"
 ```
 
-**Si parás en la Etapa 2:** la aplicación funciona igual que el primer día, 11 de 12 piezas, 320
+**Si parás en la Etapa 2:** la aplicación funciona igual que el primer día, 11 de 12 piezas, 321
 pruebas en verde, y **todo el código está listo para una base de la red** aunque todavía use el
 archivo de siempre. No hay dirección pública. Nada roto. Y lo más pesado del trabajo ya está hecho.
 
@@ -1243,7 +1266,7 @@ uno, algo quedó mal cortado.
 
 **Por qué el mismo motor también en las pruebas, y no sólo en producción:** porque `@libsql/client`
 sabe hablarle a un archivo del disco (`file:…`). Dejar `better-sqlite3` para la computadora y las
-pruebas, y Turso sólo para el despliegue, significaría que **las 320 pruebas nunca probarían el
+pruebas, y Turso sólo para el despliegue, significaría que **las 321 pruebas nunca probarían el
 código que de verdad corre para la gente**. Un motor en los dos lados es lo que hace que verde
 signifique algo. De paso desaparece `better-sqlite3`, que hay que compilar al instalar y ya rompió
 la integración continua una vez por exigir Node 22.
@@ -1528,7 +1551,7 @@ El `grep` tiene que devolver **nada**, salvo comentarios que cuenten la historia
 npm test
 ```
 
-`fail 0`, `pass 320`. **Y ésta es la corrida donde por primera vez los `await` esperan de verdad**,
+`fail 0`, `pass 321`. **Y ésta es la corrida donde por primera vez los `await` esperan de verdad**,
 así que acá es donde puede aparecer un `await` olvidado en la Etapa 2. Si algo falla, casi seguro es
 eso: un dato que llega como promesa. Correr la suite **tres veces** antes de creerle:
 
@@ -1563,7 +1586,7 @@ Y **mirar la pestaña Actions de GitHub**: tiene que quedar verde en Node 20 y e
 credencial configurada. Si sólo pasa en 24, es cosa de la biblioteca nueva y hay que resolverlo acá
 mismo, no más adelante.
 
-**Si parás en la Etapa 3:** la aplicación funciona igual, 11 de 12 piezas, 320 pruebas en verde en
+**Si parás en la Etapa 3:** la aplicación funciona igual, 11 de 12 piezas, 321 pruebas en verde en
 las dos versiones de Node, y **corriendo sobre la misma biblioteca que va a usar en el despliegue**.
 Sigue sin dirección pública. Nada roto. Y lo difícil ya pasó.
 
@@ -1740,7 +1763,7 @@ TURSO_AUTH_TOKEN=
 npm test
 ```
 
-`fail 0`, `pass 320`. Nada de esta etapa toca el camino que corren las pruebas — y comprobarlo es
+`fail 0`, `pass 321`. Nada de esta etapa toca el camino que corren las pruebas — y comprobarlo es
 justamente el punto.
 
 - [ ] **Paso 7: publicar, y esperar que falle bien**
@@ -1780,7 +1803,7 @@ git commit -m "feat: la puerta de Vercel, que falla diciendo que le falta la bas
 git push
 ```
 
-**Si parás en la Etapa 4:** la aplicación funciona igual en la computadora, 11 de 12 piezas, 320
+**Si parás en la Etapa 4:** la aplicación funciona igual en la computadora, 11 de 12 piezas, 321
 pruebas en verde, y hay una dirección pública que **contesta diciendo qué le falta**. No sirve para
 la presentación todavía. Nada roto.
 
@@ -1970,7 +1993,7 @@ que se borraron.
 npm test
 ```
 
-`fail 0`, `pass 320`, **y sin ninguna variable de Turso configurada en esta computadora**. Que las
+`fail 0`, `pass 321`, **y sin ninguna variable de Turso configurada en esta computadora**. Que las
 pruebas sigan corriendo contra el archivo local, sin internet y sin credenciales, es lo que mantiene
 verde la integración continua de GitHub.
 
@@ -1991,7 +2014,7 @@ git push
 ```
 
 **Si parás en la Etapa 5:** **hay dirección pública y la presentación se puede dar.** 11 de 12
-piezas, 320 pruebas en verde, y la razón de fondo de toda la decisión del 2026-08-29 está cumplida.
+piezas, 321 pruebas en verde, y la razón de fondo de toda la decisión del 2026-08-29 está cumplida.
 Nada roto.
 
 ---
@@ -2090,7 +2113,7 @@ justo la clase de cosa que después parece un error del código.
 npm test
 ```
 
-`fail 0`, y `pass` ahora es **327** (320 + 7).
+`fail 0`, y `pass` ahora es **328** (321 + 7).
 
 Y a mano, contra el sitio publicado:
 
@@ -2119,7 +2142,7 @@ git commit -m "feat: pieza 6, el recordatorio de 24 horas, con su tarea programa
 git push
 ```
 
-**Si parás en la Etapa 6:** **12 de 12 piezas**, 327 pruebas en verde, dirección pública, y una tarea
+**Si parás en la Etapa 6:** **12 de 12 piezas**, 328 pruebas en verde, dirección pública, y una tarea
 programada que corre sola. El proyecto está terminado.
 
 ---
@@ -2129,12 +2152,12 @@ programada que corre sola. El proyecto está terminado.
 | Si parás en | Piezas | `npm test` | Dirección pública | ¿Se puede presentar? |
 |---|---|---|---|---|
 | **Etapa 0** | 11 de 12 | 302 | no | Sí, en la computadora |
-| **Etapa 1** | 11 de 12 | 320 | no | Sí, en la computadora |
-| **Etapa 2** | 11 de 12 | 320 | no | Sí, en la computadora |
-| **Etapa 3** | 11 de 12 | 320 | no | Sí, en la computadora |
-| **Etapa 4** | 11 de 12 | 320 | sí, diciendo qué le falta | En la computadora |
-| **Etapa 5** | 11 de 12 | 320 | **sí, funcionando** | **Sí, publicada** |
-| **Etapa 6** | **12 de 12** | 327 | sí, funcionando | **Sí, completa** |
+| **Etapa 1** | 11 de 12 | 321 | no | Sí, en la computadora |
+| **Etapa 2** | 11 de 12 | 321 | no | Sí, en la computadora |
+| **Etapa 3** | 11 de 12 | 321 | no | Sí, en la computadora |
+| **Etapa 4** | 11 de 12 | 321 | sí, diciendo qué le falta | En la computadora |
+| **Etapa 5** | 11 de 12 | 321 | **sí, funcionando** | **Sí, publicada** |
+| **Etapa 6** | **12 de 12** | 328 | sí, funcionando | **Sí, completa** |
 
 **En ninguna fila hay un proyecto roto.** Es la condición que pediste y es lo que decidió cómo se
 cortaron las etapas.
