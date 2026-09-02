@@ -60,6 +60,12 @@ async function agregarColumnasQueFaltan(base) {
  *
  * `npm run datos` rehace la base desde cero y no necesita nada de esto. Es para la base de trabajo
  * de alguien que ya venía usando la aplicación.
+ *
+ * **La transacción pasó de diferida a inmediata el 2026-09-02**, al cambiar la `transaction` de
+ * better-sqlite3 por `enTransaccion`, que abre con `BEGIN IMMEDIATE`. Es para mejor, y vale
+ * decirlo: esta función **siempre escribe** —rehace una tabla entera—, así que pedir el permiso de
+ * escritura al empezar es exactamente lo que corresponde. Diferida, el permiso se pedía a mitad de
+ * camino y podía chocar ahí.
  */
 async function ponerAlDiaElRegistroDeCorreos(base) {
   const columnas = await base.todas("PRAGMA table_info(correo_enviado)")
@@ -68,6 +74,12 @@ async function ponerAlDiaElRegistroDeCorreos(base) {
   if (columnas.some((una) => una.name === "personal_id")) return
 
   await base.ejecutar("PRAGMA foreign_keys = OFF")
+
+  // La falla de la migración es la que importa, y por eso se guarda en vez de dejarla suelta: si
+  // se dejara suelta, el `PRAGMA` de más abajo podría fallar también y **reemplazarla**, y quien
+  // lea el error no se enteraría de qué salió mal de verdad. Es la misma decisión que el ROLLBACK
+  // de `enTransaccion`, y por la misma razón.
+  let fallaDeLaMigracion = null
 
   try {
     await base.enTransaccion(async (tx) => {
@@ -89,9 +101,21 @@ async function ponerAlDiaElRegistroDeCorreos(base) {
       // El índice se fue con la tabla vieja. Esta línea lo vuelve a crear, igualito.
       await tx.ejecutar(INDICE_DE_CORREOS_POR_CITA)
     })
-  } finally {
-    await base.ejecutar("PRAGMA foreign_keys = ON")
+  } catch (falla) {
+    fallaDeLaMigracion = falla
   }
+
+  // Volver a encender las llaves foráneas no es opcional: apagadas, esta conexión —que en
+  // `npm start` es la de toda la aplicación— dejaría de comprobarlas mientras viva. Así que si esto
+  // falla y no había ninguna falla antes, **se relanza**: callarla dejaría la base sin su red y
+  // nadie se enteraría. Sólo se calla cuando ya venía una falla peor, que es la que hay que contar.
+  try {
+    await base.ejecutar("PRAGMA foreign_keys = ON")
+  } catch (falla) {
+    if (!fallaDeLaMigracion) throw falla
+  }
+
+  if (fallaDeLaMigracion) throw fallaDeLaMigracion
 }
 
 /**
@@ -115,6 +139,15 @@ async function exigirQueElCatalogoEsteAlDia(base) {
 }
 
 async function agregarColumnaSiFalta(base, tabla, columna, tipo) {
+  // ⚠️ Las dos sentencias de esta función **pegan texto adentro del SQL** en vez de pasarlo como
+  // parámetro, y son la única concatenación de SQL de todo el proyecto. Acá es seguro por dos
+  // razones, y las dos tienen que seguir siendo ciertas: `tabla`, `columna` y `tipo` son textos
+  // fijos, escritos a mano más arriba en este mismo archivo —nunca vienen de un formulario ni de la
+  // base—, y `PRAGMA` y `ALTER TABLE` **no aceptan parámetros**, así que no hay manera de
+  // escribirlo de otra forma. Si alguna vez uno de esos tres valores viniera de afuera, esto se
+  // vuelve una puerta abierta: no se copia este patrón a ningún lugar donde el valor no esté
+  // escrito acá.
+  //
   // `PRAGMA table_info` es cómo se le pregunta a SQLite qué columnas tiene una tabla.
   const columnas = await base.todas(`PRAGMA table_info(${tabla})`)
   if (columnas.some((una) => una.name === columna)) return

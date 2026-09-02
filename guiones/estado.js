@@ -108,8 +108,10 @@ if (!hayBase) {
 // **Ese `readonly` se perdió el 2026-09-02**, al preparar el despliegue: la base ahora se abre por
 // `abrirBase`, que es la única puerta que en la Etapa 3 va a saber hablarle a una base de la red, y
 // hoy no tiene manera de pedirla de solo lectura. Así que la garantía volvió a ser lo que era antes
-// de existir: la intención de quien escribe acá. **Este guion sigue sin escribir nada**, y el
-// párrafo de arriba queda como aviso de qué se cuidaba y de qué habría que reponer.
+// de existir: la intención de quien escribe acá. **Este guion no escribe ningún dato**, pero ya no
+// se puede decir que no escriba nada: `abrirBase` crea la carpeta si falta y ajusta dos pragmas
+// al abrir, y `journal_mode` toca la cabecera del archivo. El párrafo de arriba queda como aviso
+// de qué se cuidaba y de qué habría que reponer.
 //
 // `abrirBase` no llama a `crearEsquema`: mirar no es crear. Si la base estuviera vieja, este guion
 // no la pone al día — lo dice y nada más.
@@ -220,6 +222,6 @@ if (conTemporal.length > 0) {
   console.log("    el cambio obligatorio en el primer ingreso — si todavía tenés la temporal anotada.")
 }
 
-base.close()
+await base.cerrar()
 
 console.log("")

@@ -12,7 +12,6 @@
     "prestart": "npm run estilos",
     "start": "node servidor/index.js",
     "datos": "node guiones/cargar-datos.js",
-    "esquema": "node guiones/esquema.js",
     "estado": "node guiones/estado.js",
     "test": "node --test"
   },

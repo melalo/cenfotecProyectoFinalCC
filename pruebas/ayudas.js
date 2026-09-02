@@ -90,7 +90,7 @@ export async function crearEntornoDePrueba(contexto, opciones = {}) {
         servidor = null
       }
       if (base) {
-        base.close()
+        await base.cerrar()
         base = null
       }
     },

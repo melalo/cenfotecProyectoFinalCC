@@ -487,8 +487,8 @@ test("una base de antes de la pieza 9 se pone al día sin perder los correos ya 
   // Cerrar y borrar van en el mismo lugar, y en ese orden: Windows no deja borrar un archivo que
   // otro programa todavía tiene abierto. Es el mismo motivo por el que `npm run datos` exige que la
   // aplicación esté apagada.
-  contexto.after(() => {
-    base.close()
+  contexto.after(async () => {
+    await base.cerrar()
     rmSync(carpeta, { recursive: true, force: true })
   })
 
@@ -545,8 +545,8 @@ test("el índice de correos por cita sobrevive a la mudanza", async (contexto) =
 
   const base = await abrirBase(rutaBase)
   await crearEsquema(base)
-  contexto.after(() => {
-    base.close()
+  contexto.after(async () => {
+    await base.cerrar()
     rmSync(carpeta, { recursive: true, force: true })
   })
 
