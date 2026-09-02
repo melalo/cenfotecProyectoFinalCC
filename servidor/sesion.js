@@ -108,7 +108,7 @@ export function crearGuardiaDeCliente(sesiones, base) {
     if (!sesion) return respuesta.status(401).json({ error: "sin_sesion" })
     if (sesion.tipo !== "cliente") return respuesta.status(403).json({ error: "solo_clientes" })
 
-    if (esaCuentaTieneQueCambiarLaContrasena(base, sesion)) {
+    if (await esaCuentaTieneQueCambiarLaContrasena(base, sesion)) {
       return respuesta.status(403).json({ error: "debe_cambiar_contrasena" })
     }
 
@@ -167,7 +167,7 @@ export function crearGuardiaDeClienteOPersonal(sesiones, base) {
       return seguir()
     }
 
-    if (esaCuentaTieneQueCambiarLaContrasena(base, sesion)) {
+    if (await esaCuentaTieneQueCambiarLaContrasena(base, sesion)) {
       return respuesta.status(403).json({ error: "debe_cambiar_contrasena" })
     }
 
@@ -198,10 +198,8 @@ export function crearGuardiaDeClienteOPersonal(sesiones, base) {
  * Solo los clientes pasan por acá. La cuenta de Personal no tiene esa columna: viene precargada
  * (RN-10) y nunca nació con una contraseña temporal.
  */
-function esaCuentaTieneQueCambiarLaContrasena(base, sesion) {
-  const fila = base
-    .prepare("SELECT debe_cambiar_contrasena FROM cliente WHERE id = ?")
-    .get(sesion.id)
+async function esaCuentaTieneQueCambiarLaContrasena(base, sesion) {
+  const fila = await base.uno("SELECT debe_cambiar_contrasena FROM cliente WHERE id = ?", sesion.id)
 
   return fila?.debe_cambiar_contrasena === 1
 }
