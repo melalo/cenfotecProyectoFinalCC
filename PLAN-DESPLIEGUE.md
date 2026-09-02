@@ -354,7 +354,12 @@ debajo**, y probada. Ningún punto de consulta se muda todavía.
 - Crear: `servidor/esquema.js`
 - Crear: `pruebas/adaptador.test.js`
 - Modificar: `pruebas/ayudas.js`, `guiones/cargar-datos.js`, `servidor/index.js`, `guiones/estado.js`
-  (una línea cada uno: llamar al esquema aparte)
+  y **`pruebas/recuperacion.test.js` (dos veces)** — una línea en cada uno: llamar al esquema aparte.
+  *Corregido el 2026-09-02, al ejecutar la etapa: este plan decía «cuatro lugares» y son **seis**. Las
+  dos que faltaban están en `pruebas/recuperacion.test.js:484` y `:546`, y son justo las dos que más
+  dependen del cambio — existen para comprobar que `ponerAlDiaElRegistroDeCorreos` corre, así que con
+  `abrirBase` ya sin esquema dejaban de comprobar nada. Se encontró porque las pruebas se pusieron
+  rojas (`base.prepare is not a function`), no porque alguien las mirara.*
 - Modificar: `package.json`
 
 - [ ] **Paso 1: instalar la biblioteca de Turso, sin usarla todavía**
@@ -640,7 +645,15 @@ export async function abrirBase(rutaArchivo) {
   // WAL deja que alguien lea mientras otro escribe. Hace falta desde la pieza 3, donde dos
   // clientes pueden intentar reservar el mismo horario en el mismo instante (CA-1).
   cruda.pragma("journal_mode = WAL")
+
+  // `busy_timeout` es nuevo acá (2026-09-02) y no estaba antes: si la base está ocupada, se espera
+  // hasta 5 segundos en vez de fallar en el acto. Hoy no cambia nada porque hay una sola conexión.
+  // Se pone desde ahora porque en la Etapa 3 sí va a haber dos programas escribiendo el mismo
+  // archivo durante las pruebas —la aplicación y la prueba que la vigila—, y sin esto la suite se
+  // pondría intermitente. Ponerlo con el motor conocido debajo es la manera de comprobar que no
+  // rompe nada.
   cruda.pragma("busy_timeout = 5000")
+
   cruda.pragma("foreign_keys = ON")
 
   return envolver(cruda)
@@ -755,10 +768,16 @@ node --test pruebas/adaptador.test.js
 
 Las 9 pruebas del archivo tienen que pasar.
 
-- [ ] **Paso 7: llamar al esquema desde los cuatro lugares que lo necesitan**
+- [ ] **Paso 7: llamar al esquema desde los seis lugares que lo necesitan**
 
-`abrirBase` ya no crea tablas, así que hay que pedirlas donde antes venían solas. Son cuatro sitios y
-una línea en cada uno.
+`abrirBase` ya no crea tablas, así que hay que pedirlas donde antes venían solas. Y `abrirBase` ahora
+es `async`, así que además le va un `await`.
+
+**La manera de no olvidarse ninguno es preguntárselo al código, no a este plan:**
+
+```bash
+grep -rn "abrirBase(" servidor/ pruebas/ guiones/ | grep -v "export async function"
+```
 
 En `pruebas/ayudas.js`, dentro de `levantar()`:
 
@@ -795,8 +814,27 @@ await crearEsquema(base)
 
 con su import. (`index.js` es un módulo ESM, así que `await` en el nivel de arriba funciona.)
 
+En `pruebas/recuperacion.test.js`, las **dos** llamadas (líneas 484 y 546): `await abrirBase(rutaBase)`
+seguido de `await crearEsquema(base)`. **Las dos necesitan el esquema**, y no es un detalle: esas
+pruebas existen para comprobar que una base con la forma de antes de la pieza 9 se pone al día, así
+que si el esquema no corre, dejan de comprobar lo único que vinieron a comprobar.
+
 En `guiones/estado.js`, donde hoy hace `new Database(...)`: pasa a `await abrirBase(RUTA_DE_LA_BASE)`
-y **no** llama a `crearEsquema` — sólo mira, no crea. Sus 3 consultas se mudan en la Etapa 2H.
+y **no** llama a `crearEsquema` — sólo mira, no crea. Sus 3 consultas se mudan en la Etapa 2I.
+
+> ⚠️ **Y acá se pierde algo, dicho en voz alta.** `estado.js` abría la base con `{ readonly: true }`,
+> y su comentario explica que eso no era decoración: garantizaba **desde la base misma** que un guion
+> que sólo informa no pudiera escribir. `abrirBase` no tiene manera de pedir sólo lectura, así que la
+> garantía se pierde — y encima `abrirBase` corre `PRAGMA journal_mode = WAL`, que **es una
+> escritura**: la primera vez que corra `npm run estado`, el archivo `-wal` se pliega dentro de
+> `reservas.sqlite` y desaparece. No se pierde ningún dato, pero la promesa de «este guion solo lee»
+> queda más floja.
+>
+> **Se acepta la pérdida, y por una razón concreta:** en la Etapa 3 el motor pasa a `@libsql/client`,
+> que tampoco ofrece un modo de sólo lectura contra un archivo. Construir la opción ahora sería
+> trabajo que se tira en dos etapas. **No se borra el comentario del `readonly`**: se le agrega
+> debajo un párrafo fechado que dice que se perdió y por qué, para que nadie lo lea como si
+> siguiera siendo cierto.
 
 > ⚠️ **Un detalle que muerde:** `pruebas/ayudas.js` hace `cargarDatosDePrueba(base)` **después** de
 > `levantar()`. Eso sigue igual acá porque `cargarDatosDePrueba` todavía usa la cara vieja. Se muda
