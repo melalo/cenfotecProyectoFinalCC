@@ -27,10 +27,11 @@ const DIGITOS_DEL_TELEFONO = 8
  * La **edad no se lee de la base**: no está guardada. Se calcula acá a partir de la fecha de
  * nacimiento y del momento actual, que llega como dato igual que en todo el proyecto.
  */
-export function informacionDelCliente({ base, clienteId, ahora }) {
-  const cliente = base
-    .prepare("SELECT nombre, correo, telefono, fecha_nacimiento FROM cliente WHERE id = ?")
-    .get(clienteId)
+export async function informacionDelCliente({ base, clienteId, ahora }) {
+  const cliente = await base.uno(
+    "SELECT nombre, correo, telefono, fecha_nacimiento FROM cliente WHERE id = ?",
+    clienteId,
+  )
 
   if (!cliente) return null
 
@@ -57,7 +58,7 @@ export function informacionDelCliente({ base, clienteId, ahora }) {
  * Y si uno de los tres está mal, **no se guarda ninguno**: se contesta el error y la base queda como
  * estaba. Guardar la mitad de un formulario deja al cliente sin saber qué quedó.
  */
-export function guardarDatosDelCliente({ base, clienteId, datos, ahora }) {
+export async function guardarDatosDelCliente({ base, clienteId, datos, ahora }) {
   const nombre = typeof datos?.nombre === "string" ? datos.nombre.trim() : ""
   if (nombre === "") return { ok: false, motivo: "nombre_invalido" }
 
@@ -68,9 +69,13 @@ export function guardarDatosDelCliente({ base, clienteId, datos, ahora }) {
   if (fechaNacimiento === MAL_ESCRITO) return { ok: false, motivo: "fecha_nacimiento_invalida" }
 
   // El correo no se toca, aunque venga en el pedido (RN-21).
-  base
-    .prepare("UPDATE cliente SET nombre = ?, telefono = ?, fecha_nacimiento = ? WHERE id = ?")
-    .run(nombre, telefono, fechaNacimiento, clienteId)
+  await base.correr(
+    "UPDATE cliente SET nombre = ?, telefono = ?, fecha_nacimiento = ? WHERE id = ?",
+    nombre,
+    telefono,
+    fechaNacimiento,
+    clienteId,
+  )
 
   return { ok: true }
 }

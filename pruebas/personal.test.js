@@ -106,12 +106,14 @@ async function prepararPersonal(contexto, opciones = {}) {
   const ana = buscarPorNombre(proveedores.cuerpo, "Ana")
   const carlos = buscarPorNombre(proveedores.cuerpo, "Carlos")
 
-  function idDelCliente(correo) {
-    return entorno.base.prepare("SELECT id FROM cliente WHERE correo = ?").get(correo).id
+  async function idDelCliente(correo) {
+    const fila = await entorno.base.uno("SELECT id FROM cliente WHERE correo = ?", correo)
+    return fila.id
   }
 
-  function idDePersonal() {
-    return entorno.base.prepare("SELECT id FROM personal WHERE correo = ?").get(PERSONAL.correo).id
+  async function idDePersonal() {
+    const fila = await entorno.base.uno("SELECT id FROM personal WHERE correo = ?", PERSONAL.correo)
+    return fila.id
   }
 
   /** Personal reserva a nombre de un cliente. Por defecto, masaje con Ana para la clienta Ana. */
@@ -119,7 +121,7 @@ async function prepararPersonal(contexto, opciones = {}) {
     return personal("/api/citas", {
       method: "POST",
       cuerpo: {
-        clienteId: opciones.clienteId ?? idDelCliente(ANA.correo),
+        clienteId: opciones.clienteId ?? await idDelCliente(ANA.correo),
         servicioId: opciones.servicioId ?? masaje.id,
         proveedorId: opciones.proveedorId ?? ana.id,
         inicio,
@@ -177,25 +179,22 @@ async function prepararPersonal(contexto, opciones = {}) {
    * porque el API no deja crearla (RN-4) — y es literalmente lo que piden las comprobaciones 9 y 10
    * del plan. No es hacer trampa: es el único camino a ese estado.
    */
-  function insertarCitaAMano(inicio, opciones = {}) {
-    const guardada = entorno.base
-      .prepare(
-        `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
+  async function insertarCitaAMano(inicio, opciones = {}) {
+    const guardada = await entorno.base.correr(
+      `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
          VALUES (?, ?, ?, ?, 'activa', '2026-08-30T09:00:00-06:00', 'en_linea')`,
-      )
-      .run(
-        idDelCliente(opciones.correo ?? ANA.correo),
-        masaje.id,
-        (opciones.proveedor ?? ana).id,
-        inicio,
-      )
+      await idDelCliente(opciones.correo ?? ANA.correo),
+      masaje.id,
+      (opciones.proveedor ?? ana).id,
+      inicio,
+    )
 
-    return Number(guardada.lastInsertRowid)
+    return guardada.idInsertado
   }
 
   /** La fila cruda de una cita, para mirar qué quedó guardado de verdad. */
-  function filaDeLaCita(citaId) {
-    return entorno.base.prepare("SELECT * FROM cita WHERE id = ?").get(citaId)
+  async function filaDeLaCita(citaId) {
+    return await entorno.base.uno("SELECT * FROM cita WHERE id = ?", citaId)
   }
 
   return {
@@ -267,7 +266,7 @@ test("un cliente no puede buscar clientes", async (contexto) => {
 test("un cliente no puede espiar las citas de otro por la puerta de Personal", async (contexto) => {
   const { cliente, idDelCliente } = await prepararPersonal(contexto)
 
-  const respuesta = await cliente(`/api/personal/clientes/${idDelCliente(BETO.correo)}/citas`)
+  const respuesta = await cliente(`/api/personal/clientes/${await idDelCliente(BETO.correo)}/citas`)
 
   assert.equal(respuesta.estado, 403)
   assert.equal(respuesta.cuerpo.error, "solo_personal")
@@ -327,9 +326,10 @@ test("la cuenta nace con la contraseña temporal pendiente de cambiar (RN-11)", 
 
   await crearCuenta({ nombre: "Quien Llama", correo: "nuevo@ejemplo.com" })
 
-  const fila = entorno.base
-    .prepare("SELECT debe_cambiar_contrasena FROM cliente WHERE correo = ?")
-    .get("nuevo@ejemplo.com")
+  const fila = await entorno.base.uno(
+    "SELECT debe_cambiar_contrasena FROM cliente WHERE correo = ?",
+    "nuevo@ejemplo.com",
+  )
 
   assert.equal(fila.debe_cambiar_contrasena, 1)
 })
@@ -391,9 +391,10 @@ test("el correo de quien llama se guarda en minúscula, como todos", async (cont
 
   await crearCuenta({ nombre: "Quien Llama", correo: "  Nuevo@Ejemplo.COM " })
 
-  const fila = entorno.base
-    .prepare("SELECT correo FROM cliente WHERE correo = ?")
-    .get("nuevo@ejemplo.com")
+  const fila = await entorno.base.uno(
+    "SELECT correo FROM cliente WHERE correo = ?",
+    "nuevo@ejemplo.com",
+  )
 
   assert.ok(fila, "el correo tenía que quedar guardado en minúscula y sin espacios de sobra")
 })
@@ -468,10 +469,10 @@ test("comprobación 1: Personal reserva a nombre de un cliente que ya existe, co
 
   assert.equal(respuesta.estado, 201)
 
-  const fila = filaDeLaCita(respuesta.cuerpo.id)
+  const fila = await filaDeLaCita(respuesta.cuerpo.id)
   assert.equal(fila.canal, "asistida", "la cita que crea Personal es asistida (RN-12)")
-  assert.equal(fila.personal_id_creador, idDePersonal(), "falta la cuenta de Personal que la creó")
-  assert.equal(fila.cliente_id, idDelCliente(ANA.correo), "la cita es del cliente, no de Personal")
+  assert.equal(fila.personal_id_creador, await idDePersonal(), "falta la cuenta de Personal que la creó")
+  assert.equal(fila.cliente_id, await idDelCliente(ANA.correo), "la cita es del cliente, no de Personal")
   assert.equal(fila.estado, "activa")
 })
 
@@ -528,11 +529,11 @@ test("un cliente que manda un clienteId ajeno reserva igual para sí mismo", asy
   // Ana manda el número de Beto adentro del pedido. La puerta del cliente **no lo mira**: la cita
   // tiene que quedar a nombre de Ana igual.
   const respuesta = await reservarComoCliente(momento(MANANA, 10), {
-    clienteId: idDelCliente(BETO.correo),
+    clienteId: await idDelCliente(BETO.correo),
   })
 
   assert.equal(respuesta.estado, 201)
-  assert.equal(filaDeLaCita(respuesta.cuerpo.id).cliente_id, idDelCliente(ANA.correo))
+  assert.equal((await filaDeLaCita(respuesta.cuerpo.id)).cliente_id, await idDelCliente(ANA.correo))
 })
 
 test("una cita que reservó el cliente por su cuenta sigue quedando en línea", async (contexto) => {
@@ -540,7 +541,7 @@ test("una cita que reservó el cliente por su cuenta sigue quedando en línea", 
 
   const respuesta = await reservarComoCliente(momento(MANANA, 11))
 
-  const fila = filaDeLaCita(respuesta.cuerpo.id)
+  const fila = await filaDeLaCita(respuesta.cuerpo.id)
   assert.equal(fila.canal, "en_linea")
   assert.equal(fila.personal_id_creador, null)
 })
@@ -579,8 +580,8 @@ test("comprobación 8: Personal SÍ puede reservar para hoy, si el horario no em
   const respuesta = await reservarPara(momento(HOY, 10))
 
   assert.equal(respuesta.estado, 201)
-  assert.equal(filaDeLaCita(respuesta.cuerpo.id).inicio, momento(HOY, 10))
-  assert.equal(filaDeLaCita(respuesta.cuerpo.id).canal, "asistida")
+  assert.equal((await filaDeLaCita(respuesta.cuerpo.id)).inicio, momento(HOY, 10))
+  assert.equal((await filaDeLaCita(respuesta.cuerpo.id)).canal, "asistida")
 })
 
 test("comprobación 8: el cliente sigue sin poder reservar para hoy (CA-2 intacto)", async (contexto) => {
@@ -634,7 +635,7 @@ test("las reglas de agenda siguen alcanzando a Personal en el día de hoy (RN-13
   const { reservarPara, insertarCitaAMano } = await prepararPersonal(contexto)
 
   // Un horario de hoy que ya está tomado sigue estando tomado, aunque quien pida sea Personal.
-  insertarCitaAMano(momento(HOY, 15))
+  await insertarCitaAMano(momento(HOY, 15))
   const ocupado = await reservarPara(momento(HOY, 15))
   assert.equal(ocupado.estado, 409)
   assert.equal(ocupado.cuerpo.error, "horario_no_disponible")
@@ -688,7 +689,7 @@ test("Personal puede mover una cita a un horario de hoy que no empezó (RN-25)",
   const respuesta = await reagendarComoPersonal(creada.cuerpo.id, momento(HOY, 15))
 
   assert.equal(respuesta.estado, 200)
-  assert.equal(filaDeLaCita(creada.cuerpo.id).inicio, momento(HOY, 15))
+  assert.equal((await filaDeLaCita(creada.cuerpo.id)).inicio, momento(HOY, 15))
 })
 
 test("Personal no puede mover una cita a un horario de hoy que ya empezó", async (contexto) => {
@@ -747,7 +748,7 @@ test("Personal ve las citas del cliente que está atendiendo", async (contexto) 
   const { reservarPara, verCitasDelCliente, idDelCliente } = await prepararPersonal(contexto)
 
   const creada = await reservarPara(momento(MANANA, 10))
-  const respuesta = await verCitasDelCliente(idDelCliente(ANA.correo))
+  const respuesta = await verCitasDelCliente(await idDelCliente(ANA.correo))
 
   assert.equal(respuesta.estado, 200)
   assert.equal(respuesta.cuerpo.length, 1)
@@ -760,7 +761,7 @@ test("Personal no ve las citas de un cliente en la lista de otro", async (contex
   const { reservarPara, verCitasDelCliente, idDelCliente } = await prepararPersonal(contexto)
 
   await reservarPara(momento(MANANA, 10))
-  const deBeto = await verCitasDelCliente(idDelCliente(BETO.correo))
+  const deBeto = await verCitasDelCliente(await idDelCliente(BETO.correo))
 
   assert.deepEqual(deBeto.cuerpo, [])
 })
@@ -778,9 +779,9 @@ test("CA-3 (Personal): una cita que empieza en 2 horas le llega a Personal como 
   const { insertarCitaAMano, verCitasDelCliente, idDelCliente } = await prepararPersonal(contexto)
 
   // El reloj está parado a las 8 de la mañana, así que una cita a las 10 empieza dentro de 2 horas.
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
-  const respuesta = await verCitasDelCliente(idDelCliente(ANA.correo))
+  const respuesta = await verCitasDelCliente(await idDelCliente(ANA.correo))
   const cita = respuesta.cuerpo.find((una) => una.id === citaId)
 
   assert.equal(cita.sePuedeCambiar, true, "Personal sí puede cambiarla (RN-6)")
@@ -790,7 +791,7 @@ test("CA-3 (Personal): una cita que empieza en 2 horas le llega a Personal como 
 test("CA-3 (cliente): la misma cita le llega al cliente como no cambiable", async (contexto) => {
   const { insertarCitaAMano, cliente } = await prepararPersonal(contexto)
 
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await cliente("/api/citas")
   const cita = respuesta.cuerpo.find((una) => una.id === citaId)
@@ -807,13 +808,13 @@ test("CA-3 (Personal): Personal cancela una cita que empieza dentro de 2 horas y
   const { insertarCitaAMano, cancelarComoPersonal, filaDeLaCita } =
     await prepararPersonal(contexto)
 
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await cancelarComoPersonal(citaId)
 
   assert.equal(respuesta.estado, 204, "Personal no tiene ventana de cancelación (RN-6)")
 
-  const fila = filaDeLaCita(citaId)
+  const fila = await filaDeLaCita(citaId)
   assert.equal(fila.estado, "cancelada")
   assert.equal(fila.cancelada_por, "personal", "tiene que quedar anotado que la canceló Personal")
   assert.ok(fila.cancelada_en, "falta cuándo se canceló (REG-1)")
@@ -822,7 +823,7 @@ test("CA-3 (Personal): Personal cancela una cita que empieza dentro de 2 horas y
 test("CA-3 (cliente): el mismo intento hecho por el cliente se rechaza", async (contexto) => {
   const { insertarCitaAMano, cliente } = await prepararPersonal(contexto)
 
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await cliente(`/api/citas/${citaId}`, { method: "DELETE" })
 
@@ -834,30 +835,30 @@ test("Personal reagenda una cita que empieza dentro de 2 horas (RF-18)", async (
   const { insertarCitaAMano, reagendarComoPersonal, filaDeLaCita } =
     await prepararPersonal(contexto)
 
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await reagendarComoPersonal(citaId, momento(PASADO_MANANA, 14))
 
   assert.equal(respuesta.estado, 200)
-  assert.equal(filaDeLaCita(citaId).inicio, momento(PASADO_MANANA, 14))
+  assert.equal((await filaDeLaCita(citaId)).inicio, momento(PASADO_MANANA, 14))
 })
 
 test("Personal cancela la cita de cualquier cliente, no solo la de uno", async (contexto) => {
   const { insertarCitaAMano, cancelarComoPersonal, filaDeLaCita } =
     await prepararPersonal(contexto)
 
-  const citaDeBeto = insertarCitaAMano(momento(HOY, 11), { correo: BETO.correo })
+  const citaDeBeto = await insertarCitaAMano(momento(HOY, 11), { correo: BETO.correo })
 
   const respuesta = await cancelarComoPersonal(citaDeBeto)
 
   assert.equal(respuesta.estado, 204)
-  assert.equal(filaDeLaCita(citaDeBeto).estado, "cancelada")
+  assert.equal((await filaDeLaCita(citaDeBeto)).estado, "cancelada")
 })
 
 test("Personal tampoco puede cancelar dos veces la misma cita", async (contexto) => {
   const { insertarCitaAMano, cancelarComoPersonal } = await prepararPersonal(contexto)
 
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
   await cancelarComoPersonal(citaId)
 
   const otraVez = await cancelarComoPersonal(citaId)
@@ -869,7 +870,7 @@ test("Personal tampoco puede cancelar dos veces la misma cita", async (contexto)
 test("al reagendar, Personal tampoco puede aterrizar en un feriado (RN-13)", async (contexto) => {
   const { insertarCitaAMano, reagendarComoPersonal } = await prepararPersonal(contexto)
 
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await reagendarComoPersonal(citaId, momento(FERIADO, 10))
 

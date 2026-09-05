@@ -95,7 +95,7 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
 
     // Solo hace falta preguntarlo cuando reserva Personal: el `clienteId` de un cliente sale de su
     // propia sesión, y esa cuenta existe por definición.
-    if (pedido.esPersonal && !eseClienteExiste(base, clienteId)) {
+    if (pedido.esPersonal && !(await eseClienteExiste(base, clienteId))) {
       return respuesta.status(404).json({ error: "cliente_no_encontrado" })
     }
 

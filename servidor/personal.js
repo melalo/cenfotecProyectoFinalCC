@@ -113,7 +113,7 @@ export function inventarContrasenaTemporal() {
  * está al teléfono queriendo una cita no tiene por qué contestar un cuestionario: los completa
  * después, desde su sección «Usuario».
  */
-export function crearClienteDesdePersonal({ base, nombre, correo }) {
+export async function crearClienteDesdePersonal({ base, nombre, correo }) {
   const nombreLimpio = String(nombre ?? "").trim()
   const correoLimpio = normalizarCorreo(correo)
 
@@ -130,7 +130,7 @@ export function crearClienteDesdePersonal({ base, nombre, correo }) {
 
   // El correo tiene que estar libre en **las dos** tablas de cuentas: si coincidiera con la de
   // Personal, al entrar no se sabría cuál de las dos es. Es la misma razón que ya tenía el registro.
-  if (eseCorreoYaTieneCuenta(base, correoLimpio)) {
+  if (await eseCorreoYaTieneCuenta(base, correoLimpio)) {
     return { ok: false, motivo: "correo_ya_registrado" }
   }
 
@@ -138,17 +138,18 @@ export function crearClienteDesdePersonal({ base, nombre, correo }) {
 
   // `debe_cambiar_contrasena` nace en 1, y eso es lo que obliga al cambio en el primer ingreso
   // (RF-4). La columna existe desde la pieza 1, vacía, esperando esta pieza.
-  const creada = base
-    .prepare(
-      `INSERT INTO cliente (nombre, correo, contrasena_cifrada, debe_cambiar_contrasena)
+  const creada = await base.correr(
+    `INSERT INTO cliente (nombre, correo, contrasena_cifrada, debe_cambiar_contrasena)
        VALUES (?, ?, ?, 1)`,
-    )
-    .run(nombreLimpio, correoLimpio, cifrarContrasena(contrasenaTemporal))
+    nombreLimpio,
+    correoLimpio,
+    cifrarContrasena(contrasenaTemporal),
+  )
 
   return {
     ok: true,
     cliente: {
-      id: Number(creada.lastInsertRowid),
+      id: creada.idInsertado,
       nombre: nombreLimpio,
       correo: correoLimpio,
       contrasenaTemporal,
@@ -172,27 +173,27 @@ export function crearClienteDesdePersonal({ base, nombre, correo }) {
  * comodines —`%`, `_` y la barra invertida— se escapan antes: sin eso, buscar `%` devolvería la
  * lista completa, que es justo lo que la decisión de la estudiante quiso evitar.
  */
-export function buscarClientes({ base, busqueda }) {
+export async function buscarClientes({ base, busqueda }) {
   const texto = String(busqueda ?? "").trim()
   if (texto.length < LETRAS_MINIMAS_PARA_BUSCAR) return []
 
   const pedazo = `%${escaparComodines(texto)}%`
 
-  return base
-    .prepare(
-      `SELECT id, nombre, correo
-         FROM cliente
-        WHERE nombre LIKE ? ESCAPE '\\' OR correo LIKE ? ESCAPE '\\'
-        ORDER BY nombre`,
-    )
-    .all(pedazo, pedazo)
+  return await base.todas(
+    `SELECT id, nombre, correo
+       FROM cliente
+      WHERE nombre LIKE ? ESCAPE '\\' OR correo LIKE ? ESCAPE '\\'
+      ORDER BY nombre`,
+    pedazo,
+    pedazo,
+  )
 }
 
 /** ¿Existe ese cliente? Lo pregunta la ruta antes de reservarle una cita o de listar las suyas. */
-export function eseClienteExiste(base, clienteId) {
+export async function eseClienteExiste(base, clienteId) {
   if (!Number.isInteger(clienteId) || clienteId <= 0) return false
 
-  return base.prepare("SELECT 1 FROM cliente WHERE id = ?").get(clienteId) !== undefined
+  return (await base.uno("SELECT 1 FROM cliente WHERE id = ?", clienteId)) !== undefined
 }
 
 /** Los correos se guardan y se buscan siempre en minúscula y sin espacios de sobra. */
@@ -202,11 +203,11 @@ function normalizarCorreo(correo) {
     .toLowerCase()
 }
 
-function eseCorreoYaTieneCuenta(base, correo) {
-  const cliente = base.prepare("SELECT 1 FROM cliente WHERE correo = ?").get(correo)
+async function eseCorreoYaTieneCuenta(base, correo) {
+  const cliente = await base.uno("SELECT 1 FROM cliente WHERE correo = ?", correo)
   if (cliente) return true
 
-  return base.prepare("SELECT 1 FROM personal WHERE correo = ?").get(correo) !== undefined
+  return (await base.uno("SELECT 1 FROM personal WHERE correo = ?", correo)) !== undefined
 }
 
 /** Deja los comodines de `LIKE` como letras normales, para que se busquen tal cual. */

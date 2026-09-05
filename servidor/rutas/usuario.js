@@ -34,7 +34,7 @@ export function crearRutasDeUsuario({ base, sesiones, reloj }) {
 
   // RF-22, la otra mitad: completar o corregir el nombre, el teléfono y la fecha de nacimiento.
   rutas.put("/mi-informacion", exigirCliente, async (pedido, respuesta) => {
-    const resultado = guardarDatosDelCliente({
+    const resultado = await guardarDatosDelCliente({
       base,
       clienteId: pedido.clienteId,
       datos: pedido.body,
@@ -66,7 +66,7 @@ export function crearRutasDeUsuario({ base, sesiones, reloj }) {
  */
 async function armarLaRespuesta(base, clienteId, ahora) {
   return {
-    ...informacionDelCliente({ base, clienteId, ahora }),
+    ...(await informacionDelCliente({ base, clienteId, ahora })),
     clienteDesde: await primeraCitaDelCliente({ base, clienteId }),
   }
 }

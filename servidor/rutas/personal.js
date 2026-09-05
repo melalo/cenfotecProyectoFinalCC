@@ -58,7 +58,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   // La contraseña temporal **viaja en la respuesta y en ningún otro lado**: es la única vez que
   // existe fuera de la cabeza de quien la dicte. En la base solo queda su huella cifrada.
   rutas.post("/personal/clientes", exigirPersonal, async (pedido, respuesta) => {
-    const resultado = crearClienteDesdePersonal({
+    const resultado = await crearClienteDesdePersonal({
       base,
       nombre: pedido.body?.nombre,
       correo: pedido.body?.correo,
@@ -78,7 +78,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   // Con menos de dos letras devuelve la lista vacía, y quién decide eso es `servidor/personal.js`,
   // no esta ruta: es una regla, y las reglas no viven en los archivos de rutas.
   rutas.get("/personal/clientes", exigirPersonal, async (pedido, respuesta) => {
-    return respuesta.status(200).json(buscarClientes({ base, busqueda: pedido.query.busqueda }))
+    return respuesta.status(200).json(await buscarClientes({ base, busqueda: pedido.query.busqueda }))
   })
 
   // Las citas del cliente que Personal está atendiendo, para poder cancelarlas o moverlas (RF-18).
@@ -90,7 +90,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   rutas.get("/personal/clientes/:clienteId/citas", exigirPersonal, async (pedido, respuesta) => {
     const clienteId = Number(pedido.params.clienteId)
 
-    if (!eseClienteExiste(base, clienteId)) {
+    if (!(await eseClienteExiste(base, clienteId))) {
       return respuesta.status(404).json({ error: "cliente_no_encontrado" })
     }
 
