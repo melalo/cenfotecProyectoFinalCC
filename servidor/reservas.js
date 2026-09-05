@@ -100,7 +100,7 @@ const RECHAZO_DEL_INDICE_UNICO = "SQLITE_CONSTRAINT_UNIQUE"
  * **Las demás reglas no cambian** (RN-13): el horario se comprueba con la misma `revisarHorario`, así
  * que Personal tampoco puede tomar un horario ocupado, un feriado, un domingo ni el almuerzo.
  */
-export function crearCita({
+export async function crearCita({
   base,
   clienteId,
   servicioId,
@@ -113,21 +113,28 @@ export function crearCita({
   const canal = laCreaPersonal ? CANAL_ASISTIDA : CANAL_EN_LINEA
   const quien = laCreaPersonal ? QUIEN_PERSONAL : QUIEN_CLIENTE
 
-  const comprobarYGuardar = base.transaction(() => {
-    const revision = revisarHorario({ base, proveedorId, inicio, ahora, quien })
+  try {
+    // `enTransaccion` empieza con BEGIN IMMEDIATE, que pide el permiso de escritura al empezar y no
+    // a mitad de camino. Es lo que corresponde acá: se sabe de antemano que se va a escribir. Es el
+    // mismo `.immediate()` que este código pedía antes a mano.
+    //
+    // **El `await` de acá adelante no es decorativo.** Sin él la promesa se va del `try` antes de
+    // fallar, el `catch` de abajo no la ve, y el rechazo del índice único dejaría de convertirse en
+    // «horario no disponible»: CA-1 pasaría de un mensaje claro a un error 500 del servidor.
+    return await base.enTransaccion(async (tx) => {
+      // `tx` va donde antes iba `base`: adentro de la transacción hay que preguntarle a ella, no a
+      // la conexión de afuera, o la comprobación miraría una foto vieja.
+      const revision = await revisarHorario({ base: tx, proveedorId, inicio, ahora, quien })
 
-    if (revision === "hoy_o_pasado") return { ok: false, motivo: "mismo_dia" }
-    if (revision === "ya_empezo") return { ok: false, motivo: "horario_ya_empezo" }
-    if (revision !== "disponible") return { ok: false, motivo: "horario_no_disponible" }
+      if (revision === "hoy_o_pasado") return { ok: false, motivo: "mismo_dia" }
+      if (revision === "ya_empezo") return { ok: false, motivo: "horario_ya_empezo" }
+      if (revision !== "disponible") return { ok: false, motivo: "horario_no_disponible" }
 
-    const guardada = base
-      .prepare(
+      const guardada = await tx.correr(
         `INSERT INTO cita
            (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal,
             personal_id_creador)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
         clienteId,
         servicioId,
         proveedorId,
@@ -138,25 +145,20 @@ export function crearCita({
         personalIdCreador,
       )
 
-    // Las otras cuatro columnas de la tabla quedan vacías a propósito: las dos de cancelación las
-    // llena la pieza 5 cuando alguien cancela, y las dos de cierre la pieza 8.
-    return {
-      ok: true,
-      cita: {
-        id: Number(guardada.lastInsertRowid),
-        servicioId,
-        proveedorId,
-        inicio,
-        estado: ESTADO_ACTIVA,
-        canal,
-      },
-    }
-  })
-
-  try {
-    // `immediate` pide el permiso de escritura al empezar la transacción, no a mitad de camino. Es
-    // lo que corresponde acá: se sabe de antemano que se va a escribir.
-    return comprobarYGuardar.immediate()
+      // Las otras cuatro columnas de la tabla quedan vacías a propósito: las dos de cancelación las
+      // llena la pieza 5 cuando alguien cancela, y las dos de cierre la pieza 8.
+      return {
+        ok: true,
+        cita: {
+          id: guardada.idInsertado,
+          servicioId,
+          proveedorId,
+          inicio,
+          estado: ESTADO_ACTIVA,
+          canal,
+        },
+      }
+    })
   } catch (falla) {
     // Acá se cae la reserva que perdió la carrera de CA-1: pasó la comprobación porque el horario
     // todavía estaba libre cuando la miró, y el índice único la rechazó al guardar.
@@ -192,7 +194,7 @@ export async function crearCitaYConfirmar({
   ahora,
   personalIdCreador = null,
 }) {
-  const resultado = crearCita({
+  const resultado = await crearCita({
     base,
     clienteId,
     servicioId,
@@ -354,9 +356,9 @@ export function grupoDeLaCita({ cita, ahora }) {
  * No manda ningún correo, a propósito: `ESPECIFICACION.md` no pide ninguno al cancelar, y quien
  * canceló acaba de verlo en pantalla.
  */
-export function cancelarCita({ base, citaId, clienteId, quien, ahora }) {
-  const cancelar = base.transaction(() => {
-    const cita = buscarCitaParaCambiar({ base, citaId, clienteId, quien })
+export async function cancelarCita({ base, citaId, clienteId, quien, ahora }) {
+  return await base.enTransaccion(async (tx) => {
+    const cita = await buscarCitaParaCambiar({ base: tx, citaId, clienteId, quien })
     if (!cita) return { ok: false, motivo: "cita_no_encontrada" }
 
     const revision = revisarSiSePuedeCambiar({ cita, quien, ahora })
@@ -364,18 +366,19 @@ export function cancelarCita({ base, citaId, clienteId, quien, ahora }) {
 
     // El `AND estado = 'activa'` del final no es de más: es lo que hace que dos cancelaciones que
     // lleguen al mismo tiempo no puedan escribir las dos: la segunda no encuentra fila que cambiar.
-    base
-      .prepare(
-        `UPDATE cita
+    await tx.correr(
+      `UPDATE cita
             SET estado = ?, cancelada_en = ?, cancelada_por = ?
           WHERE id = ? AND estado = ?`,
-      )
-      .run(ESTADO_CANCELADA, escribirMomento(ahora), quien, citaId, ESTADO_ACTIVA)
+      ESTADO_CANCELADA,
+      escribirMomento(ahora),
+      quien,
+      citaId,
+      ESTADO_ACTIVA,
+    )
 
     return { ok: true }
   })
-
-  return cancelar.immediate()
 }
 
 /**
@@ -398,36 +401,42 @@ export function cancelarCita({ base, citaId, clienteId, quien, ahora }) {
  * lo mismo que reservarla ahí, así que la excepción de RN-25 vale igual para las dos. Tratarlas
  * distinto sería escribir la regla dos veces con una diferencia que nadie pidió.
  */
-export function reagendarCita({ base, citaId, clienteId, quien, inicio, ahora }) {
-  const comprobarYMover = base.transaction(() => {
-    const cita = buscarCitaParaCambiar({ base, citaId, clienteId, quien })
-    if (!cita) return { ok: false, motivo: "cita_no_encontrada" }
+export async function reagendarCita({ base, citaId, clienteId, quien, inicio, ahora }) {
+  try {
+    // El `await` de acá adelante es el mismo de `crearCita`, y por la misma razón: sin él el `catch`
+    // de abajo no vería el rechazo del índice único y la carrera terminaría en un 500.
+    return await base.enTransaccion(async (tx) => {
+      const cita = await buscarCitaParaCambiar({ base: tx, citaId, clienteId, quien })
+      if (!cita) return { ok: false, motivo: "cita_no_encontrada" }
 
-    const revision = revisarSiSePuedeCambiar({ cita, quien, ahora })
-    if (revision !== "se_puede") return { ok: false, motivo: revision }
+      const revision = revisarSiSePuedeCambiar({ cita, quien, ahora })
+      if (revision !== "se_puede") return { ok: false, motivo: revision }
 
-    const horario = revisarHorario({ base, proveedorId: cita.proveedor_id, inicio, ahora, quien })
-    if (horario === "hoy_o_pasado") return { ok: false, motivo: "mismo_dia" }
-    if (horario === "ya_empezo") return { ok: false, motivo: "horario_ya_empezo" }
-    if (horario !== "disponible") return { ok: false, motivo: "horario_no_disponible" }
-
-    base.prepare("UPDATE cita SET inicio = ? WHERE id = ?").run(inicio, citaId)
-
-    return {
-      ok: true,
-      cita: {
-        id: cita.id,
-        servicioId: cita.servicio_id,
+      const horario = await revisarHorario({
+        base: tx,
         proveedorId: cita.proveedor_id,
         inicio,
-        estado: cita.estado,
-        canal: cita.canal,
-      },
-    }
-  })
+        ahora,
+        quien,
+      })
+      if (horario === "hoy_o_pasado") return { ok: false, motivo: "mismo_dia" }
+      if (horario === "ya_empezo") return { ok: false, motivo: "horario_ya_empezo" }
+      if (horario !== "disponible") return { ok: false, motivo: "horario_no_disponible" }
 
-  try {
-    return comprobarYMover.immediate()
+      await tx.correr("UPDATE cita SET inicio = ? WHERE id = ?", inicio, citaId)
+
+      return {
+        ok: true,
+        cita: {
+          id: cita.id,
+          servicioId: cita.servicio_id,
+          proveedorId: cita.proveedor_id,
+          inicio,
+          estado: cita.estado,
+          canal: cita.canal,
+        },
+      }
+    })
   } catch (falla) {
     // La misma carrera de CA-1, del otro lado: alguien tomó el horario nuevo entre la comprobación y
     // el cambio. El índice único la para, igual que para una reserva.
@@ -457,7 +466,7 @@ export async function reagendarCitaYConfirmar({
   inicio,
   ahora,
 }) {
-  const resultado = reagendarCita({ base, citaId, clienteId, quien, inicio, ahora })
+  const resultado = await reagendarCita({ base, citaId, clienteId, quien, inicio, ahora })
 
   if (resultado.ok) {
     await enviarConfirmacionDeCita({ base, enviador, citaId, ahora })
@@ -478,16 +487,16 @@ export async function reagendarCitaYConfirmar({
  * `clienteId` es obligatorio para un cliente, y si falta esto se corta en seco en vez de buscar sin
  * filtro: un descuido así dejaría que cualquiera cancele la cita de cualquiera.
  */
-function buscarCitaParaCambiar({ base, citaId, clienteId, quien }) {
+async function buscarCitaParaCambiar({ base, citaId, clienteId, quien }) {
   if (quien === QUIEN_CLIENTE && !clienteId) {
     throw new Error("Falta el clienteId: un cliente solo puede cambiar sus propias citas")
   }
 
   if (quien === QUIEN_CLIENTE) {
-    return base.prepare("SELECT * FROM cita WHERE id = ? AND cliente_id = ?").get(citaId, clienteId)
+    return await base.uno("SELECT * FROM cita WHERE id = ? AND cliente_id = ?", citaId, clienteId)
   }
 
-  return base.prepare("SELECT * FROM cita WHERE id = ?").get(citaId)
+  return await base.uno("SELECT * FROM cita WHERE id = ?", citaId)
 }
 
 /**
@@ -497,10 +506,11 @@ function buscarCitaParaCambiar({ base, citaId, clienteId, quien }) {
  * Cuenta **todas** las citas, sin mirar su estado: si la primera se canceló, esa persona ya era
  * cliente ese día igual. Y nada se borra (RN-15), así que la primera siempre está.
  */
-export function primeraCitaDelCliente({ base, clienteId }) {
-  const fila = base
-    .prepare("SELECT MIN(inicio) AS primera FROM cita WHERE cliente_id = ?")
-    .get(clienteId)
+export async function primeraCitaDelCliente({ base, clienteId }) {
+  const fila = await base.uno(
+    "SELECT MIN(inicio) AS primera FROM cita WHERE cliente_id = ?",
+    clienteId,
+  )
 
   if (!fila?.primera) return null
 
@@ -533,10 +543,9 @@ export function primeraCitaDelCliente({ base, clienteId }) {
  * `sePuedeCambiar: true` (RN-6). **Eso es CA-3 visto desde la pantalla**, y no hay ninguna regla
  * nueva escrita para lograrlo: es el mismo `revisarSiSePuedeCambiar` recibiendo otro `quien`.
  */
-export function citasDelCliente({ base, clienteId, ahora, quien = QUIEN_CLIENTE }) {
-  const filas = base
-    .prepare(
-      `SELECT cita.id, cita.servicio_id AS servicioId, cita.proveedor_id AS proveedorId,
+export async function citasDelCliente({ base, clienteId, ahora, quien = QUIEN_CLIENTE }) {
+  const filas = await base.todas(
+    `SELECT cita.id, cita.servicio_id AS servicioId, cita.proveedor_id AS proveedorId,
               servicio.nombre AS servicio, proveedor.nombre AS proveedor,
               cita.inicio, cita.estado
          FROM cita
@@ -544,8 +553,8 @@ export function citasDelCliente({ base, clienteId, ahora, quien = QUIEN_CLIENTE 
          JOIN proveedor ON proveedor.id = cita.proveedor_id
         WHERE cita.cliente_id = ?
         ORDER BY cita.inicio`,
-    )
-    .all(clienteId)
+    clienteId,
+  )
 
   return filas.map((cita) => {
     // Preguntado con `QUIEN_PERSONAL`, esto contesta distinto para la cita que está dentro de las 4
@@ -588,10 +597,9 @@ export function citasDelCliente({ base, clienteId, ahora, quien = QUIEN_CLIENTE 
  * volumen del negocio —unas 2.300 citas al año (RN-15)— traerlas y filtrarlas acá no cuesta nada, y a
  * cambio la respuesta a «¿ya pasó?» sigue estando en un solo lugar.
  */
-export function citasPorCerrar({ base, ahora }) {
-  const filas = base
-    .prepare(
-      `SELECT cita.id, cliente.nombre AS cliente,
+export async function citasPorCerrar({ base, ahora }) {
+  const filas = await base.todas(
+    `SELECT cita.id, cliente.nombre AS cliente,
               servicio.nombre AS servicio, proveedor.nombre AS proveedor,
               cita.inicio, cita.estado
          FROM cita
@@ -600,8 +608,8 @@ export function citasPorCerrar({ base, ahora }) {
          JOIN proveedor ON proveedor.id = cita.proveedor_id
         WHERE cita.estado = ?
         ORDER BY cita.inicio`,
-    )
-    .all(ESTADO_ACTIVA)
+    ESTADO_ACTIVA,
+  )
 
   return filas
     .filter((cita) => laCitaYaPaso({ cita, ahora }))
@@ -626,9 +634,9 @@ export function citasPorCerrar({ base, ahora }) {
  *
  * No manda ningún correo, igual que cancelar: `ESPECIFICACION.md` no pide ninguno al cerrar.
  */
-export function cerrarCita({ base, citaId, estado, personalId, ahora }) {
-  const cerrar = base.transaction(() => {
-    const cita = base.prepare("SELECT * FROM cita WHERE id = ?").get(citaId)
+export async function cerrarCita({ base, citaId, estado, personalId, ahora }) {
+  return await base.enTransaccion(async (tx) => {
+    const cita = await tx.uno("SELECT * FROM cita WHERE id = ?", citaId)
     if (!cita) return { ok: false, motivo: "cita_no_encontrada" }
 
     if (cita.estado !== ESTADO_ACTIVA) return { ok: false, motivo: "cita_no_activa" }
@@ -638,16 +646,17 @@ export function cerrarCita({ base, citaId, estado, personalId, ahora }) {
 
     // El `AND estado = 'activa'` del final es el mismo cuidado que tiene cancelar: si dos cierres
     // llegaran al mismo tiempo, el segundo no encuentra fila que cambiar en vez de pisar al primero.
-    base
-      .prepare(
-        `UPDATE cita
+    await tx.correr(
+      `UPDATE cita
             SET estado = ?, cerrada_en = ?, cerrada_por = ?
           WHERE id = ? AND estado = ?`,
-      )
-      .run(estado, cerradaEn, personalId, citaId, ESTADO_ACTIVA)
+      estado,
+      cerradaEn,
+      personalId,
+      citaId,
+      ESTADO_ACTIVA,
+    )
 
     return { ok: true, cierre: { id: cita.id, estado, cerradaEn } }
   })
-
-  return cerrar.immediate()
 }

@@ -159,7 +159,7 @@ test("Personal no puede reservar sin decir para quién es la cita", async (t) =>
   assert.equal(citas.cuerpo.error, "solo_clientes")
 
   // Y nada quedó guardado.
-  const cuantas = entorno.base.prepare("SELECT COUNT(*) AS cuantas FROM cita").get()
+  const cuantas = await entorno.base.uno("SELECT COUNT(*) AS cuantas FROM cita")
   assert.equal(cuantas.cuantas, 0)
 })
 
@@ -180,7 +180,7 @@ test("comprobación 1: se reserva el horario de mañana a las 10:00 y la cita qu
 
   // REG-1 pide que la cita guarde también cuándo se creó, y RN-12 el canal. Se mira la fila por
   // dentro porque son datos que el cliente no ve pero el negocio necesita.
-  const guardada = entorno.base.prepare("SELECT * FROM cita WHERE id = ?").get(respuesta.cuerpo.id)
+  const guardada = await entorno.base.uno("SELECT * FROM cita WHERE id = ?", respuesta.cuerpo.id)
 
   assert.equal(guardada.estado, "activa")
   assert.equal(guardada.canal, "en_linea")
@@ -323,9 +323,11 @@ test("CA-1 (comprobación 5): dos clientes reservan el mismo horario a la vez y 
 
   // Y en la base quedó UNA sola cita activa para ese horario. Esto es lo que de verdad comprueba
   // CA-1: si las dos inserciones hubieran pasado, acá habría dos.
-  const cuantas = entorno.base
-    .prepare("SELECT COUNT(*) AS cuantas FROM cita WHERE proveedor_id = ? AND inicio = ? AND estado = 'activa'")
-    .get(ana.id, momento(MANANA, 10))
+  const cuantas = await entorno.base.uno(
+    "SELECT COUNT(*) AS cuantas FROM cita WHERE proveedor_id = ? AND inicio = ? AND estado = 'activa'",
+    ana.id,
+    momento(MANANA, 10),
+  )
 
   assert.equal(cuantas.cuantas, 1)
 })
@@ -356,19 +358,21 @@ test("un horario cuya cita se canceló vuelve a poder reservarse (RN-7)", async 
   // Cancelar es de la pieza 5, así que acá se cambia el estado a mano: lo que se comprueba es que
   // el candado que protege CA-1 mira SOLO las citas activas. Si fuera un candado sobre el horario
   // sin más, una cita cancelada bloquearía su horario para siempre y RN-7 sería imposible.
-  entorno.base.prepare("UPDATE cita SET estado = 'cancelada' WHERE id = ?").run(primera.cuerpo.id)
+  await entorno.base.correr("UPDATE cita SET estado = 'cancelada' WHERE id = ?", primera.cuerpo.id)
 
   const segunda = await reservar(momento(MANANA, 10))
 
   assert.equal(segunda.estado, 201)
 
-  const activas = entorno.base
-    .prepare("SELECT COUNT(*) AS cuantas FROM cita WHERE proveedor_id = ? AND inicio = ? AND estado = 'activa'")
-    .get(ana.id, momento(MANANA, 10))
+  const activas = await entorno.base.uno(
+    "SELECT COUNT(*) AS cuantas FROM cita WHERE proveedor_id = ? AND inicio = ? AND estado = 'activa'",
+    ana.id,
+    momento(MANANA, 10),
+  )
 
   assert.equal(activas.cuantas, 1)
   // Y la cancelada sigue guardada: nada se borra (RN-15).
-  const total = entorno.base.prepare("SELECT COUNT(*) AS cuantas FROM cita").get()
+  const total = await entorno.base.uno("SELECT COUNT(*) AS cuantas FROM cita")
   assert.equal(total.cuantas, 2)
 })
 

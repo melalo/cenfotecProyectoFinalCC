@@ -58,12 +58,20 @@ const DIAS_QUE_MIRA_EL_AVISO = 7
  * pantalla lo calculara con el reloj de la computadora de quien mira, una máquina con la hora mal
  * puesta ofrecería horarios que el servidor va a rechazar.
  */
-export function calcularDisponibilidad({ base, proveedorId, mes, ahora, quien = QUIEN_CLIENTE }) {
+export async function calcularDisponibilidad({
+  base,
+  proveedorId,
+  mes,
+  ahora,
+  quien = QUIEN_CLIENTE,
+}) {
   const hoy = fechaDeCostaRica(ahora)
 
   // Todo lo que hace falta se lee UNA vez y se usa para los treinta y pico de días. Leerlo día por
-  // día haría treinta veces el mismo trabajo.
-  const agenda = leerAgenda(base, proveedorId)
+  // día haría treinta veces el mismo trabajo. **Y desde el despliegue eso vale doble**: cada
+  // consulta a la base ahora es un viaje esperado, así que las tres de acá siguen siendo tres,
+  // aunque el mes tenga treinta y un días.
+  const agenda = await leerAgenda(base, proveedorId)
 
   const dias = diasDelMes(mes).map((fecha) => armarDia({ fecha, hoy, agenda, quien, ahora }))
 
@@ -95,7 +103,7 @@ export function calcularDisponibilidad({ base, proveedorId, mes, ahora, quien = 
  *   - `"no_disponible"`   → feriado, domingo, almuerzo, fuera de horario, o ya está tomado. Alcanza
  *     a los dos por igual (RN-13).
  */
-export function revisarHorario({ base, proveedorId, inicio, ahora, quien = QUIEN_CLIENTE }) {
+export async function revisarHorario({ base, proveedorId, inicio, ahora, quien = QUIEN_CLIENTE }) {
   const hoy = fechaDeCostaRica(ahora)
   const fecha = inicio.slice(0, 10)
 
@@ -107,7 +115,8 @@ export function revisarHorario({ base, proveedorId, inicio, ahora, quien = QUIEN
     return quien === QUIEN_PERSONAL ? "ya_empezo" : "hoy_o_pasado"
   }
 
-  const dia = armarDia({ fecha, hoy, agenda: leerAgenda(base, proveedorId), quien, ahora })
+  const agenda = await leerAgenda(base, proveedorId)
+  const dia = armarDia({ fecha, hoy, agenda, quien, ahora })
   const horario = dia.horarios.find((uno) => uno.inicio === inicio)
 
   // Si el horario no está entre los del día, es porque ese día no lo ofrece: un domingo no ofrece
@@ -118,25 +127,24 @@ export function revisarHorario({ base, proveedorId, inicio, ahora, quien = QUIEN
 }
 
 /** Lo que el calendario necesita saber del negocio y de este proveedor, leído de una sola vez. */
-function leerAgenda(base, proveedorId) {
-  const tramos = base
-    .prepare("SELECT dia_semana, hora_inicio, hora_fin FROM horario_negocio ORDER BY hora_inicio")
-    .all()
+async function leerAgenda(base, proveedorId) {
+  const tramos = await base.todas(
+    "SELECT dia_semana, hora_inicio, hora_fin FROM horario_negocio ORDER BY hora_inicio",
+  )
 
   const feriados = new Map(
-    base.prepare("SELECT fecha, nombre FROM feriado").all().map((uno) => [uno.fecha, uno.nombre]),
+    (await base.todas("SELECT fecha, nombre FROM feriado")).map((uno) => [uno.fecha, uno.nombre]),
   )
 
   // Solo las citas **activas** ocupan. Una cancelada libera su horario de inmediato (RN-7), y una
   // completada o «no asistió» ya pasó. Se guardan en un conjunto de textos, y como el inicio se
   // escribe siempre igual (`2026-09-02T10:00:00-06:00`), preguntar si un horario está tomado es
   // preguntar si ese texto está en el conjunto.
-  const ocupados = new Set(
-    base
-      .prepare("SELECT inicio FROM cita WHERE proveedor_id = ? AND estado = 'activa'")
-      .all(proveedorId)
-      .map((cita) => cita.inicio),
+  const citasActivas = await base.todas(
+    "SELECT inicio FROM cita WHERE proveedor_id = ? AND estado = 'activa'",
+    proveedorId,
   )
+  const ocupados = new Set(citasActivas.map((cita) => cita.inicio))
 
   return { tramos, feriados, ocupados }
 }

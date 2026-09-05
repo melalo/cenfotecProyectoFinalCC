@@ -1037,7 +1037,7 @@ npm test    # fail 0, pass 321
 git commit -am "refactor: el catalogo consulta esperando"
 ```
 
-- [ ] **Paso 2D: la disponibilidad**
+- [ ] **Paso 2D: la disponibilidad** — ⚠️ **va junto con el 2G, no solo**
 
 Muda: `servidor/disponibilidad.js` (3), `pruebas/disponibilidad.test.js` (3 consultas + 1 `exec`).
 **7 puntos.**
@@ -1045,9 +1045,35 @@ Muda: `servidor/disponibilidad.js` (3), `pruebas/disponibilidad.test.js` (3 cons
 Va después del catálogo porque lo usa. `servidor/tiempo.js` **no se toca**: no consulta la base, sólo
 hace cuentas con fechas — y por eso sus 16 funciones se quedan sincrónicas, que es lo correcto.
 
+> ⚠️ **Este paso NO puede terminar en verde por su cuenta.** *(Medido el 2026-09-04, al ejecutarlo.)*
+>
+> `revisarHorario` vive en este archivo, y las **dos transacciones del paso 2G** —`comprobarYGuardar`
+> de `crearCita` y `comprobarYMover` de `reagendarCita`— la llaman desde adentro. Al volverse
+> asincrónica, esas dos transacciones —que hasta el 2G siguen escritas con la `base.transaction`
+> sincrónica de `better-sqlite3`— reciben **una promesa donde esperaban un texto**. La promesa no es
+> `"disponible"`, así que toda reserva se rechaza con `horario_no_disponible` y toda cita deja de
+> crearse.
+>
+> **Lo que se midió:** `npm test` dio `pass 256 / fail 65`. La primera prueba de cancelar esperaba
+> `204` y recibió `404`, porque la cita que iba a cancelar nunca llegó a existir.
+>
+> **La regla de «de las hojas al tronco» sigue siendo la correcta; lo que estaba mal era el corte.**
+> Un módulo se muda cuando ya se mudaron todos los que él usa — pero `disponibilidad.js` es una hoja
+> **de la que cuelga** `reservas.js`, así que volverla asincrónica es lo mismo que empezar a mudar
+> `reservas.js`. No hay corte intermedio: `enTransaccion` obliga a `tx.correr` adentro, y eso arrastra
+> `buscarCitaParaCambiar`, que arrastra `cancelarCita`, `cerrarCita` y sus rutas.
+>
+> **Cómo se hizo:** los pasos **2D y 2G se ejecutaron como uno solo**, en ese orden, con un único
+> `npm test` en verde al final. Si se rehace este plan desde cero, van escritos como un paso.
+>
+> **Y arrastró dos archivos que el plan había puesto en otros pasos**, por la misma cadena:
+> `servidor/rutas/usuario.js` (asignado al 2E) usa `primeraCitaDelCliente`, y
+> `servidor/rutas/catalogo.js` usa `calcularDisponibilidad`. Los dos son un `await` cada uno.
+> **`pruebas/personal.test.js` no hizo falta tocarlo**: sus consultas usan la cara vieja, que sigue
+> viva hasta el 2J, y hablan con el API por HTTP, que no cambió de forma.
+
 ```bash
-npm test    # fail 0, pass 321
-git commit -am "refactor: la disponibilidad consulta esperando"
+npm test    # fail 0, pass 321  ← recién después del 2G
 ```
 
 - [ ] **Paso 2E: los clientes, Personal, y la pantalla de usuario**
@@ -1085,12 +1111,16 @@ npm test    # fail 0, pass 321
 git commit -am "refactor: el registro de correos consulta esperando"
 ```
 
-- [ ] **Paso 2G: las reservas y sus cuatro transacciones**
+- [ ] **Paso 2G: las reservas y sus cuatro transacciones** — ⚠️ **va junto con el 2D**
 
 **Es el paso más delicado del plan entero.** Muda: `servidor/reservas.js` (10 puntos y **4 de las 5
 transacciones**), `servidor/rutas/citas.js`, lo que quedó de `servidor/rutas/personal.js`,
 `pruebas/reservas.test.js` (6), `pruebas/cancelar-y-reagendar.test.js` (7),
 `pruebas/cierre-de-citas.test.js` (6). **~30 puntos.**
+
+> ⚠️ **Este paso y el 2D son uno solo.** La razón, medida, está escrita arriba en el 2D: `crearCita`
+> y `reagendarCita` llaman a `revisarHorario`, que es del 2D, así que ninguno de los dos puede quedar
+> en verde sin el otro. Se ejecutaron juntos el 2026-09-04, con un solo `npm test` al final.
 
 Así queda `comprobarYGuardar`, que es la que hay que hacer bien. Reemplaza el cuerpo de `crearCita`
 desde `const comprobarYGuardar` hasta el `catch`, **conservando todos los comentarios que ya

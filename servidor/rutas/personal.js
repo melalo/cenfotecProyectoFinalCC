@@ -96,7 +96,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
 
     return respuesta
       .status(200)
-      .json(citasDelCliente({ base, clienteId, ahora: reloj(), quien: QUIEN_PERSONAL }))
+      .json(await citasDelCliente({ base, clienteId, ahora: reloj(), quien: QUIEN_PERSONAL }))
   })
 
   // ── La pieza 8: cerrar las citas que ya pasaron (RF-21) ──────────────────────────────────────
@@ -107,7 +107,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
   // gente distinta, y por eso cada una viene con el nombre de su dueño. Es la lista de trabajo
   // pendiente de la asistente, no el expediente de una persona.
   rutas.get("/personal/citas-por-cerrar", exigirPersonal, async (pedido, respuesta) => {
-    return respuesta.status(200).json(citasPorCerrar({ base, ahora: reloj() }))
+    return respuesta.status(200).json(await citasPorCerrar({ base, ahora: reloj() }))
   })
 
   // RF-21: marcar qué ocurrió con una cita pasada — **completada** o **no asistió** (RN-17, RN-19).
@@ -132,7 +132,7 @@ export function crearRutasDePersonal({ base, sesiones, reloj }) {
       return respuesta.status(422).json({ error: "datos_incompletos" })
     }
 
-    const resultado = cerrarCita({
+    const resultado = await cerrarCita({
       base,
       citaId,
       estado,

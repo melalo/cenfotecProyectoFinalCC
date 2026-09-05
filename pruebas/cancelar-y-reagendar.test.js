@@ -111,8 +111,9 @@ async function prepararCitas(contexto, opciones = {}) {
   }
 
   /** El número de Ana en la tabla `cliente`, para poder insertar citas a mano. */
-  function idDeAna() {
-    return entorno.base.prepare("SELECT id FROM cliente WHERE correo = ?").get(ANA.correo).id
+  async function idDeAna() {
+    const fila = await entorno.base.uno("SELECT id FROM cliente WHERE correo = ?", ANA.correo)
+    return fila.id
   }
 
   /**
@@ -122,20 +123,22 @@ async function prepararCitas(contexto, opciones = {}) {
    * prohíbe las citas para el mismo día. Es lo que pide la comprobación 6 del plan, palabra por
    * palabra: «insertar a mano una cita activa que empiece dentro de 2 horas».
    */
-  function insertarCitaAMano(inicio, proveedor = ana) {
-    const guardada = entorno.base
-      .prepare(
-        `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
+  async function insertarCitaAMano(inicio, proveedor = ana) {
+    const guardada = await entorno.base.correr(
+      `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
          VALUES (?, ?, ?, ?, 'activa', '2026-08-30T09:00:00-06:00', 'en_linea')`,
-      )
-      .run(idDeAna(), masaje.id, proveedor.id, inicio)
+      await idDeAna(),
+      masaje.id,
+      proveedor.id,
+      inicio,
+    )
 
-    return Number(guardada.lastInsertRowid)
+    return guardada.idInsertado
   }
 
   /** La fila cruda de una cita, para mirar qué quedó guardado de verdad. */
-  function filaDeLaCita(citaId) {
-    return entorno.base.prepare("SELECT * FROM cita WHERE id = ?").get(citaId)
+  async function filaDeLaCita(citaId) {
+    return await entorno.base.uno("SELECT * FROM cita WHERE id = ?", citaId)
   }
 
   return {
@@ -212,7 +215,7 @@ test("desde la pieza 7, la cuenta de Personal SÍ cancela desde estos endpoints"
   // que empieza dentro de 2 horas, que al cliente se le rechaza y a Personal se le acepta— es
   // **CA-3**, y vive en `pruebas/personal.test.js` con las otras de esa pieza.
   assert.equal(respuesta.estado, 204)
-  assert.equal(filaDeLaCita(reservada.cuerpo.id).cancelada_por, "personal")
+  assert.equal((await filaDeLaCita(reservada.cuerpo.id)).cancelada_por, "personal")
 })
 
 test("nadie puede cancelar la cita de otra persona, y el sistema no delata que existe", async (t) => {
@@ -229,7 +232,7 @@ test("nadie puede cancelar la cita de otra persona, y el sistema no delata que e
   assert.equal(respuesta.cuerpo.error, "cita_no_encontrada")
 
   // Y la cita de Ana sigue intacta.
-  const citas = await entorno.base.prepare("SELECT estado FROM cita WHERE id = ?").get(deAna.cuerpo.id)
+  const citas = await entorno.base.uno("SELECT estado FROM cita WHERE id = ?", deAna.cuerpo.id)
   assert.equal(citas.estado, "activa")
 })
 
@@ -300,7 +303,7 @@ test("comprobación 3: la fila no se borra — queda con estado, fecha y quién 
 
   await cancelar(reservada.cuerpo.id)
 
-  const fila = filaDeLaCita(reservada.cuerpo.id)
+  const fila = await filaDeLaCita(reservada.cuerpo.id)
 
   assert.ok(fila, "la fila tiene que seguir existiendo: nada se borra (RN-15)")
   assert.equal(fila.estado, "cancelada")
@@ -334,9 +337,10 @@ test("cancelar no manda ningún correo", async (t) => {
 
   assert.equal(enviador.enviados.length, correosDespuesDeReservar)
 
-  const filas = entorno.base
-    .prepare("SELECT COUNT(*) AS cuantos FROM correo_enviado WHERE cita_id = ?")
-    .get(reservada.cuerpo.id)
+  const filas = await entorno.base.uno(
+    "SELECT COUNT(*) AS cuantos FROM correo_enviado WHERE cita_id = ?",
+    reservada.cuerpo.id,
+  )
   assert.equal(filas.cuantos, 1, "solo la confirmación de la reserva")
 })
 
@@ -364,7 +368,7 @@ test("reagendar no crea una cita nueva: sigue habiendo una sola", async (t) => {
 
   await reagendar(reservada.cuerpo.id, { inicio: momento(PASADO_MANANA, 15) })
 
-  const cuantas = entorno.base.prepare("SELECT COUNT(*) AS cuantas FROM cita").get()
+  const cuantas = await entorno.base.uno("SELECT COUNT(*) AS cuantas FROM cita")
   assert.equal(cuantas.cuantas, 1)
 })
 
@@ -383,7 +387,7 @@ test("comprobación 5: reagendar NO cambia el servicio ni el proveedor, aunque s
 
   assert.equal(respuesta.estado, 200)
 
-  const fila = filaDeLaCita(reservada.cuerpo.id)
+  const fila = await filaDeLaCita(reservada.cuerpo.id)
   assert.equal(fila.proveedor_id, ana.id, "el proveedor no cambia: para eso hay que cancelar")
   assert.equal(fila.servicio_id, masaje.id, "el servicio tampoco")
   assert.equal(fila.inicio, momento(PASADO_MANANA, 15), "lo único que cambia es la fecha y la hora")
@@ -474,7 +478,7 @@ test("CA-3 (cliente): cancelar una cita que empieza en 2 horas se rechaza con 42
   const { insertarCitaAMano, cancelar } = await prepararCitas(t)
 
   // El reloj está parado a las 8 de la mañana de hoy, así que las 10 de hoy son «dentro de 2 horas».
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await cancelar(citaId)
 
@@ -484,7 +488,7 @@ test("CA-3 (cliente): cancelar una cita que empieza en 2 horas se rechaza con 42
 
 test("CA-3 (cliente): reagendar esa misma cita se rechaza igual", async (t) => {
   const { insertarCitaAMano, reagendar } = await prepararCitas(t)
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await reagendar(citaId, { inicio: momento(PASADO_MANANA, 15) })
 
@@ -494,11 +498,11 @@ test("CA-3 (cliente): reagendar esa misma cita se rechaza igual", async (t) => {
 
 test("CA-3: el rechazo no toca la cita — sigue activa y su horario sigue ocupado", async (t) => {
   const { insertarCitaAMano, cancelar, filaDeLaCita } = await prepararCitas(t)
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   await cancelar(citaId)
 
-  const fila = filaDeLaCita(citaId)
+  const fila = await filaDeLaCita(citaId)
   assert.equal(fila.estado, "activa")
   assert.equal(fila.cancelada_en, null)
   assert.equal(fila.cancelada_por, null)
@@ -510,7 +514,7 @@ test("la ventana son 4 horas justas: a las 4 horas exactas todavía se puede can
   // 8 de la mañana + 4 horas = mediodía. RF-13 dice «si faltan 4 horas **o más**», así que este
   // caso se permite. Es el borde exacto de la regla, que es donde se equivocan las reglas escritas
   // con un «mayor que» donde iba un «mayor o igual».
-  const citaId = insertarCitaAMano(momento(HOY, 12))
+  const citaId = await insertarCitaAMano(momento(HOY, 12))
 
   const respuesta = await cancelar(citaId)
 
@@ -525,7 +529,7 @@ test("la ventana son 4 horas justas: a 3 horas y 59 minutos ya no se puede", asy
   const { insertarCitaAMano, cancelar } = await prepararCitas(t, {
     momento: new Date("2026-09-01T14:01:00Z"),
   })
-  const citaId = insertarCitaAMano(momento(HOY, 12))
+  const citaId = await insertarCitaAMano(momento(HOY, 12))
 
   const respuesta = await cancelar(citaId)
 
@@ -546,7 +550,7 @@ test("una cita que ya pasó tampoco se puede cancelar desde la aplicación", asy
   // RN-26 lo cerró con un motivo propio, `ya_paso`, que ahora vale para los dos. El rechazo sigue
   // siendo 422 —el problema es el momento, no el permiso— y **lo que se puede hacer con esta cita no
   // es cancelarla sino cerrarla**, que es de la pieza 8 y lo hace Personal.
-  const citaId = insertarCitaAMano(momento("2026-08-31", 10))
+  const citaId = await insertarCitaAMano(momento("2026-08-31", 10))
 
   const respuesta = await cancelar(citaId)
 
@@ -585,9 +589,10 @@ test("comprobación 9 bis: el reagendamiento deja su propia fila en correo_envia
 
   await reagendar(reservada.cuerpo.id, { inicio: momento(PASADO_MANANA, 15) })
 
-  const filas = entorno.base
-    .prepare("SELECT tipo, exito FROM correo_enviado WHERE cita_id = ? ORDER BY id")
-    .all(reservada.cuerpo.id)
+  const filas = await entorno.base.todas(
+    "SELECT tipo, exito FROM correo_enviado WHERE cita_id = ? ORDER BY id",
+    reservada.cuerpo.id,
+  )
 
   assert.equal(filas.length, 2, "una por la reserva y una por el reagendamiento")
   assert.deepEqual(
@@ -605,7 +610,7 @@ test("un correo que falla no invalida el reagendamiento (RF-19)", async (t) => {
 
   // El correo se cayó, pero la cita se movió igual: es la regla que manda desde la pieza 4.
   assert.equal(respuesta.estado, 200)
-  assert.equal(filaDeLaCita(reservada.cuerpo.id).inicio, momento(PASADO_MANANA, 15))
+  assert.equal((await filaDeLaCita(reservada.cuerpo.id)).inicio, momento(PASADO_MANANA, 15))
 })
 
 // ══════════════════════════════════════════════════════ lo que la pantalla necesita saber
@@ -627,7 +632,7 @@ test("cada cita dice si se puede cambiar, y cuando no, por qué", async (t) => {
 
 test("una cita dentro de la ventana dice que no se puede cambiar, y que el motivo es la ventana", async (t) => {
   const { insertarCitaAMano, verCitas } = await prepararCitas(t)
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const citas = await verCitas()
   const cita = buscarCita(citas.cuerpo, citaId)
@@ -640,7 +645,7 @@ test("una cita que YA PASÓ lo dice, y no dice que faltan menos de 4 horas", asy
   const { insertarCitaAMano, verCitas } = await prepararCitas(t)
 
   // Ayer a las 10. El reloj está parado hoy a las 8 de la mañana, así que faltan −22 horas.
-  const citaId = insertarCitaAMano(momento("2026-08-31", 10))
+  const citaId = await insertarCitaAMano(momento("2026-08-31", 10))
 
   const citas = await verCitas()
   const cita = buscarCita(citas.cuerpo, citaId)
@@ -662,7 +667,7 @@ test("una cita de hoy que TODAVÍA no pasó sigue diciendo que es la ventana de 
 
   // Hoy a las 10, con el reloj parado a las 8: faltan 2 horas. Todavía no ocurrió, así que acá el
   // mensaje de las 4 horas **sí** es cierto y se conserva.
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const citas = await verCitas()
   const cita = buscarCita(citas.cuerpo, citaId)
@@ -714,7 +719,7 @@ test("una cita que ya pasó va al historial, aunque siga activa", async (t) => {
 
   // Sigue `activa` porque cerrarla es de la pieza 8, y la cierra Personal: ninguna cita cambia de
   // estado por el solo paso del tiempo (RN-17). Pero para el cliente ya es historial.
-  const citaId = insertarCitaAMano(momento("2026-08-31", 10))
+  const citaId = await insertarCitaAMano(momento("2026-08-31", 10))
 
   const citas = await verCitas()
   const cita = buscarCita(citas.cuerpo, citaId)
@@ -730,7 +735,7 @@ test("una cita de hoy que todavía no pasó sigue siendo una cita PRÓXIMA, aunq
   // es la cita que la persona tiene en un rato: enterrarla en el historial sería esconderle
   // justamente la más urgente. Son dos preguntas distintas —«¿se puede cambiar?» y «¿ya pasó?»— y
   // por eso son dos campos distintos.
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const citas = await verCitas()
   const cita = buscarCita(citas.cuerpo, citaId)

@@ -134,7 +134,7 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
   rutas.get("/citas", exigirCliente, async (pedido, respuesta) => {
     return respuesta
       .status(200)
-      .json(citasDelCliente({ base, clienteId: pedido.clienteId, ahora: reloj() }))
+      .json(await citasDelCliente({ base, clienteId: pedido.clienteId, ahora: reloj() }))
   })
 
   // RF-13: cancelar una cita. El horario queda libre en el mismo instante (RN-7), y la cita no se
@@ -152,7 +152,7 @@ export function crearRutasDeCitas({ base, sesiones, reloj, enviador }) {
       return respuesta.status(404).json({ error: "cita_no_encontrada" })
     }
 
-    const resultado = cancelarCita({
+    const resultado = await cancelarCita({
       base,
       citaId,
       // Vacío cuando cancela Personal, y eso es lo que le dice a `buscarCitaParaCambiar` que puede

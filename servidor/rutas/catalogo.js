@@ -109,7 +109,7 @@ export function crearRutasDeCatalogo({ base, sesiones, reloj }) {
     // **El mismo mes se ve distinto según quién pregunte** (RN-25): para el cliente el día de hoy no
     // ofrece nada (RN-4, CA-2), y para Personal ofrece los horarios que todavía no empezaron. Quién
     // decide eso es `servidor/disponibilidad.js`; acá solo se le dice quién está preguntando.
-    const calendario = calcularDisponibilidad({
+    const calendario = await calcularDisponibilidad({
       base,
       proveedorId,
       mes,

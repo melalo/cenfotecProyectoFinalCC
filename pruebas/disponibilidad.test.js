@@ -60,23 +60,20 @@ function horasDelDia(dia) {
 }
 
 /** Inserta una cita a mano en la base, que es lo que piden las comprobaciones de esta pieza. */
-function insertarCitaAMano(entorno, { servicioId, proveedorId, inicio, estado }) {
-  const clienta = entorno.base.prepare("SELECT id FROM cliente LIMIT 1").get()
+async function insertarCitaAMano(entorno, { servicioId, proveedorId, inicio, estado }) {
+  const clienta = await entorno.base.uno("SELECT id FROM cliente LIMIT 1")
 
-  entorno.base
-    .prepare(
-      `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
+  await entorno.base.correr(
+    `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      clienta.id,
-      servicioId,
-      proveedorId,
-      inicio,
-      estado,
-      "2026-09-01T08:00:00-06:00",
-      "en_linea",
-    )
+    clienta.id,
+    servicioId,
+    proveedorId,
+    inicio,
+    estado,
+    "2026-09-01T08:00:00-06:00",
+    "en_linea",
+  )
 }
 
 test("sin sesión abierta no se puede ver el calendario", async (t) => {
@@ -254,7 +251,7 @@ test("una cita activa ocupa el horario de ese proveedor, y solo el de ese provee
 
   // Comprobación 11 de la pieza 2. La cita se inserta a mano en la base, porque reservar desde la
   // aplicación es trabajo de la pieza 3: acá solo se comprueba que el calendario la respeta.
-  insertarCitaAMano(entorno, {
+  await insertarCitaAMano(entorno, {
     servicioId: masaje.id,
     proveedorId: ana.id,
     inicio: "2026-09-02T10:00:00-06:00",
@@ -281,7 +278,7 @@ test("una cita cancelada no ocupa el horario", async (t) => {
 
   // RN-7: cancelar libera el horario de inmediato. La cancelación se construye en la pieza 5, pero
   // el calendario tiene que estar mirando el estado desde ya, o esa pieza no funcionaría.
-  insertarCitaAMano(entorno, {
+  await insertarCitaAMano(entorno, {
     servicioId: masaje.id,
     proveedorId: ana.id,
     inicio: "2026-09-02T10:00:00-06:00",
@@ -307,9 +304,12 @@ test("cuando los próximos 7 días son feriado, el sistema avisa que no hay hora
 
   // Comprobación 12 de la pieza 2 (RN-14, RF-10). Se marcan como feriado los 7 días que siguen a
   // hoy: del miércoles 2 al martes 8 de setiembre.
-  const marcar = entorno.base.prepare("INSERT INTO feriado (fecha, nombre) VALUES (?, ?)")
   for (const dia of ["02", "03", "04", "05", "06", "07", "08"]) {
-    marcar.run(`2026-09-${dia}`, "Feriado inventado para la prueba")
+    await entorno.base.correr(
+      "INSERT INTO feriado (fecha, nombre) VALUES (?, ?)",
+      `2026-09-${dia}`,
+      "Feriado inventado para la prueba",
+    )
   }
 
   const calendario = await verCalendario("2026-09")
@@ -323,7 +323,7 @@ test("con el horario del negocio vacío no hay horarios en ningún día", async 
   // La otra mitad de la comprobación 12: en vez de marcar feriados, se deja al negocio sin horario
   // de atención. Vaciar esta tabla no contradice RN-15 («nada se borra»): esa regla es sobre los
   // datos del negocio —citas, correos—, no sobre la configuración, que justamente se recarga.
-  entorno.base.exec("DELETE FROM horario_negocio")
+  await entorno.base.ejecutar("DELETE FROM horario_negocio")
 
   const calendario = await verCalendario("2026-09")
 

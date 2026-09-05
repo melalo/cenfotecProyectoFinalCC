@@ -88,12 +88,14 @@ async function prepararCierre(contexto, opciones = {}) {
   const ana = buscarPorNombre(proveedores.cuerpo, "Ana")
   const carlos = buscarPorNombre(proveedores.cuerpo, "Carlos")
 
-  function idDelCliente(correo) {
-    return entorno.base.prepare("SELECT id FROM cliente WHERE correo = ?").get(correo).id
+  async function idDelCliente(correo) {
+    const fila = await entorno.base.uno("SELECT id FROM cliente WHERE correo = ?", correo)
+    return fila.id
   }
 
-  function idDePersonal() {
-    return entorno.base.prepare("SELECT id FROM personal WHERE correo = ?").get(PERSONAL.correo).id
+  async function idDePersonal() {
+    const fila = await entorno.base.uno("SELECT id FROM personal WHERE correo = ?", PERSONAL.correo)
+    return fila.id
   }
 
   /**
@@ -102,20 +104,17 @@ async function prepararCierre(contexto, opciones = {}) {
    * asigna a otro proveedor, que es lo que hace falta para tener dos citas a la misma hora sin que
    * choquen contra el índice único de la base.
    */
-  function insertarCitaAMano(inicio, opciones = {}) {
-    const guardada = entorno.base
-      .prepare(
-        `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
+  async function insertarCitaAMano(inicio, opciones = {}) {
+    const guardada = await entorno.base.correr(
+      `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
          VALUES (?, ?, ?, ?, 'activa', '2026-08-25T09:00:00-06:00', 'en_linea')`,
-      )
-      .run(
-        idDelCliente(opciones.correo ?? ANA.correo),
-        masaje.id,
-        (opciones.proveedor ?? ana).id,
-        inicio,
-      )
+      await idDelCliente(opciones.correo ?? ANA.correo),
+      masaje.id,
+      (opciones.proveedor ?? ana).id,
+      inicio,
+    )
 
-    return Number(guardada.lastInsertRowid)
+    return guardada.idInsertado
   }
 
   /** La lista de citas por cerrar, pedida por quien se diga (Personal, si no se dice nadie). */
@@ -129,8 +128,8 @@ async function prepararCierre(contexto, opciones = {}) {
   }
 
   /** La fila cruda de la cita, para mirar qué quedó guardado de verdad y no lo que el API cuenta. */
-  function filaDeLaCita(citaId) {
-    return entorno.base.prepare("SELECT * FROM cita WHERE id = ?").get(citaId)
+  async function filaDeLaCita(citaId) {
+    return await entorno.base.uno("SELECT * FROM cita WHERE id = ?", citaId)
   }
 
   return {
@@ -186,8 +185,8 @@ test("comprobaciones 1 y 2: las dos citas pasadas de dos clientes distintos apar
 
   // Ayer a las 10 y ayer a las 11: las dos ya pasaron, con el reloj parado hoy a las 8 de la mañana.
   // La segunda es de Beto y con otro proveedor, para que sean de verdad dos personas distintas.
-  const deAna = insertarCitaAMano(momento(AYER, 10))
-  const deBeto = insertarCitaAMano(momento(AYER, 11), { correo: BETO.correo, proveedor: carlos })
+  const deAna = await insertarCitaAMano(momento(AYER, 10))
+  const deBeto = await insertarCitaAMano(momento(AYER, 11), { correo: BETO.correo, proveedor: carlos })
 
   const respuesta = await verPorCerrar()
 
@@ -208,8 +207,8 @@ test("la lista viene de la más vieja a la más nueva: la que más tiempo lleva 
 
   // Se insertan al revés a propósito: si la lista saliera en el orden en que se guardaron, esta
   // prueba pasaría por casualidad y no comprobaría nada.
-  const deAyer = insertarCitaAMano(momento(AYER, 10))
-  const deAnteayer = insertarCitaAMano(momento(ANTEAYER, 10), { proveedor: carlos })
+  const deAyer = await insertarCitaAMano(momento(AYER, 10))
+  const deAnteayer = await insertarCitaAMano(momento(ANTEAYER, 10), { proveedor: carlos })
 
   const respuesta = await verPorCerrar()
 
@@ -222,7 +221,7 @@ test("la lista viene de la más vieja a la más nueva: la que más tiempo lleva 
 test("una cita del futuro no aparece en la lista de citas por cerrar", async (contexto) => {
   const { insertarCitaAMano, verPorCerrar } = await prepararCierre(contexto)
 
-  insertarCitaAMano(momento(MANANA, 10))
+  await insertarCitaAMano(momento(MANANA, 10))
 
   const respuesta = await verPorCerrar()
 
@@ -233,7 +232,7 @@ test("una cita de hoy que todavía no empezó tampoco aparece", async (contexto)
   const { insertarCitaAMano, verPorCerrar } = await prepararCierre(contexto)
 
   // Hoy a las 10, con el reloj parado a las 8: empieza dentro de 2 horas.
-  insertarCitaAMano(momento(HOY, 10))
+  await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await verPorCerrar()
 
@@ -243,8 +242,8 @@ test("una cita de hoy que todavía no empezó tampoco aparece", async (contexto)
 test("una cita cancelada no aparece en la lista, aunque su hora ya haya pasado", async (contexto) => {
   const { insertarCitaAMano, verPorCerrar, entorno } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
-  entorno.base.prepare("UPDATE cita SET estado = 'cancelada' WHERE id = ?").run(citaId)
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
+  await entorno.base.correr("UPDATE cita SET estado = 'cancelada' WHERE id = ?", citaId)
 
   const respuesta = await verPorCerrar()
 
@@ -257,30 +256,30 @@ test("comprobaciones 3 y 4: marcar una completada y la otra no asistió deja las
   const { insertarCitaAMano, cerrar, filaDeLaCita, idDePersonal, carlos } =
     await prepararCierre(contexto)
 
-  const asistio = insertarCitaAMano(momento(AYER, 10))
-  const noAsistio = insertarCitaAMano(momento(AYER, 11), { correo: BETO.correo, proveedor: carlos })
+  const asistio = await insertarCitaAMano(momento(AYER, 10))
+  const noAsistio = await insertarCitaAMano(momento(AYER, 11), { correo: BETO.correo, proveedor: carlos })
 
   assert.equal((await cerrar(asistio, "completada")).estado, 200)
   assert.equal((await cerrar(noAsistio, "no_asistio")).estado, 200)
 
-  const unaFila = filaDeLaCita(asistio)
+  const unaFila = await filaDeLaCita(asistio)
   assert.equal(unaFila.estado, "completada")
   // El reloj está parado el martes 1 de setiembre a las 8 de la mañana de Costa Rica, y el momento se
   // escribe como lo escribe todo el proyecto, con su desfase al final.
   assert.equal(unaFila.cerrada_en, momento(HOY, 8))
-  assert.equal(unaFila.cerrada_por, idDePersonal(), "qué cuenta de Personal la marcó (REG-1)")
+  assert.equal(unaFila.cerrada_por, await idDePersonal(), "qué cuenta de Personal la marcó (REG-1)")
 
-  const laOtra = filaDeLaCita(noAsistio)
+  const laOtra = await filaDeLaCita(noAsistio)
   assert.equal(laOtra.estado, "no_asistio")
   assert.equal(laOtra.cerrada_en, momento(HOY, 8))
-  assert.equal(laOtra.cerrada_por, idDePersonal())
+  assert.equal(laOtra.cerrada_por, await idDePersonal())
 })
 
 test("comprobación 5: una vez cerradas, las dos desaparecen de la lista de citas por cerrar", async (contexto) => {
   const { insertarCitaAMano, cerrar, verPorCerrar, carlos } = await prepararCierre(contexto)
 
-  const asistio = insertarCitaAMano(momento(AYER, 10))
-  const noAsistio = insertarCitaAMano(momento(AYER, 11), { correo: BETO.correo, proveedor: carlos })
+  const asistio = await insertarCitaAMano(momento(AYER, 10))
+  const noAsistio = await insertarCitaAMano(momento(AYER, 11), { correo: BETO.correo, proveedor: carlos })
 
   assert.equal((await verPorCerrar()).cuerpo.length, 2)
 
@@ -293,7 +292,7 @@ test("comprobación 5: una vez cerradas, las dos desaparecen de la lista de cita
 test("cerrar una cita devuelve su estado nuevo y cuándo quedó cerrada", async (contexto) => {
   const { insertarCitaAMano, cerrar } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
   const respuesta = await cerrar(citaId, "completada")
 
@@ -308,7 +307,7 @@ test("cerrar una cita devuelve su estado nuevo y cuándo quedó cerrada", async 
 test("comprobación 6: una cita pasada que nadie toca sigue activa (RN-17)", async (contexto) => {
   const { insertarCitaAMano, verPorCerrar, filaDeLaCita } = await prepararCierre(contexto)
 
-  const sinTocar = insertarCitaAMano(momento(ANTEAYER, 10))
+  const sinTocar = await insertarCitaAMano(momento(ANTEAYER, 10))
 
   // Se pide la lista tres veces, que es lo más parecido a «esperar y recargar» que puede hacer una
   // prueba: si algo cerrara las citas solo por mirarlas o por el paso del tiempo, se vería acá.
@@ -318,7 +317,7 @@ test("comprobación 6: una cita pasada que nadie toca sigue activa (RN-17)", asy
 
   assert.equal(buscarCita(ultima.cuerpo, sinTocar).id, sinTocar, "sigue esperando que la cierren")
 
-  const fila = filaDeLaCita(sinTocar)
+  const fila = await filaDeLaCita(sinTocar)
   assert.equal(fila.estado, "activa", "ningún estado se alcanza por el solo paso del tiempo")
   assert.equal(fila.cerrada_en, null)
   assert.equal(fila.cerrada_por, null)
@@ -327,7 +326,7 @@ test("comprobación 6: una cita pasada que nadie toca sigue activa (RN-17)", asy
 test("nada se borra al cerrar: la cita sigue en la base y el cliente la sigue viendo (RN-15)", async (contexto) => {
   const { insertarCitaAMano, cerrar, cliente } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
   await cerrar(citaId, "no_asistio")
 
   const citas = await cliente("/api/citas")
@@ -342,20 +341,20 @@ test("nada se borra al cerrar: la cita sigue en la base y el cliente la sigue vi
 test("comprobación 7: un cliente no puede cerrar una cita, ni siquiera la suya", async (contexto) => {
   const { insertarCitaAMano, cerrar, cliente, filaDeLaCita } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
   const respuesta = await cerrar(citaId, "completada", cliente)
 
   assert.equal(respuesta.estado, 403)
   assert.equal(respuesta.cuerpo.error, "solo_personal")
-  assert.equal(filaDeLaCita(citaId).estado, "activa", "y no la tocó")
+  assert.equal((await filaDeLaCita(citaId)).estado, "activa", "y no la tocó")
 })
 
 test("sin sesión tampoco se puede cerrar una cita", async (contexto) => {
   const { insertarCitaAMano, entorno } = await prepararCierre(contexto)
   const sinSesion = crearNavegador(entorno)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
   const respuesta = await sinSesion(`/api/personal/citas/${citaId}/cierre`, {
     method: "PATCH",
@@ -369,21 +368,21 @@ test("sin sesión tampoco se puede cerrar una cita", async (contexto) => {
 test("comprobación 8: una cita ya cerrada no se puede volver a cerrar con otro estado", async (contexto) => {
   const { insertarCitaAMano, cerrar, filaDeLaCita } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
   await cerrar(citaId, "completada")
 
   const otraVez = await cerrar(citaId, "no_asistio")
 
   assert.equal(otraVez.estado, 409)
   assert.equal(otraVez.cuerpo.error, "cita_no_activa")
-  assert.equal(filaDeLaCita(citaId).estado, "completada", "el primer cierre es el que vale")
+  assert.equal((await filaDeLaCita(citaId)).estado, "completada", "el primer cierre es el que vale")
 })
 
 test("una cita cancelada tampoco se puede cerrar", async (contexto) => {
   const { insertarCitaAMano, cerrar, entorno } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
-  entorno.base.prepare("UPDATE cita SET estado = 'cancelada' WHERE id = ?").run(citaId)
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
+  await entorno.base.correr("UPDATE cita SET estado = 'cancelada' WHERE id = ?", citaId)
 
   const respuesta = await cerrar(citaId, "completada")
 
@@ -397,19 +396,19 @@ test("una cita que TODAVÍA no ocurrió no se puede cerrar (RN-17)", async (cont
   // Mañana a las 10. RN-17 dice que «completada» se marca **después de que el cliente asistió**, y
   // nadie asistió todavía a una cita que no ocurrió. Sin esta comprobación, una asistente podría
   // marcar como completada una cita de la semana que viene y la etiqueta se desdiría después.
-  const citaId = insertarCitaAMano(momento(MANANA, 10))
+  const citaId = await insertarCitaAMano(momento(MANANA, 10))
 
   const respuesta = await cerrar(citaId, "completada")
 
   assert.equal(respuesta.estado, 422)
   assert.equal(respuesta.cuerpo.error, "todavia_no_paso")
-  assert.equal(filaDeLaCita(citaId).estado, "activa")
+  assert.equal((await filaDeLaCita(citaId)).estado, "activa")
 })
 
 test("un estado que no es «completada» ni «no_asistio» se rechaza", async (contexto) => {
   const { insertarCitaAMano, cerrar, filaDeLaCita } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
   for (const inventado of ["cancelada", "activa", "COMPLETADA", "", null]) {
     const respuesta = await cerrar(citaId, inventado)
@@ -418,7 +417,7 @@ test("un estado que no es «completada» ni «no_asistio» se rechaza", async (c
     assert.equal(respuesta.cuerpo.error, "datos_incompletos")
   }
 
-  assert.equal(filaDeLaCita(citaId).estado, "activa", "ninguno de los intentos la tocó")
+  assert.equal((await filaDeLaCita(citaId)).estado, "activa", "ninguno de los intentos la tocó")
 })
 
 test("cerrar una cita que no existe devuelve 404", async (contexto) => {
@@ -443,19 +442,19 @@ test("cerrar una cita que no existe devuelve 404", async (contexto) => {
 test("comprobación 9: Personal no puede cancelar una cita que ya pasó (RN-26)", async (contexto) => {
   const { insertarCitaAMano, personal, filaDeLaCita } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
   const respuesta = await personal(`/api/citas/${citaId}`, { method: "DELETE" })
 
   assert.equal(respuesta.estado, 422)
   assert.equal(respuesta.cuerpo.error, "ya_paso")
-  assert.equal(filaDeLaCita(citaId).estado, "activa", "sigue esperando que la cierren")
+  assert.equal((await filaDeLaCita(citaId)).estado, "activa", "sigue esperando que la cierren")
 })
 
 test("comprobación 9: Personal tampoco puede reagendar una cita que ya pasó (RN-26)", async (contexto) => {
   const { insertarCitaAMano, personal, filaDeLaCita } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
   const respuesta = await personal(`/api/citas/${citaId}`, {
     method: "PATCH",
@@ -465,13 +464,13 @@ test("comprobación 9: Personal tampoco puede reagendar una cita que ya pasó (R
   assert.equal(respuesta.estado, 422)
   assert.equal(respuesta.cuerpo.error, "ya_paso")
   // Lo que RN-26 protege, en una línea: mover esta cita borraría del registro que el cliente faltó.
-  assert.equal(filaDeLaCita(citaId).inicio, momento(AYER, 10), "y no se movió de su día")
+  assert.equal((await filaDeLaCita(citaId)).inicio, momento(AYER, 10), "y no se movió de su día")
 })
 
 test("comprobación 9: el cliente tampoco, y ahora se lo dice con el motivo correcto", async (contexto) => {
   const { insertarCitaAMano, cliente } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
   const respuesta = await cliente(`/api/citas/${citaId}`, { method: "DELETE" })
 
@@ -482,9 +481,9 @@ test("comprobación 9: el cliente tampoco, y ahora se lo dice con el motivo corr
 test("una cita pasada le llega a Personal sin botones de cambiar, con el motivo «ya_paso»", async (contexto) => {
   const { insertarCitaAMano, personal, idDelCliente } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
-  const respuesta = await personal(`/api/personal/clientes/${idDelCliente(ANA.correo)}/citas`)
+  const respuesta = await personal(`/api/personal/clientes/${await idDelCliente(ANA.correo)}/citas`)
   const cita = buscarCita(respuesta.cuerpo, citaId)
 
   assert.equal(cita.sePuedeCambiar, false, "ni Reagendar ni Cancelar (RN-26)")
@@ -494,7 +493,7 @@ test("una cita pasada le llega a Personal sin botones de cambiar, con el motivo 
 test("y al cliente le llega igual: la regla alcanza a los dos", async (contexto) => {
   const { insertarCitaAMano, cliente } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(AYER, 10))
+  const citaId = await insertarCitaAMano(momento(AYER, 10))
 
   const respuesta = await cliente("/api/citas")
   const cita = buscarCita(respuesta.cuerpo, citaId)
@@ -513,18 +512,18 @@ test("y al cliente le llega igual: la regla alcanza a los dos", async (contexto)
 test("comprobación 10: una cita de hoy que empieza en 2 horas Personal SÍ la puede cancelar (RN-6, CA-3)", async (contexto) => {
   const { insertarCitaAMano, personal, filaDeLaCita } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await personal(`/api/citas/${citaId}`, { method: "DELETE" })
 
   assert.equal(respuesta.estado, 204, "RN-26 no le sacó a Personal la excepción de RN-6")
-  assert.equal(filaDeLaCita(citaId).estado, "cancelada")
+  assert.equal((await filaDeLaCita(citaId)).estado, "cancelada")
 })
 
 test("comprobación 10: y al cliente esa misma cita le sigue diciendo lo de las 4 horas (RN-5, CA-3)", async (contexto) => {
   const { insertarCitaAMano, cliente } = await prepararCierre(contexto)
 
-  const citaId = insertarCitaAMano(momento(HOY, 10))
+  const citaId = await insertarCitaAMano(momento(HOY, 10))
 
   const respuesta = await cliente(`/api/citas/${citaId}`, { method: "DELETE" })
 
@@ -545,7 +544,7 @@ test("comprobación 10: una cita del futuro conserva sus dos botones para los do
   assert.equal(vistaPorElCliente.sePuedeCambiar, true)
   assert.equal(vistaPorElCliente.porQueNo, null)
 
-  const deLaLista = await personal(`/api/personal/clientes/${idDelCliente(ANA.correo)}/citas`)
+  const deLaLista = await personal(`/api/personal/clientes/${await idDelCliente(ANA.correo)}/citas`)
   const vistaPorPersonal = buscarCita(deLaLista.cuerpo, citaId)
   assert.equal(vistaPorPersonal.sePuedeCambiar, true)
   assert.equal(vistaPorPersonal.porQueNo, null)
