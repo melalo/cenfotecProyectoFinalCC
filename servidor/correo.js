@@ -81,7 +81,7 @@ export const ENVIADOR_SIN_CONFIGURAR = async () => {
  * corre, y RF-19 exige que siga siendo válida aunque el correo no salga.
  */
 export async function enviarConfirmacionDeCita({ base, enviador, citaId, ahora }) {
-  const datos = leerLoQueElCorreoTieneQueDecir(base, citaId)
+  const datos = await leerLoQueElCorreoTieneQueDecir(base, citaId)
 
   // Si la cita no existe no hay nada que confirmar, y tampoco a quién avisarle. No debería pasar
   // nunca —esto se llama justo después de crearla—, pero fabricar un correo con datos vacíos sería
@@ -115,9 +115,7 @@ export async function enviarConfirmacionDeCita({ base, enviador, citaId, ahora }
  * persona sin su enlace —y eso se ve en la tabla—, pero no rompe nada ni deja nada a medias.
  */
 export async function enviarEnlaceDeRecuperacion({ base, enviador, ahora, cuenta, enlace }) {
-  const negocio = base
-    .prepare("SELECT nombre, telefono FROM configuracion_negocio")
-    .get()
+  const negocio = await base.uno("SELECT nombre, telefono FROM configuracion_negocio")
 
   const correo = armarCorreoDeRecuperacion({
     nombre: cuenta.nombre,
@@ -163,13 +161,18 @@ async function entregarYRegistrar({
 }) {
   const exito = await intentarEntregar(enviador, correo)
 
-  base
-    .prepare(
-      `INSERT INTO correo_enviado
+  await base.correr(
+    `INSERT INTO correo_enviado
          (destinatario_correo, cliente_id, personal_id, cita_id, tipo, enviado_en, exito)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(correo.para, clienteId, personalId, citaId, tipo, escribirMomento(ahora), exito ? 1 : 0)
+    correo.para,
+    clienteId,
+    personalId,
+    citaId,
+    tipo,
+    escribirMomento(ahora),
+    exito ? 1 : 0,
+  )
 }
 
 /**
@@ -210,28 +213,27 @@ function esperar(milisegundos) {
  * Es una sola consulta con todos los `JOIN` a propósito, en vez de cinco preguntas sueltas: así no
  * hay ninguna manera de terminar armando un correo con el proveedor de otra cita.
  */
-function leerLoQueElCorreoTieneQueDecir(base, citaId) {
-  const fila = base
-    .prepare(
-      `SELECT cliente.id     AS clienteId,
-              cliente.nombre AS clienteNombre,
-              cliente.correo AS clienteCorreo,
-              servicio.nombre  AS servicio,
-              proveedor.nombre AS proveedor,
-              cita.inicio      AS inicio,
-              negocio.nombre    AS negocioNombre,
-              negocio.telefono  AS negocioTelefono,
-              negocio.ubicacion AS negocioUbicacion
-         FROM cita
-         JOIN cliente   ON cliente.id   = cita.cliente_id
-         JOIN servicio  ON servicio.id  = cita.servicio_id
-         JOIN proveedor ON proveedor.id = cita.proveedor_id
-         -- El negocio es una sola fila y no tiene ninguna columna que la ate a la cita, así que se
-         -- pega sin condición: es la configuración, no un dato de esta reserva.
-         JOIN configuracion_negocio AS negocio
-        WHERE cita.id = ?`,
-    )
-    .get(citaId)
+async function leerLoQueElCorreoTieneQueDecir(base, citaId) {
+  const fila = await base.uno(
+    `SELECT cliente.id     AS clienteId,
+            cliente.nombre AS clienteNombre,
+            cliente.correo AS clienteCorreo,
+            servicio.nombre  AS servicio,
+            proveedor.nombre AS proveedor,
+            cita.inicio      AS inicio,
+            negocio.nombre    AS negocioNombre,
+            negocio.telefono  AS negocioTelefono,
+            negocio.ubicacion AS negocioUbicacion
+       FROM cita
+       JOIN cliente   ON cliente.id   = cita.cliente_id
+       JOIN servicio  ON servicio.id  = cita.servicio_id
+       JOIN proveedor ON proveedor.id = cita.proveedor_id
+       -- El negocio es una sola fila y no tiene ninguna columna que la ate a la cita, así que se
+       -- pega sin condición: es la configuración, no un dato de esta reserva.
+       JOIN configuracion_negocio AS negocio
+      WHERE cita.id = ?`,
+    citaId,
+  )
 
   return fila ?? null
 }

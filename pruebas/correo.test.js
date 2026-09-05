@@ -74,8 +74,8 @@ async function prepararCorreo(contexto, enviador) {
     },
 
     /** Las filas de la tabla de correos enviados, en el orden en que se registraron. */
-    correosRegistrados() {
-      return entorno.base.prepare("SELECT * FROM correo_enviado ORDER BY id").all()
+    async correosRegistrados() {
+      return await entorno.base.todas("SELECT * FROM correo_enviado ORDER BY id")
     },
   }
 }
@@ -139,7 +139,7 @@ test("cada envío queda registrado con destinatario, cliente, cita, tipo, fecha 
   const reserva = await reservar()
   assert.equal(reserva.estado, 201)
 
-  const registrados = correosRegistrados()
+  const registrados = await correosRegistrados()
   assert.equal(registrados.length, 1, "tenía que quedar una sola fila")
 
   const fila = registrados[0]
@@ -170,7 +170,7 @@ test("RF-19: si el correo falla, la cita se crea igual y el envío queda registr
   assert.equal(citas.cuerpo.length, 1)
   assert.equal(citas.cuerpo[0].inicio, MANANA_A_LAS_DIEZ)
 
-  const fila = correosRegistrados()[0]
+  const fila = (await correosRegistrados())[0]
   assert.equal(fila.exito, 0, "el envío tiene que quedar marcado como fallido")
   assert.equal(fila.cita_id, reserva.cuerpo.id)
 })
@@ -182,7 +182,7 @@ test("RF-19: sin servicio de correo configurado la aplicación funciona igual", 
   const reserva = await reservar()
   assert.equal(reserva.estado, 201, "sin clave de correo las citas se siguen creando")
 
-  const registrados = correosRegistrados()
+  const registrados = await correosRegistrados()
   assert.equal(registrados.length, 1, "el intento igual queda registrado, para que no se pierda")
   assert.equal(registrados[0].exito, 0)
 })
@@ -200,7 +200,7 @@ test("una falla pasajera se reintenta, y si el segundo intento sale bien queda c
 
   assert.equal(enviador.enviados.length, 2, "tenía que intentarlo dos veces")
 
-  const registrados = correosRegistrados()
+  const registrados = await correosRegistrados()
   assert.equal(registrados.length, 1, "dos intentos del mismo correo son UNA fila, no dos")
   assert.equal(registrados[0].exito, 1)
 })
@@ -214,7 +214,7 @@ test("si la falla pasajera se repite, queda registrada como fallida una sola vez
 
   assert.equal(enviador.enviados.length, 2, "se reintenta una vez, no para siempre")
 
-  const registrados = correosRegistrados()
+  const registrados = await correosRegistrados()
   assert.equal(registrados.length, 1)
   assert.equal(registrados[0].exito, 0)
 })
@@ -357,8 +357,8 @@ test("los datos de prueba se pueden volver a cargar aunque ya haya correos regis
   // `correo_enviado` apunta a `cita` y a `cliente`, y la base tiene las llaves foráneas
   // encendidas: si el borrado no la incluye —y en el orden correcto— SQLite se niega a borrar la
   // cita, y `npm run datos` se cae con un error que no dice qué pasó.
-  cargarDatosDePrueba(entorno.base)
+  await cargarDatosDePrueba(entorno.base)
 
-  const cuantos = entorno.base.prepare("SELECT COUNT(*) AS cuantos FROM correo_enviado").get()
+  const cuantos = await entorno.base.uno("SELECT COUNT(*) AS cuantos FROM correo_enviado")
   assert.equal(cuantos.cuantos, 0, "rehacer los datos tiene que dejar el registro de correos vacío")
 })

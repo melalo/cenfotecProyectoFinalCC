@@ -45,8 +45,9 @@ async function prepararRegistro(contexto) {
     },
 
     /** Cuántas cuentas de cliente hay en la base. Sirve para comprobar que un rechazo no guardó nada. */
-    cuantosClientes() {
-      return entorno.base.prepare("SELECT COUNT(*) AS cuantos FROM cliente").get().cuantos
+    async cuantosClientes() {
+      const fila = await entorno.base.uno("SELECT COUNT(*) AS cuantos FROM cliente")
+      return fila.cuantos
     },
   }
 }
@@ -67,7 +68,7 @@ test("comprobación 1: una contraseña de 3 letras se rechaza, y el mensaje nomb
   // persona lee es la pantalla, igual que en el resto del proyecto.
   assert.deepEqual(respuesta.cuerpo.faltan.sort(), ["largo", "mayuscula", "numero"])
 
-  assert.equal(cuantosClientes(), 0, "un registro rechazado no tiene que guardar ninguna cuenta")
+  assert.equal(await cuantosClientes(), 0, "un registro rechazado no tiene que guardar ninguna cuenta")
 })
 
 test("comprobación 2: el mensaje nombra SOLO lo que falta, no lo que ya se cumple", async (contexto) => {
@@ -96,7 +97,7 @@ test("comprobación 4: 6 caracteres justos, con mayúscula y número, se acepta"
   const respuesta = await registrarse({ contrasena: "Abc123" })
 
   assert.equal(respuesta.estado, 201)
-  assert.equal(cuantosClientes(), 1)
+  assert.equal(await cuantosClientes(), 1)
 })
 
 test("una contraseña sin número se rechaza, y solo por eso", async (contexto) => {
@@ -248,7 +249,7 @@ test("comprobación 5: un correo sin arroba y uno sin terminación se rechazan",
   assert.equal(sinTerminacion.estado, 422)
   assert.equal(sinTerminacion.cuerpo.error, "correo_invalido")
 
-  assert.equal(cuantosClientes(), 0, "ninguno de los dos tenía que guardar una cuenta")
+  assert.equal(await cuantosClientes(), 0, "ninguno de los dos tenía que guardar una cuenta")
 })
 
 test("comprobación 5: un correo bien escrito se acepta", async (contexto) => {
@@ -289,12 +290,13 @@ test("comprobación 6: una cuenta que ya existía entra igual, aunque su contras
   // Se mete a mano una cuenta con la contraseña `hola`, que no cumple ninguna de las tres
   // condiciones. Es la situación de cualquiera que se hubiera registrado antes del 2026-08-19.
   const { cifrarContrasena } = await import("../servidor/contrasenas.js")
-  entorno.base
-    .prepare(
-      `INSERT INTO cliente (nombre, correo, contrasena_cifrada, debe_cambiar_contrasena)
+  await entorno.base.correr(
+    `INSERT INTO cliente (nombre, correo, contrasena_cifrada, debe_cambiar_contrasena)
        VALUES (?, ?, ?, 0)`,
-    )
-    .run("Cuenta Vieja", "vieja@ejemplo.com", cifrarContrasena("hola"))
+    "Cuenta Vieja",
+    "vieja@ejemplo.com",
+    cifrarContrasena("hola"),
+  )
 
   const respuesta = await navegador("/api/sesion", {
     method: "POST",
@@ -343,7 +345,8 @@ test("comprobación 7: un pedido mandado al API sin pasar por la pantalla se rec
   const cuerpo = await respuesta.json()
   assert.equal(cuerpo.error, "contrasena_invalida")
 
-  const cuantos = entorno.base.prepare("SELECT COUNT(*) AS cuantos FROM cliente").get().cuantos
+  const fila = await entorno.base.uno("SELECT COUNT(*) AS cuantos FROM cliente")
+  const cuantos = fila.cuantos
   assert.equal(cuantos, 0, "no se tenía que guardar ninguna cuenta")
 })
 
