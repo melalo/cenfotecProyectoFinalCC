@@ -2103,7 +2103,7 @@ y por qué, y la tabla de las 11 comprobaciones con lo que dio cada una.
 En `README.md`: la dirección pública arriba, y la aclaración de que `npm test` y `npm start` siguen
 funcionando sin configurar nada.
 
-- [ ] **Paso 11: commit**
+- [x] **Paso 11: commit**
 
 ```bash
 git add guiones/esquema.js guiones/sembrar-remoto.js package.json README.md DESPLIEGUE.md
