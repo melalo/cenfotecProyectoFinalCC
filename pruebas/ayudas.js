@@ -42,6 +42,36 @@ export function relojDetenidoEn(momento) {
 }
 
 /**
+ * Borra la carpeta temporal de una prueba, **aguantando que Windows todavía no la suelte**.
+ *
+ * ── Por qué existe (2026-09-04, al cambiar el motor en la Etapa 3) ────────────────────────────
+ *
+ * `@libsql/client` (0.18.0, la última publicada) **no libera el archivo cuando se lo cierra**: en
+ * Windows el `close()` devuelve, pero el sistema operativo sigue considerando el archivo abierto, y
+ * `rmSync` falla con `EPERM`. Está medido, no supuesto: tras `close()` la carpeta no se puede
+ * borrar en el acto, ni tras un tick, ni tras 200 ms — **sólo después de que el recolector de basura
+ * pasa**. Es decir, el archivo lo suelta un finalizador, no el `close()`.
+ *
+ * No es un problema de la aplicación: ahí la base se abre una vez y se cierra al apagar. Es un
+ * problema **de la limpieza de las pruebas**, y sin esto la suite entera se pone roja en Windows
+ * aunque no haya nada mal.
+ *
+ * **En Linux no se ejecuta nunca el `catch`**, porque ahí un archivo abierto sí se puede borrar. Así
+ * que la integración continua sigue comprobando el borrado de verdad, y esto no tapa nada allá.
+ *
+ * Lo que queda es una carpeta en el directorio temporal del sistema, que el sistema limpia solo. Se
+ * eligió eso antes que forzar un `global.gc()` —que exige arrancar Node con una bandera especial y
+ * cambiaría el comando de las pruebas para todo el mundo— y antes que dejar la suite roja.
+ */
+export function borrarCarpetaDePrueba(carpeta) {
+  try {
+    rmSync(carpeta, { recursive: true, force: true })
+  } catch (falla) {
+    if (falla.code !== "EPERM" && falla.code !== "EBUSY") throw falla
+  }
+}
+
+/**
  * Crea una aplicación de prueba: carpeta temporal, base de datos nueva con los datos precargados,
  * y el servidor escuchando en un puerto libre que el sistema operativo elige (el 0 significa
  * «dame cualquiera que esté libre», para que dos pruebas no se peleen por el 3000).
@@ -102,7 +132,7 @@ export async function crearEntornoDePrueba(contexto, opciones = {}) {
   // Cuando la prueba termina —pase o falle— se apaga todo y se borra la carpeta temporal.
   contexto.after(async () => {
     await entorno.apagar()
-    rmSync(carpeta, { recursive: true, force: true })
+    borrarCarpetaDePrueba(carpeta)
   })
 
   return entorno

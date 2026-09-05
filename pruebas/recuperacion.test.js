@@ -22,16 +22,17 @@
 
 import test from "node:test"
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import Database from "better-sqlite3"
+import { createClient } from "@libsql/client"
 
-import { abrirBase } from "../servidor/base-de-datos.js"
+import { abrirBase, comoArchivo } from "../servidor/base-de-datos.js"
 import { crearEsquema } from "../servidor/esquema.js"
 import { escribirMomento } from "../servidor/tiempo.js"
 import {
+  borrarCarpetaDePrueba,
   crearEntornoDePrueba,
   crearNavegador,
   enviadorDeMentira,
@@ -447,8 +448,8 @@ test("una base de antes de la pieza 9 se pone al día sin perder los correos ya 
   // La forma **exacta** que tenía la tabla desde la pieza 4: con `cliente_id` obligatoria y sin
   // ninguna columna para Personal. Se escribe a mano acá a propósito: es la única manera de tener
   // una base vieja de verdad para probar contra ella.
-  const vieja = new Database(rutaBase)
-  vieja.exec(`
+  const vieja = createClient({ url: comoArchivo(rutaBase) })
+  await vieja.executeMultiple(`
     -- La tabla de citas, con lo mínimo que necesitan sus dos índices para poder crearse. No hace
     -- falta más: acá no se prueba la tabla de citas, se prueba que el registro de correos que
     -- **apunta** a ella se pueda mudar sin perder nada.
@@ -490,7 +491,7 @@ test("una base de antes de la pieza 9 se pone al día sin perder los correos ya 
   // aplicación esté apagada.
   contexto.after(async () => {
     await base.cerrar()
-    rmSync(carpeta, { recursive: true, force: true })
+    borrarCarpetaDePrueba(carpeta)
   })
 
   const columnas = (await base.todas("PRAGMA table_info(correo_enviado)")).map((una) => una.name)
@@ -527,8 +528,8 @@ test("el índice de correos por cita sobrevive a la mudanza", async (contexto) =
   const carpeta = mkdtempSync(join(tmpdir(), "reservas-base-vieja-"))
   const rutaBase = join(carpeta, "vieja.sqlite")
 
-  const vieja = new Database(rutaBase)
-  vieja.exec(`
+  const vieja = createClient({ url: comoArchivo(rutaBase) })
+  await vieja.executeMultiple(`
     CREATE TABLE correo_enviado (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       destinatario_correo TEXT NOT NULL,
@@ -546,7 +547,7 @@ test("el índice de correos por cita sobrevive a la mudanza", async (contexto) =
   await crearEsquema(base)
   contexto.after(async () => {
     await base.cerrar()
-    rmSync(carpeta, { recursive: true, force: true })
+    borrarCarpetaDePrueba(carpeta)
   })
 
   // Un índice se va con la tabla que vigila. Si nadie lo vuelve a crear, la pieza 6 se quedaría sin

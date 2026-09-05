@@ -69,8 +69,35 @@ export { QUIEN_CLIENTE, QUIEN_PERSONAL }
  */
 export const HORAS_DE_LA_VENTANA = 4
 
-/** El error que SQLite devuelve cuando el índice único rechaza una inserción repetida. */
+/**
+ * El error que SQLite devuelve cuando el índice único rechaza una inserción repetida — que es como
+ * este archivo se entera de que **alguien ganó la carrera por ese horario** (CA-1).
+ *
+ * ── Por qué se mira `cause` y no sólo `code` (2026-09-04, Etapa 3) ────────────────────────────
+ *
+ * `@libsql/client` pone en `falla.code` el nombre **grueso**, `SQLITE_CONSTRAINT`, y guarda el fino
+ * —`SQLITE_CONSTRAINT_UNIQUE`— en `falla.cause.code`. Medido contra la base, no supuesto:
+ *
+ *   | Lo que se violó | `falla.code`        | `falla.cause.code`             |
+ *   |-----------------|---------------------|--------------------------------|
+ *   | índice único    | `SQLITE_CONSTRAINT` | `SQLITE_CONSTRAINT_UNIQUE`     |
+ *   | llave foránea   | `SQLITE_CONSTRAINT` | `SQLITE_CONSTRAINT_FOREIGNKEY` |
+ *   | un `CHECK`      | `SQLITE_CONSTRAINT` | `SQLITE_CONSTRAINT_CHECK`      |
+ *
+ * **Por eso mirar sólo `code` no alcanza, y sería peor que no arreglarlo:** las tres violaciones se
+ * llaman igual ahí, así que una llave foránea rota se le contestaría a la persona como «ese horario
+ * ya no está libre» — un mensaje falso sobre un defecto de programación, que además nadie
+ * investigaría porque suena a algo normal.
+ *
+ * El `?? falla.code` del final es para `better-sqlite3` y para cualquier motor que ponga el nombre
+ * fino directo en `code`. `pruebas/adaptador.test.js` fija las dos formas.
+ */
 const RECHAZO_DEL_INDICE_UNICO = "SQLITE_CONSTRAINT_UNIQUE"
+
+/** Con qué nombre llegó la violación, mirando primero el nombre fino. */
+function nombreDelRechazo(falla) {
+  return falla?.cause?.code ?? falla?.code
+}
 
 /**
  * Crea una cita activa para un cliente (RF-8).
@@ -162,7 +189,7 @@ export async function crearCita({
   } catch (falla) {
     // Acá se cae la reserva que perdió la carrera de CA-1: pasó la comprobación porque el horario
     // todavía estaba libre cuando la miró, y el índice único la rechazó al guardar.
-    if (falla.code === RECHAZO_DEL_INDICE_UNICO) {
+    if (nombreDelRechazo(falla) === RECHAZO_DEL_INDICE_UNICO) {
       return { ok: false, motivo: "horario_no_disponible" }
     }
     throw falla
@@ -440,7 +467,7 @@ export async function reagendarCita({ base, citaId, clienteId, quien, inicio, ah
   } catch (falla) {
     // La misma carrera de CA-1, del otro lado: alguien tomó el horario nuevo entre la comprobación y
     // el cambio. El índice único la para, igual que para una reserva.
-    if (falla.code === RECHAZO_DEL_INDICE_UNICO) {
+    if (nombreDelRechazo(falla) === RECHAZO_DEL_INDICE_UNICO) {
       return { ok: false, motivo: "horario_no_disponible" }
     }
     throw falla

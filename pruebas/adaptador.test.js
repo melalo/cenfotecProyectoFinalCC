@@ -6,12 +6,25 @@
 
 import test from "node:test"
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { abrirBase } from "../servidor/base-de-datos.js"
 import { crearEsquema } from "../servidor/esquema.js"
+import { borrarCarpetaDePrueba } from "./ayudas.js"
+
+/**
+ * Con qué nombre llegó una violación de la base, mirando primero el nombre fino.
+ *
+ * **Es la misma cuenta que hace `servidor/reservas.js`, escrita acá a propósito y no importada.**
+ * Si se importara, esta prueba diría «reservas.js coincide consigo mismo», que es siempre cierto y
+ * no comprueba nada. Escrita aparte, comprueba lo que de verdad importa: que **el motor** ponga el
+ * nombre donde el proyecto lo va a buscar.
+ */
+function nombreDelRechazo(falla) {
+  return falla?.cause?.code ?? falla?.code
+}
 
 /** Una base de prueba desechable, con el esquema puesto. Se borra al terminar. */
 async function baseDePrueba(contexto) {
@@ -21,7 +34,7 @@ async function baseDePrueba(contexto) {
 
   contexto.after(async () => {
     await base.cerrar()
-    rmSync(carpeta, { recursive: true, force: true })
+    borrarCarpetaDePrueba(carpeta)
   })
 
   return base
@@ -125,8 +138,13 @@ test("dentro de la transacción se ve lo que la transacción misma escribió", a
 })
 
 test("el índice único de CA-1 rechaza la segunda cita, y con el nombre que reservas.js espera", async (t) => {
-  // Ésta es la prueba que cuida el descubrimiento de la Etapa 0. Si el motor cambia y el nombre del
-  // error cambia con él, se cae acá y no en producción.
+  // Ésta es la prueba que cuida cómo `reservas.js` reconoce «alguien ganó la carrera por ese
+  // horario». Si el motor cambia y el nombre del error cambia con él, se cae acá y no en producción.
+  //
+  // **Y ya hizo su trabajo una vez, el 2026-09-04:** al pasar a `@libsql/client` el nombre fino se
+  // mudó de `falla.code` a `falla.cause.code`, y `falla.code` pasó a decir `SQLITE_CONSTRAINT` a
+  // secas — el mismo texto que devuelve una llave foránea rota y un `CHECK` incumplido. Sin esta
+  // prueba, CA-1 habría contestado un 500 en el despliegue con las otras 320 en verde.
   const base = await baseDePrueba(t)
 
   await base.correr(
@@ -153,9 +171,29 @@ test("el índice único de CA-1 rechaza la segunda cita, y con el nombre que res
   await insertarCita()
 
   await assert.rejects(insertarCita(), (falla) => {
-    assert.equal(falla.code, "SQLITE_CONSTRAINT_UNIQUE")
+    assert.equal(nombreDelRechazo(falla), "SQLITE_CONSTRAINT_UNIQUE")
     return true
   })
+})
+
+test("una llave foránea rota NO se confunde con el índice único de CA-1", async (t) => {
+  // Nació el 2026-09-04, del mismo hallazgo que la de arriba. `falla.code` dice `SQLITE_CONSTRAINT`
+  // para las tres violaciones —única, foránea y `CHECK`—, así que un `reservas.js` que mirara sólo
+  // ese campo le contestaría «ese horario ya no está libre» a un defecto de programación. Sería un
+  // mensaje falso, y de los peores: suena normal, así que nadie lo iría a investigar.
+  const base = await baseDePrueba(t)
+
+  await assert.rejects(
+    base.correr(
+      `INSERT INTO cita (cliente_id, servicio_id, proveedor_id, inicio, estado, creada_en, canal)
+       VALUES (999, 999, 999, '2026-12-31T15:00:00Z', 'activa', '2026-09-01T14:00:00Z', 'en_linea')`,
+    ),
+    (falla) => {
+      assert.notEqual(nombreDelRechazo(falla), "SQLITE_CONSTRAINT_UNIQUE")
+      assert.equal(nombreDelRechazo(falla), "SQLITE_CONSTRAINT_FOREIGNKEY")
+      return true
+    },
+  )
 })
 
 test("`ejecutar` corre varias sentencias de una vez", async (t) => {
@@ -202,7 +240,7 @@ test("un error de adentro de `enTransaccion` sale con su `code` intacto", async 
       )
     }),
     (falla) => {
-      assert.equal(falla.code, "SQLITE_CONSTRAINT_UNIQUE")
+      assert.equal(nombreDelRechazo(falla), "SQLITE_CONSTRAINT_UNIQUE")
       return true
     },
   )
@@ -294,12 +332,14 @@ test("`idInsertado` sólo significa algo después de un INSERT", async (t) => {
   assert.equal(ninguno.idInsertado, undefined)
 })
 
-test("una transacción adentro de otra se rechaza, y la base sigue usable", async (t) => {
+test("`tx.enTransaccion` dice, con palabras, que no se puede anidar", async (t) => {
   // `base.transaction` de better-sqlite3 sí se podía anidar, con SAVEPOINT, y `enTransaccion` no.
-  // Ese soporte se pierde en la Etapa 2 sin que nadie lo haya decidido, así que se dice en voz alta:
-  // el que lo intente recibe una explicación y no un `SQLITE_ERROR` de SQLite, que `reservas.js`
-  // relanzaría como un 500. Y después de la negativa la base tiene que seguir sirviendo: si quedara
-  // una transacción abierta a medias, la consulta siguiente se colgaría.
+  // Ese soporte se perdió sin que nadie lo haya decidido, así que se dice en voz alta: el que lo
+  // intente recibe una explicación y no un `TypeError: cliente.transaction is not a function`, que
+  // es lo que sale crudo del motor y no le dice nada a nadie.
+  //
+  // Y después de la negativa la base tiene que seguir sirviendo: si quedara una transacción abierta
+  // a medias, la consulta siguiente se colgaría.
   const base = await baseDePrueba(t)
 
   await assert.rejects(
@@ -313,22 +353,28 @@ test("una transacción adentro de otra se rechaza, y la base sigue usable", asyn
   assert.equal(despues.cambios, 1)
 })
 
-test("`base.enTransaccion` adentro de otra también dice que no se puede anidar", async (t) => {
-  // El mismo error que la prueba de arriba, pero escrito como lo escribiría cualquiera: llamando a
-  // `base.enTransaccion(...)` en vez de a `tx.enTransaccion(...)`. Es **el camino natural**, porque
-  // adentro de una transacción uno tiene el `base` a mano.
+test("`base.enTransaccion` adentro de otra se traba, pero no deja la base rota", async (t) => {
+  // El mismo intento que la de arriba, escrito por el otro camino: `base.enTransaccion(...)` en vez
+  // de `tx.enTransaccion(...)`. Adentro de una transacción uno tiene el `base` a mano, así que es
+  // el error natural.
   //
-  // Y es la prueba de que el mensaje que sale es el útil. Este camino toca antes la red de «usá tx»
-  // que la de anidamiento, así que sin cuidado contestaría «usá tx»: quien lo leyera escribiría
-  // `tx.enTransaccion(...)`, y recién ahí se enteraría de que anidar tampoco se puede. Dos vueltas
-  // para el mismo diagnóstico.
+  // **Acá el mensaje NO es el amable, y eso está medido y aceptado** (2026-09-04). `base` es un
+  // objeto legítimo que sí sabe abrir transacciones, así que no hay manera de distinguir «me la
+  // pediste adentro de otra» de «me la pediste en otra petición» sin una bandera compartida entre
+  // todas las peticiones — y una bandera así, con esperas de red de verdad, daría errores falsos
+  // cada vez que dos personas usaran la aplicación a la vez. Eso es exactamente lo que hacía el
+  // andamio de la Etapa 2 y por qué se quitó acá.
+  //
+  // Lo que sale es `SQLITE_BUSY`, que es la base diciendo la verdad: ya hay una escritura abierta.
+  // Lo que esta prueba fija es lo que sí importa: **que la base quede sana después**. Un error feo
+  // se diagnostica; una base trabada, no.
   const base = await baseDePrueba(t)
 
   await assert.rejects(
     base.enTransaccion(async () => {
       await base.enTransaccion(async () => {})
     }),
-    /adentro de otra/,
+    /SQLITE_BUSY/,
   )
 
   const despues = await base.correr("INSERT INTO categoria (nombre) VALUES (?)", "Masaje")
@@ -347,25 +393,54 @@ test("`todas` también devuelve objetos comunes", async (t) => {
   assert.equal(Object.getPrototypeOf(fila), Object.prototype)
 })
 
-test("usar `base` adentro de `enTransaccion` se rechaza y enseña qué hacer", async (t) => {
-  // Ésta es la red que impide el error más caro de la Etapa 2, y conviene entender por qué es una
-  // prueba y no un comentario: escribir `base` donde iba `tx` **hoy funciona perfecto**, porque hoy
-  // los dos hablan con la misma conexión. En la Etapa 3 esa consulta saldría afuera de la
-  // transacción y CA-1 dejaría de estar protegido, sin ninguna señal. Así que la señal se pone acá.
+test("leer con `base` adentro de una transacción NO ve lo que la transacción escribió", async (t) => {
+  // ── La prueba más incómoda del archivo, y por eso está ────────────────────────────────────────
   //
-  // El mensaje tiene que nombrar a `tx`: quien lo lea a las once de la noche necesita saber qué
-  // escribir, no que se portó mal.
+  // Escribir `base` donde iba `tx` **no da ningún error** si es una lectura: devuelve un dato viejo,
+  // en silencio. Está medido el 2026-09-04 y es exactamente lo que se ve abajo — adentro de una
+  // transacción que acaba de insertar una categoría, `base` cuenta **cero**.
+  //
+  // Ése es el defecto que el andamio de la Etapa 2 existía para cazar, y la razón por la que la
+  // Etapa 2 enhebró `tx` por `revisarHorario` y `buscarCitaParaCambiar` en vez de dejar `base`. En
+  // `crearCita` esa lectura vieja sería CA-1 comprobando un horario contra una foto anterior.
+  //
+  // El andamio ya no está —con esperas de red de verdad daría errores falsos—, así que **lo único
+  // que queda vigilando esto es que el enhebrado esté bien hecho**. Esta prueba no lo arregla: lo
+  // deja escrito, medido y a la vista, para que nadie vuelva a escribir `base` adentro de un
+  // `enTransaccion` creyendo que da igual.
+  const base = await baseDePrueba(t)
+
+  const cuantasVeLaDeAfuera = await base.enTransaccion(async (tx) => {
+    await tx.correr("INSERT INTO categoria (nombre) VALUES (?)", "Masaje")
+
+    // Adentro de la transacción, `tx` sí ve lo suyo.
+    const vistaPorTx = await tx.uno("SELECT COUNT(*) AS cuantas FROM categoria")
+    assert.equal(vistaPorTx.cuantas, 1)
+
+    // Y `base`, que es otra conexión, no.
+    const vistaPorBase = await base.uno("SELECT COUNT(*) AS cuantas FROM categoria")
+    return vistaPorBase.cuantas
+  })
+
+  assert.equal(cuantasVeLaDeAfuera, 0, "`base` lee de afuera: no ve lo que la transacción escribió")
+
+  // Y una vez confirmada, lo escrito está para todos.
+  const alFinal = await base.uno("SELECT COUNT(*) AS cuantas FROM categoria")
+  assert.equal(alFinal.cuantas, 1)
+})
+
+test("escribir con `base` adentro de una transacción sí se traba", async (t) => {
+  // La otra mitad de lo de arriba, y la mitad amable: una **escritura** con `base` mientras hay una
+  // transacción abierta no pasa desapercibida — la base dice `SQLITE_BUSY`, porque el permiso de
+  // escritura ya lo tiene la transacción. El caso peligroso es el de arriba, el de la lectura.
   const base = await baseDePrueba(t)
 
   await assert.rejects(
     base.enTransaccion(async (tx) => {
       await tx.correr("INSERT INTO categoria (nombre) VALUES (?)", "Masaje")
-      await base.uno("SELECT id FROM categoria")
+      await base.correr("INSERT INTO categoria (nombre) VALUES (?)", "Facial")
     }),
-    (falla) => {
-      assert.match(falla.message, /tx/)
-      return true
-    },
+    /SQLITE_BUSY/,
   )
 
   // La transacción se deshizo entera, y la base quedó sana.
@@ -386,9 +461,12 @@ test("un `tx` no sirve después de que su `enTransaccion` terminó", async (t) =
     await tx.correr("INSERT INTO categoria (nombre) VALUES (?)", "Masaje")
   })
 
+  // El motor lo dice con sus palabras —«TRANSACTION_CLOSED: The transaction is closed»— y alcanza:
+  // lo que importa es que **se niegue**, no cómo lo diga. Hasta el 2026-09-04 el mensaje lo ponía el
+  // andamio de la Etapa 2, que ya no está.
   await assert.rejects(
     guardado.correr("INSERT INTO categoria (nombre) VALUES (?)", "Facial"),
-    /ya no sirve/,
+    /TRANSACTION_CLOSED/,
   )
 
   // Y lo que la transacción sí guardó quedó guardado: la negativa no deshace nada.
