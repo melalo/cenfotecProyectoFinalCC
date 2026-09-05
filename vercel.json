@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run estilos",
+  "outputDirectory": "publico",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+}

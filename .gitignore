@@ -13,3 +13,19 @@ publico/css/
 
 # Las claves de esta máquina
 .env
+
+# La consigna del curso: material que dio el docente, no se sube nunca
+Consigna Proyecto del Curso - SINT-732.docx
+
+# La carpeta que Vercel deja al vincular el proyecto: tiene identificadores de la cuenta
+.vercel
+
+# El archivo de claves que `vercel link` baja solo, con el token de la cuenta.
+#
+# ⚠️ **Esta línea dice `.env*.local` y NO `.env*`, y la diferencia importa.** El comando
+# `npx vercel link` escribió `.env*` acá por su cuenta el 2026-09-05, y eso habría dejado afuera
+# del repositorio a **`.env.ejemplo`**, que sí se sube a propósito: es el archivo que le dice a
+# quien clona el proyecto qué variables hacen falta, y sin él el `README.md` deja de cumplirse.
+# No rompía nada de inmediato —Git no deja de seguir un archivo que ya venía siguiendo— así que
+# es la clase de trampa que se descubre el día que alguien clona limpio.
+.env*.local

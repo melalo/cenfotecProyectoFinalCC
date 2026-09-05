@@ -1701,7 +1701,7 @@ documentada.
 - Crear: `api/index.js`, `servidor/aplicacion-desplegada.js`, `vercel.json`
 - Modificar: `.gitignore`, `.env.ejemplo`
 
-- [ ] **Paso 1: armar la aplicación para el despliegue**
+- [x] **Paso 1: armar la aplicación para el despliegue**
 
 Crear `servidor/aplicacion-desplegada.js`:
 
@@ -1756,7 +1756,7 @@ export async function crearAplicacionDesplegada() {
 }
 ```
 
-- [ ] **Paso 2: la puerta**
+- [x] **Paso 2: la puerta**
 
 Crear `api/index.js`:
 
@@ -1805,7 +1805,7 @@ export default async function atender(pedido, respuesta) {
 }
 ```
 
-- [ ] **Paso 3: la configuración de Vercel**
+- [x] **Paso 3: la configuración de Vercel**
 
 Crear `vercel.json`:
 
@@ -1832,7 +1832,7 @@ Las tres líneas hacen falta, y cada una arregla un problema distinto:
 > `aplicacion.js` sigue sirviendo `publico/` como lo hace hoy. Se pierde velocidad, no
 > funcionalidad. **`buildCommand` no se saca nunca.**
 
-- [ ] **Paso 4: que `.vercel` no se suba**
+- [x] **Paso 4: que `.vercel` no se suba**
 
 En `.gitignore`, junto a `.env`:
 
@@ -1841,7 +1841,7 @@ En `.gitignore`, junto a `.env`:
 .vercel
 ```
 
-- [ ] **Paso 5: anotar las dos variables nuevas en `.env.ejemplo`**
+- [x] **Paso 5: anotar las dos variables nuevas en `.env.ejemplo`**
 
 Al final del archivo:
 
@@ -1855,7 +1855,7 @@ TURSO_DATABASE_URL=
 TURSO_AUTH_TOKEN=
 ```
 
-- [ ] **Paso 6: la puerta de calidad**
+- [x] **Paso 6: la puerta de calidad**
 
 ```bash
 npm test
@@ -1864,7 +1864,7 @@ npm test
 `fail 0`, `pass 321`. Nada de esta etapa toca el camino que corren las pruebas — y comprobarlo es
 justamente el punto.
 
-- [ ] **Paso 7: publicar, y esperar que falle bien**
+- [x] **Paso 7: publicar, y esperar que falle bien**
 
 ```bash
 npx vercel login
@@ -1888,7 +1888,7 @@ en silencio. Comparalo con el despliegue anterior, donde el mismo momento fue un
 `SQLITE_CANTOPEN: unable to open database file` que hubo que ir a buscar en un rastro de siete
 líneas.
 
-- [ ] **Paso 8: escribirlo en `DESPLIEGUE.md`, con la salida cruda pegada**
+- [x] **Paso 8: escribirlo en `DESPLIEGUE.md`, con la salida cruda pegada**
 
 Sección «La primera publicación, y por qué falló a propósito». El registro de la máquina primero, el
 diagnóstico después. Mismo criterio que la bitácora anterior.
