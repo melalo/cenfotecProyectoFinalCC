@@ -97,7 +97,7 @@ export async function crearEntornoDePrueba(contexto, opciones = {}) {
   }
 
   await entorno.levantar()
-  cargarDatosDePrueba(base)
+  await cargarDatosDePrueba(base)
 
   // Cuando la prueba termina —pase o falle— se apaga todo y se borra la carpeta temporal.
   contexto.after(async () => {

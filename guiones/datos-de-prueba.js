@@ -153,11 +153,11 @@ export const CATEGORIAS = [
  *  prueba: son dos personas inventadas distintas que casualmente comparten nombre de pila. */
 export const PROVEEDORES = ["Ana", "Carlos", "Luisa"]
 
-export function cargarDatosDePrueba(base) {
+export async function cargarDatosDePrueba(base) {
   // En la aplicación nada se borra nunca (RN-15). Este guion es la única excepción, y es a
   // propósito: rehace los datos de prueba desde cero para poder correrlo las veces que haga falta.
   // El orden importa: primero lo que apunta a otras tablas, después lo apuntado.
-  base.exec(`
+  await base.ejecutar(`
     -- \`correo_enviado\` va primero de todo (pieza 4): apunta a \`cita\` y a \`cliente\`, y con las
     -- llaves foráneas encendidas SQLite se niega a borrar una fila que alguien todavía señala.
     DELETE FROM token_recuperacion;
@@ -174,87 +174,85 @@ export function cargarDatosDePrueba(base) {
     DELETE FROM configuracion_negocio;
   `)
 
-  cargarPersonal(base)
-  cargarNegocio(base)
-  cargarHorario(base)
-  cargarFeriados(base)
-  cargarCatalogo(base)
+  await cargarPersonal(base)
+  await cargarNegocio(base)
+  await cargarHorario(base)
+  await cargarFeriados(base)
+  await cargarCatalogo(base)
 }
 
-function cargarPersonal(base) {
-  base
-    .prepare("INSERT INTO personal (nombre, correo, contrasena_cifrada) VALUES (?, ?, ?)")
-    .run(
-      PERSONAL_PRECARGADO.nombre,
-      PERSONAL_PRECARGADO.correo,
-      cifrarContrasena(PERSONAL_PRECARGADO.contrasena),
-    )
+async function cargarPersonal(base) {
+  await base.correr(
+    "INSERT INTO personal (nombre, correo, contrasena_cifrada) VALUES (?, ?, ?)",
+    PERSONAL_PRECARGADO.nombre,
+    PERSONAL_PRECARGADO.correo,
+    cifrarContrasena(PERSONAL_PRECARGADO.contrasena),
+  )
 }
 
-function cargarNegocio(base) {
-  base
-    .prepare(
-      `INSERT INTO configuracion_negocio
+async function cargarNegocio(base) {
+  await base.correr(
+    `INSERT INTO configuracion_negocio
          (nombre, telefono, ubicacion, logo, color_principal, color_secundario)
        VALUES (?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      NEGOCIO.nombre,
-      NEGOCIO.telefono,
-      NEGOCIO.ubicacion,
-      NEGOCIO.logo,
-      NEGOCIO.colorPrincipal,
-      NEGOCIO.colorSecundario,
-    )
-}
-
-function cargarHorario(base) {
-  const guardar = base.prepare(
-    "INSERT INTO horario_negocio (dia_semana, hora_inicio, hora_fin) VALUES (?, ?, ?)",
+    NEGOCIO.nombre,
+    NEGOCIO.telefono,
+    NEGOCIO.ubicacion,
+    NEGOCIO.logo,
+    NEGOCIO.colorPrincipal,
+    NEGOCIO.colorSecundario,
   )
+}
 
+async function cargarHorario(base) {
   for (const tramo of HORARIO_DEL_NEGOCIO) {
-    guardar.run(tramo.diaSemana, tramo.horaInicio, tramo.horaFin)
+    await base.correr(
+      "INSERT INTO horario_negocio (dia_semana, hora_inicio, hora_fin) VALUES (?, ?, ?)",
+      tramo.diaSemana,
+      tramo.horaInicio,
+      tramo.horaFin,
+    )
   }
 }
 
-function cargarFeriados(base) {
-  const guardar = base.prepare("INSERT INTO feriado (fecha, nombre) VALUES (?, ?)")
-
+async function cargarFeriados(base) {
   for (const feriado of FERIADOS) {
-    guardar.run(feriado.fecha, feriado.nombre)
+    await base.correr(
+      "INSERT INTO feriado (fecha, nombre) VALUES (?, ?)",
+      feriado.fecha,
+      feriado.nombre,
+    )
   }
 }
 
-function cargarCatalogo(base) {
-  const guardarProveedor = base.prepare("INSERT INTO proveedor (nombre) VALUES (?)")
+async function cargarCatalogo(base) {
   const idPorNombre = new Map()
 
   for (const nombre of PROVEEDORES) {
-    const creado = guardarProveedor.run(nombre)
-    idPorNombre.set(nombre, Number(creado.lastInsertRowid))
+    const creado = await base.correr("INSERT INTO proveedor (nombre) VALUES (?)", nombre)
+    idPorNombre.set(nombre, creado.idInsertado)
   }
 
-  const guardarCategoria = base.prepare("INSERT INTO categoria (nombre) VALUES (?)")
-  const guardarServicio = base.prepare(
-    "INSERT INTO servicio (nombre, duracion_minutos, categoria_id) VALUES (?, ?, ?)",
-  )
-  const enlazar = base.prepare(
-    "INSERT INTO servicio_proveedor (servicio_id, proveedor_id) VALUES (?, ?)",
-  )
-
   for (const categoria of CATEGORIAS) {
-    const categoriaCreada = guardarCategoria.run(categoria.nombre)
+    const categoriaCreada = await base.correr(
+      "INSERT INTO categoria (nombre) VALUES (?)",
+      categoria.nombre,
+    )
 
     for (const servicio of categoria.servicios) {
-      const creado = guardarServicio.run(
+      const creado = await base.correr(
+        "INSERT INTO servicio (nombre, duracion_minutos, categoria_id) VALUES (?, ?, ?)",
         servicio.nombre,
         servicio.duracionMinutos,
-        Number(categoriaCreada.lastInsertRowid),
+        categoriaCreada.idInsertado,
       )
 
       for (const nombreProveedor of servicio.proveedores) {
-        enlazar.run(Number(creado.lastInsertRowid), idPorNombre.get(nombreProveedor))
+        await base.correr(
+          "INSERT INTO servicio_proveedor (servicio_id, proveedor_id) VALUES (?, ?)",
+          creado.idInsertado,
+          idPorNombre.get(nombreProveedor),
+        )
       }
     }
   }

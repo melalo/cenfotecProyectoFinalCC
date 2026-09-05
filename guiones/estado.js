@@ -126,16 +126,16 @@ console.log("CUENTAS")
 // huella cifrada, que no se puede volver a leer — es a propósito, y es lo correcto. La fuente de
 // verdad de esa cuenta es `datos-de-prueba.js`, así que si algún día cambia ahí, esto lo dice solo.
 // Es un dato de prueba inventado, y ya está en texto plano en ese archivo y en el README.
-const personal = base.prepare("SELECT nombre, correo FROM personal").all()
+const personal = await base.todas("SELECT nombre, correo FROM personal")
 for (const cuenta of personal) {
   const clave =
     cuenta.correo === PERSONAL_PRECARGADO.correo ? ` / ${PERSONAL_PRECARGADO.contrasena}` : ""
   console.log(`  Personal · ${cuenta.nombre.padEnd(16)} ${cuenta.correo}${clave}`)
 }
 
-const clientes = base
-  .prepare("SELECT nombre, correo, debe_cambiar_contrasena FROM cliente ORDER BY id")
-  .all()
+const clientes = await base.todas(
+  "SELECT nombre, correo, debe_cambiar_contrasena FROM cliente ORDER BY id",
+)
 
 if (clientes.length === 0) {
   console.log("  (todavía no hay ninguna cuenta de cliente: se crean desde la aplicación)")
@@ -155,16 +155,14 @@ console.log("  cifrada. Están anotadas en el README y en PROXIMA-SESION.md.")
 
 // ══════════════════════════════════════════════════════ 3. Qué hay para mostrar
 
-const citas = base
-  .prepare(
-    `SELECT cita.id, cita.inicio, cita.estado, cliente.nombre AS cliente,
+const citas = await base.todas(
+  `SELECT cita.id, cita.inicio, cita.estado, cliente.nombre AS cliente,
             servicio.nombre AS servicio
        FROM cita
        JOIN cliente   ON cliente.id   = cita.cliente_id
        JOIN servicio  ON servicio.id  = cita.servicio_id
       ORDER BY cita.inicio`,
-  )
-  .all()
+)
 
 // **La misma cuenta que usa la regla de negocio**, importada de `tiempo.js`, no rehecha acá: si este
 // guion decidiera por su cuenta qué cita «ya pasó», podría contradecir a la aplicación que está

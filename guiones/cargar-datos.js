@@ -36,7 +36,7 @@ try {
 
 const base = await abrirBase(RUTA_DE_LA_BASE)
 await crearEsquema(base)
-cargarDatosDePrueba(base)
+await cargarDatosDePrueba(base)
 await base.cerrar()
 
 console.log("Base de datos creada desde cero, con los datos de prueba cargados:")
