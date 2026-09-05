@@ -1893,7 +1893,7 @@ líneas.
 Sección «La primera publicación, y por qué falló a propósito». El registro de la máquina primero, el
 diagnóstico después. Mismo criterio que la bitácora anterior.
 
-- [ ] **Paso 9: commit**
+- [x] **Paso 9: commit**
 
 ```bash
 git add api/ vercel.json servidor/aplicacion-desplegada.js .gitignore .env.ejemplo DESPLIEGUE.md
