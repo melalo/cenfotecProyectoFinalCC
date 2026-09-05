@@ -42,9 +42,10 @@ test("la contraseña se guarda cifrada, nunca en texto legible", async (t) => {
 
   await navegador("/api/registro", { method: "POST", cuerpo: ANA })
 
-  const fila = entorno.base
-    .prepare("SELECT contrasena_cifrada FROM cliente WHERE correo = ?")
-    .get(ANA.correo)
+  const fila = await entorno.base.uno(
+    "SELECT contrasena_cifrada FROM cliente WHERE correo = ?",
+    ANA.correo,
+  )
 
   assert.ok(fila, "la clienta tiene que haber quedado guardada")
   assert.notEqual(fila.contrasena_cifrada, ANA.contrasena)

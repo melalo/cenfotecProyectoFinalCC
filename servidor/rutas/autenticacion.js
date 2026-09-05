@@ -69,20 +69,21 @@ export function crearRutasDeAutenticacion({
 
     // El correo tiene que estar libre en las dos tablas: si coincidiera con la cuenta de Personal,
     // al entrar no se sabría cuál de las dos es.
-    if (buscarCuentaPorCorreo(base, correo)) {
+    if (await buscarCuentaPorCorreo(base, correo)) {
       return respuesta.status(409).json({ error: "correo_ya_registrado" })
     }
 
     // Solo se crean clientes. La cuenta de Personal viene precargada y no se autorregistra
     // (RN-10), así que un `tipo` que venga en el pedido se ignora a propósito.
-    const creada = base
-      .prepare(
-        `INSERT INTO cliente (nombre, correo, contrasena_cifrada, debe_cambiar_contrasena)
+    const creada = await base.correr(
+      `INSERT INTO cliente (nombre, correo, contrasena_cifrada, debe_cambiar_contrasena)
          VALUES (?, ?, ?, 0)`,
-      )
-      .run(nombre, correo, cifrarContrasena(contrasena))
+      nombre,
+      correo,
+      cifrarContrasena(contrasena),
+    )
 
-    sesiones.abrir(respuesta, { id: creada.lastInsertRowid, tipo: "cliente" })
+    sesiones.abrir(respuesta, { id: creada.idInsertado, tipo: "cliente" })
 
     // `debeCambiarContrasena` va explícito en `false` desde la pieza 7, y no es de más: las tres
     // puertas que le dan una cuenta a la pantalla —registrarse, entrar y «quién soy»— tienen que
@@ -90,7 +91,7 @@ export function crearRutasDeAutenticacion({
     // contraseña ella misma (RN-10), así que nunca tiene nada pendiente de cambiar; sin este campo
     // la pantalla recibiría un `undefined` y funcionaría por casualidad, no porque el API lo diga.
     return respuesta.status(201).json({
-      id: Number(creada.lastInsertRowid),
+      id: creada.idInsertado,
       nombre,
       correo,
       tipo: "cliente",
@@ -109,7 +110,7 @@ export function crearRutasDeAutenticacion({
     const correo = normalizarCorreo(pedido.body?.correo)
     const contrasena = String(pedido.body?.contrasena ?? "")
 
-    const encontrada = buscarCuentaPorCorreo(base, correo)
+    const encontrada = await buscarCuentaPorCorreo(base, correo)
     const huellaGuardada = encontrada?.cuenta.contrasena_cifrada ?? HUELLA_DE_RELLENO
     const coincide = contrasenaCoincide(contrasena, huellaGuardada)
 
@@ -148,7 +149,7 @@ export function crearRutasDeAutenticacion({
       return respuesta.status(422).json({ error: "datos_incompletos" })
     }
 
-    const encontrada = buscarCuentaPorSesion(base, sesion)
+    const encontrada = await buscarCuentaPorSesion(base, sesion)
     if (!encontrada) return respuesta.status(401).json({ error: "sin_sesion" })
 
     // La contraseña actual se comprueba **antes** que la forma de la nueva: si no la acierta, no
@@ -179,17 +180,19 @@ export function crearRutasDeAutenticacion({
       // en el medio dejaría la contraseña nueva puesta y la obligación encendida: la persona
       // quedaría trabada en esa pantalla sin manera de salir, porque su contraseña «actual» ya sería
       // la nueva y no la temporal que la pantalla recuerda.
-      base
-        .prepare(
-          "UPDATE cliente SET contrasena_cifrada = ?, debe_cambiar_contrasena = 0 WHERE id = ?",
-        )
-        .run(cifrarContrasena(contrasenaNueva), encontrada.cuenta.id)
+      await base.correr(
+        "UPDATE cliente SET contrasena_cifrada = ?, debe_cambiar_contrasena = 0 WHERE id = ?",
+        cifrarContrasena(contrasenaNueva),
+        encontrada.cuenta.id,
+      )
     } else {
       // La cuenta de Personal no tiene esa columna: viene precargada (RN-10) y nunca nació con una
       // contraseña temporal, así que no hay nada que apagar.
-      base
-        .prepare("UPDATE personal SET contrasena_cifrada = ? WHERE id = ?")
-        .run(cifrarContrasena(contrasenaNueva), encontrada.cuenta.id)
+      await base.correr(
+        "UPDATE personal SET contrasena_cifrada = ? WHERE id = ?",
+        cifrarContrasena(contrasenaNueva),
+        encontrada.cuenta.id,
+      )
     }
 
     // 204 es «lo hice y no tengo nada que contarte». La pantalla ya sabe qué cambió, y devolver la
@@ -206,13 +209,13 @@ export function crearRutasDeAutenticacion({
   // genérico del login evita desde la pieza 1 (`DISENO.md`, «Login incorrecto»).
   rutas.post("/contrasena/olvide", async (pedido, respuesta) => {
     const correo = normalizarCorreo(pedido.body?.correo)
-    const encontrada = buscarCuentaPorCorreo(base, correo)
+    const encontrada = await buscarCuentaPorCorreo(base, correo)
 
     if (encontrada) {
       const cuenta = { id: encontrada.cuenta.id, tipo: encontrada.tipo }
       const ahora = reloj()
 
-      const codigo = crearEnlaceDeRecuperacion({ base, cuenta, ahora })
+      const codigo = await crearEnlaceDeRecuperacion({ base, cuenta, ahora })
 
       // El correo se manda **después** de que el token está guardado, nunca antes: si se hiciera al
       // revés, un correo que sale y un token que no se guardó dejarían un enlace que no abre nada.
@@ -243,7 +246,7 @@ export function crearRutasDeAutenticacion({
     // El enlace se comprueba **primero**: si no sirve, quien lo mandó no tiene por qué enterarse de
     // nada más. Es el mismo orden con el que `POST /api/contrasena/cambiar` pide la contraseña
     // actual antes de mirar la nueva.
-    const encontrado = buscarEnlaceQueTodaviaSirve({ base, codigo, ahora })
+    const encontrado = await buscarEnlaceQueTodaviaSirve({ base, codigo, ahora })
     if (!encontrado) {
       return respuesta.status(422).json({ error: "token_invalido" })
     }
@@ -271,28 +274,30 @@ export function crearRutasDeAutenticacion({
     // Y el orden adentro también importa: **primero se gasta el enlace**. Si dos pedidos llegaran
     // con el mismo código a la vez, el segundo encuentra que ya no queda nada por marcar y se va
     // sin tocar la contraseña.
-    const cambiar = base.transaction(() => {
-      if (!marcarEnlaceComoUsado({ base, token: encontrado.token, ahora })) return false
+    const seCambio = await base.enTransaccion(async (tx) => {
+      if (!(await marcarEnlaceComoUsado({ base: tx, token: encontrado.token, ahora }))) return false
 
       if (encontrado.cuenta.tipo === "personal") {
-        base
-          .prepare("UPDATE personal SET contrasena_cifrada = ? WHERE id = ?")
-          .run(cifrarContrasena(contrasena), encontrado.cuenta.id)
+        await tx.correr(
+          "UPDATE personal SET contrasena_cifrada = ? WHERE id = ?",
+          cifrarContrasena(contrasena),
+          encontrado.cuenta.id,
+        )
       } else {
         // `debe_cambiar_contrasena = 0` es la parte que se puede pasar por alto: si quien olvidó su
         // contraseña era alguien con una temporal puesta por Personal (RN-11), la que acaba de
         // elegir **la eligió ella**, así que ya no hay nada temporal que obligarla a cambiar.
-        base
-          .prepare(
-            "UPDATE cliente SET contrasena_cifrada = ?, debe_cambiar_contrasena = 0 WHERE id = ?",
-          )
-          .run(cifrarContrasena(contrasena), encontrado.cuenta.id)
+        await tx.correr(
+          "UPDATE cliente SET contrasena_cifrada = ?, debe_cambiar_contrasena = 0 WHERE id = ?",
+          cifrarContrasena(contrasena),
+          encontrado.cuenta.id,
+        )
       }
 
       return true
     })
 
-    if (!cambiar()) {
+    if (!seCambio) {
       return respuesta.status(422).json({ error: "token_invalido" })
     }
 
@@ -309,7 +314,7 @@ export function crearRutasDeAutenticacion({
 
     // Se vuelve a leer la cuenta de la base en vez de confiar en la galleta: así, si el nombre o
     // el estado de la contraseña cambiaron, la aplicación muestra lo que hay hoy.
-    const encontrada = buscarCuentaPorSesion(base, sesion)
+    const encontrada = await buscarCuentaPorSesion(base, sesion)
     if (!encontrada) return respuesta.status(401).json({ error: "sin_sesion" })
 
     return respuesta.status(200).json(comoSeVeLaCuenta(encontrada))
@@ -326,21 +331,21 @@ function normalizarCorreo(correo) {
     .toLowerCase()
 }
 
-function buscarCuentaPorCorreo(base, correo) {
+async function buscarCuentaPorCorreo(base, correo) {
   if (correo === "") return null
 
-  const cliente = base.prepare("SELECT * FROM cliente WHERE correo = ?").get(correo)
+  const cliente = await base.uno("SELECT * FROM cliente WHERE correo = ?", correo)
   if (cliente) return { cuenta: cliente, tipo: "cliente" }
 
-  const personal = base.prepare("SELECT * FROM personal WHERE correo = ?").get(correo)
+  const personal = await base.uno("SELECT * FROM personal WHERE correo = ?", correo)
   if (personal) return { cuenta: personal, tipo: "personal" }
 
   return null
 }
 
-function buscarCuentaPorSesion(base, sesion) {
+async function buscarCuentaPorSesion(base, sesion) {
   const tabla = sesion.tipo === "personal" ? "personal" : "cliente"
-  const cuenta = base.prepare(`SELECT * FROM ${tabla} WHERE id = ?`).get(sesion.id)
+  const cuenta = await base.uno(`SELECT * FROM ${tabla} WHERE id = ?`, sesion.id)
   return cuenta ? { cuenta, tipo: sesion.tipo } : null
 }
 

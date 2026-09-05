@@ -106,13 +106,13 @@ async function prepararRecuperacion(contexto) {
     },
 
     /** Las filas de `token_recuperacion`, de la más nueva a la más vieja. */
-    tokens() {
-      return entorno.base.prepare("SELECT * FROM token_recuperacion ORDER BY id DESC").all()
+    async tokens() {
+      return await entorno.base.todas("SELECT * FROM token_recuperacion ORDER BY id DESC")
     },
 
     /** Las filas de `correo_enviado`, de la más nueva a la más vieja. */
-    correosRegistrados() {
-      return entorno.base.prepare("SELECT * FROM correo_enviado ORDER BY id DESC").all()
+    async correosRegistrados() {
+      return await entorno.base.todas("SELECT * FROM correo_enviado ORDER BY id DESC")
     },
   }
 }
@@ -238,7 +238,7 @@ test("comprobación 6: pedir el enlace para un correo que no existe contesta lo 
   assert.deepEqual(sinCuenta.cuerpo, conCuenta.cuerpo)
 
   assert.equal(enviador.enviados.length, correosDespuesDeLaBuena, "no se manda ningún correo")
-  assert.equal(tokens().length, 1, "tampoco se guarda ningún token")
+  assert.equal((await tokens()).length, 1, "tampoco se guarda ningún token")
 })
 
 test("comprobación 7: la cuenta de Personal restablece su contraseña igual que un cliente", async (contexto) => {
@@ -249,7 +249,7 @@ test("comprobación 7: la cuenta de Personal restablece su contraseña igual que
   assert.equal(respuesta.estado, 204)
   assert.equal(ultimoCorreo().para, PERSONAL.correo)
 
-  const [token] = tokens()
+  const [token] = await tokens()
   assert.equal(token.cliente_id, null, "un token de Personal no tiene cliente")
   assert.ok(token.personal_id, "y sí tiene la cuenta de Personal")
 
@@ -269,7 +269,7 @@ test("comprobación 8: el correo de recuperación queda registrado con su tipo y
 
   await pedirElEnlace(ANA.correo)
 
-  const [fila] = correosRegistrados()
+  const [fila] = await correosRegistrados()
   assert.equal(fila.tipo, "recuperacion")
   assert.equal(fila.cita_id, null, "el correo de contraseña no es de ninguna cita")
   assert.equal(fila.destinatario_correo, ANA.correo)
@@ -287,7 +287,7 @@ test("el correo de recuperación de Personal se registra a nombre de Personal, n
 
   await pedirElEnlace(PERSONAL.correo)
 
-  const [fila] = correosRegistrados()
+  const [fila] = await correosRegistrados()
   assert.equal(fila.tipo, "recuperacion")
   assert.equal(fila.cliente_id, null, "Personal no es cliente de nadie")
   assert.ok(fila.personal_id, "pero el registro tiene que decir a quién le llegó")
@@ -357,7 +357,7 @@ test("el token queda marcado como usado, con la hora en que se usó", async (con
   reloj.adelantarMinutos(10)
   await restablecer(codigoDelCorreo(ultimoCorreo()))
 
-  const [token] = tokens()
+  const [token] = await tokens()
   assert.equal(token.usado_en, escribirMomento(reloj()))
 })
 
@@ -403,9 +403,10 @@ test("restablecer la contraseña apaga la obligación de cambiar la temporal (RN
     "la eligió ella misma, así que ya no hay nada temporal que cambiar",
   )
 
-  const guardado = entorno.base
-    .prepare("SELECT debe_cambiar_contrasena FROM cliente WHERE correo = ?")
-    .get("marta@ejemplo.com")
+  const guardado = await entorno.base.uno(
+    "SELECT debe_cambiar_contrasena FROM cliente WHERE correo = ?",
+    "marta@ejemplo.com",
+  )
   assert.equal(guardado.debe_cambiar_contrasena, 0)
 })
 
@@ -416,7 +417,7 @@ test("un correo mal escrito no rompe nada: contesta lo mismo y no manda nada", a
 
   assert.equal(respuesta.estado, 204)
   assert.equal(enviador.enviados.length, 0)
-  assert.equal(tokens().length, 0)
+  assert.equal((await tokens()).length, 0)
 })
 
 test("el correo llega escrito en sus dos versiones, con diseño y sin él", async (contexto) => {

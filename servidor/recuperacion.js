@@ -65,21 +65,18 @@ function inventarCodigo() {
  * **Pedir un enlace no toca la contraseña vieja** ni mata los enlaces anteriores: quien lo pidió por
  * error, o se acordó de su contraseña, no queda afuera de su cuenta por nada (RN-27).
  */
-export function crearEnlaceDeRecuperacion({ base, cuenta, ahora }) {
+export async function crearEnlaceDeRecuperacion({ base, cuenta, ahora }) {
   const codigo = inventarCodigo()
   const vence = new Date(ahora.getTime() + MINUTOS_QUE_DURA_EL_ENLACE * MILISEGUNDOS_POR_MINUTO)
 
-  base
-    .prepare(
-      `INSERT INTO token_recuperacion (cliente_id, personal_id, codigo, vence_en)
+  await base.correr(
+    `INSERT INTO token_recuperacion (cliente_id, personal_id, codigo, vence_en)
        VALUES (?, ?, ?, ?)`,
-    )
-    .run(
-      cuenta.tipo === "cliente" ? cuenta.id : null,
-      cuenta.tipo === "personal" ? cuenta.id : null,
-      codigo,
-      escribirMomento(vence),
-    )
+    cuenta.tipo === "cliente" ? cuenta.id : null,
+    cuenta.tipo === "personal" ? cuenta.id : null,
+    codigo,
+    escribirMomento(vence),
+  )
 
   return codigo
 }
@@ -94,11 +91,11 @@ export function crearEnlaceDeRecuperacion({ base, cuenta, ahora }) {
  *
  * Devuelve `{ token, cuenta: { id, tipo } }`.
  */
-export function buscarEnlaceQueTodaviaSirve({ base, codigo, ahora }) {
+export async function buscarEnlaceQueTodaviaSirve({ base, codigo, ahora }) {
   const texto = String(codigo ?? "")
   if (texto === "") return null
 
-  const token = base.prepare("SELECT * FROM token_recuperacion WHERE codigo = ?").get(texto)
+  const token = await base.uno("SELECT * FROM token_recuperacion WHERE codigo = ?", texto)
   if (!token) return null
 
   // Un solo uso (RN-27): en cuanto tiene fecha de uso, no vuelve a servir nunca.
@@ -124,12 +121,14 @@ export function buscarEnlaceQueTodaviaSirve({ base, codigo, ahora }) {
  * es la base —y no el orden en que se ejecutó el código— la que garantiza que solo uno lo use. Es la
  * misma idea del índice único que protege el horario de una cita desde la pieza 3.
  */
-export function marcarEnlaceComoUsado({ base, token, ahora }) {
-  const resultado = base
-    .prepare("UPDATE token_recuperacion SET usado_en = ? WHERE id = ? AND usado_en IS NULL")
-    .run(escribirMomento(ahora), token.id)
+export async function marcarEnlaceComoUsado({ base, token, ahora }) {
+  const resultado = await base.correr(
+    "UPDATE token_recuperacion SET usado_en = ? WHERE id = ? AND usado_en IS NULL",
+    escribirMomento(ahora),
+    token.id,
+  )
 
-  return resultado.changes === 1
+  return resultado.cambios === 1
 }
 
 /**

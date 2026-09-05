@@ -201,9 +201,10 @@ test("la contraseña nueva queda guardada cifrada, no como la escribió la perso
 
   await cambiarContrasena(nuevo, contrasenaTemporal, CONTRASENA_ELEGIDA)
 
-  const fila = entorno.base
-    .prepare("SELECT contrasena_cifrada FROM cliente WHERE correo = ?")
-    .get(CORREO_NUEVO)
+  const fila = await entorno.base.uno(
+    "SELECT contrasena_cifrada FROM cliente WHERE correo = ?",
+    CORREO_NUEVO,
+  )
 
   assert.notEqual(fila.contrasena_cifrada, CONTRASENA_ELEGIDA)
   assert.ok(!fila.contrasena_cifrada.includes(CONTRASENA_ELEGIDA))
