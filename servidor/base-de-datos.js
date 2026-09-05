@@ -278,20 +278,12 @@ function envolver(cruda) {
   }
 
   const base = {
-    // ── La cara vieja. Se borra al final de la Etapa 2 ──────────────────────────────────────
+    // ── La cara nueva, que desde el final de la Etapa 2 es la única ─────────────────────────
     //
-    // No está vigilada, y es a propósito: las cinco transacciones que el proyecto tiene hoy se
-    // abren con `base.transaction(...)` —cuatro en `reservas.js` y una en `rutas/autenticacion.js`—
-    // y la bandera de más arriba no las cuenta ni tiene por qué. Vigilar la cara vieja daría
-    // errores falsos en el único código que todavía la usa. Cuando esas cinco pasen a
-    // `enTransaccion` en la Etapa 2, la cara vieja se va y esta advertencia con ella.
-    prepare: (sql) => cruda.prepare(sql),
-    exec: (sql) => cruda.exec(sql),
-    pragma: (texto) => cruda.pragma(texto),
-    transaction: (hacer) => cruda.transaction(hacer),
-    close: () => cruda.close(),
-
-    // ── La cara nueva ───────────────────────────────────────────────────────────────────────
+    // La cara vieja —`prepare`, `exec`, `pragma`, `transaction`, `close`— vivió acá mientras los
+    // 107 puntos se mudaban de a uno. Se borró el 2026-09-04, al terminar la Etapa 2, cuando el
+    // `grep` que la buscaba no encontró a nadie usándola. Borrarla **es** la comprobación: mientras
+    // existiera, un punto olvidado seguiría funcionando y nadie se enteraría hasta la Etapa 3.
     //
     // La de `base` se calla mientras haya una transacción abierta. La de un `tx` responde sólo
     // mientras la suya dure.

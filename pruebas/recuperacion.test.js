@@ -493,14 +493,11 @@ test("una base de antes de la pieza 9 se pone al día sin perder los correos ya 
     rmSync(carpeta, { recursive: true, force: true })
   })
 
-  const columnas = base
-    .prepare("PRAGMA table_info(correo_enviado)")
-    .all()
-    .map((una) => una.name)
+  const columnas = (await base.todas("PRAGMA table_info(correo_enviado)")).map((una) => una.name)
   assert.ok(columnas.includes("personal_id"), "la tabla tiene que quedar con la columna nueva")
 
   // Lo que de verdad importa: la fila que ya estaba sigue ahí, entera.
-  const guardada = base.prepare("SELECT * FROM correo_enviado WHERE id = 1").get()
+  const guardada = await base.uno("SELECT * FROM correo_enviado WHERE id = 1")
   assert.equal(guardada.destinatario_correo, "ana@ejemplo.com")
   assert.equal(guardada.cliente_id, 7)
   assert.equal(guardada.personal_id, null)
@@ -509,20 +506,21 @@ test("una base de antes de la pieza 9 se pone al día sin perder los correos ya 
   assert.equal(guardada.exito, 1)
 
   // Y la tabla ya acepta lo que antes no podía: un correo que le llegó a Personal.
-  base.prepare("INSERT INTO personal (nombre, correo, contrasena_cifrada) VALUES (?, ?, ?)").run(
+  await base.correr(
+    "INSERT INTO personal (nombre, correo, contrasena_cifrada) VALUES (?, ?, ?)",
     "Marta Jiménez",
     "personal@ejemplo.com",
     "sal:huella",
   )
-  base
-    .prepare(
-      `INSERT INTO correo_enviado
+  await base.correr(
+    `INSERT INTO correo_enviado
          (destinatario_correo, cliente_id, personal_id, cita_id, tipo, enviado_en, exito)
        VALUES (?, NULL, 1, NULL, 'recuperacion', '2026-08-28T10:00:00-06:00', 1)`,
-    )
-    .run("personal@ejemplo.com")
+    "personal@ejemplo.com",
+  )
 
-  assert.equal(base.prepare("SELECT COUNT(*) AS cuantos FROM correo_enviado").get().cuantos, 2)
+  const cuantos = await base.uno("SELECT COUNT(*) AS cuantos FROM correo_enviado")
+  assert.equal(cuantos.cuantos, 2)
 })
 
 test("el índice de correos por cita sobrevive a la mudanza", async (contexto) => {
@@ -553,10 +551,7 @@ test("el índice de correos por cita sobrevive a la mudanza", async (contexto) =
 
   // Un índice se va con la tabla que vigila. Si nadie lo vuelve a crear, la pieza 6 se quedaría sin
   // su atajo y nadie se enteraría: la aplicación funcionaría igual, solo que más lento cada día.
-  const indices = base
-    .prepare("PRAGMA index_list(correo_enviado)")
-    .all()
-    .map((uno) => uno.name)
+  const indices = (await base.todas("PRAGMA index_list(correo_enviado)")).map((uno) => uno.name)
   assert.ok(indices.includes("correo_por_cita"))
 })
 

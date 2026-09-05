@@ -26,7 +26,7 @@ if (!sesionSecreto) {
 const base = await abrirBase(RUTA_DE_LA_BASE)
 await crearEsquema(base)
 
-const { cuantas } = base.prepare("SELECT COUNT(*) AS cuantas FROM personal").get()
+const { cuantas } = await base.uno("SELECT COUNT(*) AS cuantas FROM personal")
 if (cuantas === 0) {
   console.warn(
     "Aviso: la base de datos está vacía. Si querés los datos de prueba (la cuenta de Personal\n" +
