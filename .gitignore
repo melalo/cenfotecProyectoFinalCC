@@ -22,10 +22,22 @@ Consigna Proyecto del Curso - SINT-732.docx
 
 # El archivo de claves que `vercel link` baja solo, con el token de la cuenta.
 #
-# ⚠️ **Esta línea dice `.env*.local` y NO `.env*`, y la diferencia importa.** El comando
-# `npx vercel link` escribió `.env*` acá por su cuenta el 2026-09-05, y eso habría dejado afuera
-# del repositorio a **`.env.ejemplo`**, que sí se sube a propósito: es el archivo que le dice a
-# quien clona el proyecto qué variables hacen falta, y sin él el `README.md` deja de cumplirse.
-# No rompía nada de inmediato —Git no deja de seguir un archivo que ya venía siguiendo— así que
-# es la clase de trampa que se descubre el día que alguien clona limpio.
+# ⚠️ **Esta línea dice `.env*.local` y NO `.env*`, y la diferencia importa.** Los comandos de
+# Vercel escriben `.env*` acá por su cuenta —lo hizo `npx vercel link` y lo volvió a hacer
+# `npx vercel integration add`, el mismo día— y eso deja afuera del repositorio a
+# **`.env.ejemplo`**, que sí se sube a propósito: es el archivo que le dice a quien clona el
+# proyecto qué variables hacen falta, y sin él el `README.md` deja de cumplirse.
+#
+# No rompe nada de inmediato —Git no deja de seguir un archivo que ya venía siguiendo— así que es
+# la clase de trampa que se descubre el día que alguien clona limpio. **Si volvés a correr
+# cualquier comando de Vercel, revisá este archivo después.**
 .env*.local
+
+# Las herramientas que la integración de Turso instaló sola el 2026-09-05, al correr
+# `vercel integration add tursocloud/database`. **No las escribió la estudiante**, así que se
+# quedan afuera por el mismo criterio que `.claude/skills/mi-proyecto/` — y además, si se subieran,
+# confundirían cuál es la skill propia del proyecto que pide la consigna (esa es
+# `.claude/skills/launch/`, y esa sí se sube).
+.agents/
+.claude/skills/turso-cloud/
+skills-lock.json

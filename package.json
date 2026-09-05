@@ -12,6 +12,8 @@
     "prestart": "npm run estilos",
     "start": "node servidor/index.js",
     "datos": "node guiones/cargar-datos.js",
+    "esquema": "node guiones/esquema.js",
+    "sembrar": "node guiones/sembrar-remoto.js",
     "estado": "node guiones/estado.js",
     "test": "node --test"
   },

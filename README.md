@@ -8,6 +8,19 @@ teléfono, así hay un solo calendario.
 Es el proyecto final del curso **SINT-732 · Laboratorio Ejecutivo en Claude Code** (Universidad
 CENFOTEC).
 
+## 🌐 La aplicación está publicada: **https://reservas-bienestar.vercel.app**
+
+Corre en **Vercel**, con la base de datos alojada en **Turso** *(desde el 2026-09-05)*. Se puede
+crear una cuenta y reservar sin instalar nada.
+
+**Y no hace falta nada de eso para trabajar en el proyecto.** `npm test` y `npm start` siguen
+funcionando **sin configurar una sola credencial y sin internet**: sin la variable
+`TURSO_DATABASE_URL`, la aplicación usa el archivo de `datos/` igual que siempre. Eso es a propósito
+y es lo que mantiene verde la integración continua, que corre sin credenciales de ningún servicio.
+
+La bitácora del despliegue —con la salida cruda de cada paso y las trampas que aparecieron— está en
+[`DESPLIEGUE.md`](DESPLIEGUE.md).
+
 ---
 
 > ## ESTADO ACTUAL: piezas 1 y 2 cerradas (2026-08-19)

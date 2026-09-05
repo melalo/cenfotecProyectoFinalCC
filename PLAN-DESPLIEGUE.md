@@ -1915,7 +1915,7 @@ la presentación todavía. Nada roto.
 - Crear: `guiones/esquema.js`, `guiones/sembrar-remoto.js`
 - Modificar: `package.json`, `README.md`, `DESPLIEGUE.md`
 
-- [ ] **Paso 1: el comando que crea el esquema donde se le diga**
+- [x] **Paso 1: el comando que crea el esquema donde se le diga**
 
 Crear `guiones/esquema.js`:
 
@@ -1950,7 +1950,7 @@ console.log(`Listo. ${tablas.length} tablas: ${tablas.map((una) => una.name).joi
 await base.cerrar()
 ```
 
-- [ ] **Paso 2: correrlo contra Turso**
+- [x] **Paso 2: correrlo contra Turso**
 
 ```bash
 TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" npm run esquema
@@ -1961,7 +1961,7 @@ Tiene que listar las **12** tablas: `categoria`, `cita`, `cliente`, `configuraci
 `servicio_proveedor`, `token_recuperacion`. Contalas contra `servidor/esquema.js`; si falta alguna, se
 cortó en el medio y hay que ver por qué.
 
-- [ ] **Paso 3: el comando que siembra el catálogo**
+- [x] **Paso 3: el comando que siembra el catálogo**
 
 Crear `guiones/sembrar-remoto.js`. Carga lo que es **configuración** y sin lo cual la aplicación no
 tiene nada que mostrar: las categorías, los servicios, los proveedores, el horario del negocio, los
@@ -2023,7 +2023,7 @@ En `package.json`, junto a los otros:
 TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" npm run sembrar
 ```
 
-- [ ] **Paso 4: cargar las variables en Vercel**
+- [x] **Paso 4: cargar las variables en Vercel**
 
 Son cinco, y **no van a ningún archivo del repositorio**:
 
@@ -2046,13 +2046,13 @@ despliegue.
 > esos mismos nombres. Es la segunda trampa ya pagada: los nombres son exactamente
 > `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`, y por eso el código los busca así.
 
-- [ ] **Paso 5: publicar, y averiguar la dirección**
+- [x] **Paso 5: publicar, y averiguar la dirección**
 
 ```bash
 npx vercel --prod
 ```
 
-- [ ] **Paso 6: poner `DIRECCION_PUBLICA` y volver a publicar**
+- [x] **Paso 6: poner `DIRECCION_PUBLICA` y volver a publicar**
 
 ```bash
 npx vercel env add DIRECCION_PUBLICA production    # la dirección del paso anterior, sin barra al final
@@ -2080,12 +2080,12 @@ Esto no se puede hacer con `npm test`: son las comprobaciones que sólo existen 
 | 10 | `npx vercel logs <url>` | Ningún error inesperado |
 | 11 | Cronometrar el calendario de un mes | Anotar el número. Si se siente lento, es la trampa 3, y **ahora hay una pantalla concreta que medir** |
 
-- [ ] **Paso 8: borrar los datos de la prueba**
+- [x] **Paso 8: borrar los datos de la prueba**
 
 La cita y la cuenta del paso 7 se borran, igual que se borró la del despliegue anterior. Y se anota
 que se borraron.
 
-- [ ] **Paso 9: la puerta de calidad**
+- [x] **Paso 9: la puerta de calidad**
 
 ```bash
 npm test
@@ -2095,7 +2095,7 @@ npm test
 pruebas sigan corriendo contra el archivo local, sin internet y sin credenciales, es lo que mantiene
 verde la integración continua de GitHub.
 
-- [ ] **Paso 10: escribirlo, y contarlo en el README**
+- [x] **Paso 10: escribirlo, y contarlo en el README**
 
 En `DESPLIEGUE.md`: la dirección pública, las cinco variables (**sin valores**), los dos despliegues
 y por qué, y la tabla de las 11 comprobaciones con lo que dio cada una.
