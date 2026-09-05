@@ -132,7 +132,7 @@ descartaron. **No lo cambies sin actualizar ese documento con la razón.**
 | Capa | Elección | Repositorio oficial |
 |---|---|---|
 | Backend | Node.js con **Express** | https://github.com/expressjs/express |
-| Base de datos | **SQLite**, accedida con **better-sqlite3** | https://github.com/WiseLibs/better-sqlite3 |
+| Base de datos | **SQLite**, accedida con **@libsql/client** *(desde el 2026-09-04)* | https://github.com/tursodatabase/libsql-client-ts |
 | Frontend | HTML + CSS con **Sass** | https://github.com/sass/dart-sass |
 | Correo | **Resend**, llamado con `fetch` — **sin instalar su paquete de npm** (ver `DISENO.md`, pieza 4) | https://resend.com/docs/api-reference/emails/send-email |
 | Disparador del recordatorio | Tarea programada en **GitHub Actions** | https://github.com/features/actions |
@@ -148,12 +148,14 @@ negocio, y a este tamaño el costo de aprender y configurar React no se justific
 
 - **Node.js 20 o superior** y **npm** (viene con Node). Comprobalo con `node --version`.
 - **Git.**
-- Nada más. SQLite no se instala aparte: `better-sqlite3` lo trae adentro, y la base es un archivo
-  dentro del proyecto.
+- Nada más. SQLite no se instala aparte: `@libsql/client` lo trae adentro, y la base es un archivo
+  dentro del proyecto. **Tampoco hace falta ninguna cuenta ni ninguna clave de ningún servicio**
+  para levantarlo ni para correr las pruebas.
 
 **Esa promesa de «Node 20 o superior» está comprobada, no solo escrita:** la integración continua
 corre las pruebas en Node 20 y en Node 24 en cada push. Se montó en la pieza 3 y lo primero que
-encontró fue que `better-sqlite3` había quedado en una versión que exige Node 22 — la promesa era
+encontró fue que `better-sqlite3` —la biblioteca que se usaba entonces— había quedado en una
+versión que exige Node 22 — la promesa era
 falsa desde la pieza 1 y nadie se había dado cuenta, porque en la máquina de la estudiante corre
 Node 24. Se bajó la dependencia a la línea 12, que sí soporta Node 20. La razón, con sus
 alternativas, está en `DISENO.md`, «Decisiones tomadas al construir la pieza 3».

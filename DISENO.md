@@ -190,7 +190,7 @@ producción real.
 | Decisión | Opciones consideradas | Elección | Razón |
 |---|---|---|---|
 | Framework de backend | Express, Fastify, sin framework | Express | Estándar para Node.js, elección obvia a este tamaño. |
-| Acceso a SQLite | `better-sqlite3`, un ORM | `better-sqlite3` | Más directo para un modelo de datos chico. |
+| Acceso a SQLite | `better-sqlite3`, un ORM | ~~`better-sqlite3`~~ → **`@libsql/client`** *(cambiado el 2026-09-04)* | Más directo para un modelo de datos chico. **Se cambió al publicar la aplicación:** `better-sqlite3` sólo sabe abrir un archivo del disco, y un despliegue no tiene disco donde guardar. `@libsql/client` habla el mismo SQL contra un archivo **o** contra una base de la red, así que el mismo código sirve en los dos lados. El costo fue que toda consulta pasó a esperarse. |
 | Servicio de correo | Resend, SendGrid | Resend | Más simple de configurar a este tamaño. |
 | Vencimiento del enlace de recuperación | 15 min, 1 hora, 24 horas | 1 hora | Tiempo suficiente sin dejarlo abierto de más. |
 | ~~Duración de la sesión de login~~ **(esta fila ya no manda)** | Hasta cerrar el navegador, 7 días, 30 días | ~~7 días~~ → **4 horas** | **Superada el 2026-08-28: la regla se mudó a `ESPECIFICACION.md` y es RN-29.** Se eligieron 7 días el 2026-08-11; la estudiante los cambió a 4 horas después de vivirlo. **La fila se deja tachada y no se borra**, porque es la prueba de que la decisión original existió y de dónde salió. La razón completa del cambio está en RN-29. |

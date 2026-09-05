@@ -1532,6 +1532,74 @@ Fijate que `envolver` se usa **también** para la transacción: el objeto que de
 `cliente.transaction()` tiene `execute` con la misma forma, así que la misma envoltura le sirve. Eso
 es lo que hace que `tx` tenga la misma cara que la base, que es de lo que depende toda la Etapa 2.
 
+> ## ✅ Lo que la Etapa 3 encontró de verdad *(ejecutada el 2026-09-04)*
+>
+> **La Etapa 0 nunca se corrió**, así que las cinco preguntas se contestaron acá, con el motor ya
+> cambiado. Salió bien —el proyecto quedó en verde— pero **el plan tenía razón en pedir la sonda
+> primero**: la respuesta a la pregunta 2 era «no coincide», y sin la prueba del adaptador que la
+> vigilaba, CA-1 se habría roto en el despliegue con las otras 320 pruebas en verde.
+>
+> ### 1. El nombre del rechazo del índice único **cambió**, y de una manera tramposa
+>
+> No es que sea otro nombre: es que el nombre fino **se mudó de lugar**. Medido:
+>
+> | Lo que se violó | `falla.code` | `falla.cause.code` |
+> |---|---|---|
+> | índice único | `SQLITE_CONSTRAINT` | `SQLITE_CONSTRAINT_UNIQUE` |
+> | llave foránea | `SQLITE_CONSTRAINT` | `SQLITE_CONSTRAINT_FOREIGNKEY` |
+> | un `CHECK` | `SQLITE_CONSTRAINT` | `SQLITE_CONSTRAINT_CHECK` |
+>
+> **Por eso la solución que el plan proponía —una lista de nombres aceptados en `code`— habría sido
+> peor que el problema.** `SQLITE_CONSTRAINT` es el mismo texto para las tres, así que una llave
+> foránea rota se le contestaría a la persona como «ese horario ya no está libre»: un mensaje falso
+> sobre un defecto de programación, y encima uno que nadie iría a investigar porque suena normal.
+>
+> Lo que se hizo: `reservas.js` mira `falla.cause?.code ?? falla.code`, y hay **una prueba nueva** que
+> comprueba que una llave foránea rota **no** se confunde con CA-1.
+>
+> ### 2. Las llaves foráneas **sí** se respetan (pregunta 3 de la sonda)
+>
+> Medido contra el motor nuevo: insertar una cita con un `cliente_id` inventado falla con
+> `SQLITE_CONSTRAINT_FOREIGNKEY`. No hay ninguna diferencia que anotar.
+>
+> ### 3. Las transacciones interactivas funcionan (pregunta 4)
+>
+> `cliente.transaction("write")` anda, así que las cinco transacciones quedaron como el plan las
+> escribió. No hizo falta `batch`.
+>
+> ### 4. Lo que **no** estaba previsto: `base` adentro de una transacción lee viejo, en silencio
+>
+> El andamio de la Etapa 2 se quitó acá, como el plan decía. Al medir qué pasa sin él:
+>
+> | Lo que se hace adentro de un `enTransaccion` | Qué pasa |
+> |---|---|
+> | **leer** con `base` | **no falla, y devuelve el dato de ANTES** |
+> | escribir con `base` | falla con `SQLITE_BUSY` |
+> | `tx.enTransaccion(...)` | salía `TypeError: cliente.transaction is not a function` → se le puso el mensaje explicativo |
+> | `base.enTransaccion(...)` anidado | falla con `SQLITE_BUSY`, y la base queda sana |
+>
+> La primera fila es el defecto silencioso que el andamio existía para cazar, confirmado. Ya no hay
+> nada automático que lo vigile: **lo único que protege CA-1 es que el enhebrado de `tx` esté bien
+> hecho**. Quedó una prueba que deja el comportamiento medido y a la vista, y la regla escrita en
+> `CLAUDE.md`.
+>
+> ### 5. Y una de Windows: `close()` no libera el archivo
+>
+> `@libsql/client` 0.18.0 (la última publicada) devuelve de `close()` pero deja el archivo tomado: se
+> suelta **sólo cuando pasa el recolector de basura**. Medido: ni en el acto, ni tras un tick, ni tras
+> 200 ms. Sin arreglarlo, la limpieza de cada prueba tira `EPERM` y **la suite entera se pone roja en
+> Windows aunque no haya nada mal**. Se resolvió con `borrarCarpetaDePrueba` en `pruebas/ayudas.js`,
+> que aguanta ese error y sólo ese. En Linux ese camino no se ejecuta nunca, así que la integración
+> continua sigue comprobando el borrado de verdad.
+>
+> ### Cómo quedó
+>
+> `npm test` **tres veces seguidas: 323 de 323, fail 0** (las 321 de antes más 2 nuevas).
+> `npm run datos` y `npm run estado`, corridos. La aplicación levantada y recorrida entera:
+> registrarse, catálogo, calendario, reservar, **CA-1 rechazando el horario tomado con 409 y el
+> mensaje correcto**, reagendar, cancelar, y Personal reservando a nombre de un cliente.
+> Integración continua **verde en Node 20 y Node 24**.
+
 - [ ] **Paso 2: si la Etapa 0 dijo que el nombre del error no coincide**
 
 Sólo en ese caso, en `servidor/reservas.js`, `RECHAZO_DEL_INDICE_UNICO` pasa a ser una lista:

@@ -110,7 +110,22 @@ Un slice no se da por cerrado hasta que ese bloque de "cómo probarlo" está esc
 
 - **Frontend:** HTML + CSS, con SASS para los estilos.
 - **Backend:** JavaScript (Node.js), con Express para el API.
-- **Base de datos:** SQLite, accedida con `better-sqlite3`.
+- **Base de datos:** SQLite, accedida con **`@libsql/client`** *(desde el 2026-09-04; antes
+  era `better-sqlite3`)*. Es el mismo SQLite y el mismo SQL: lo que cambia es que esta
+  biblioteca **también sabe hablarle a una base de la red**, que es lo que hace falta para
+  publicar la aplicación. Sin la variable `TURSO_DATABASE_URL` el destino sigue siendo el
+  archivo de `datos/`, así que en esta computadora nada cambió.
+  - **Toda consulta se espera** (`await base.uno(...)`, `await base.todas(...)`,
+    `await base.correr(...)`). Una base de la red no contesta en el acto. `servidor/base-de-datos.js`
+    es el único archivo que sabe con qué biblioteca se le habla.
+  - **Una transacción se abre con `await base.enTransaccion(async (tx) => { … })`, y adentro
+    se usa `tx`, nunca `base`.** No es una preferencia de estilo: `base` es **otra conexión**,
+    así que una lectura con `base` adentro de una transacción devuelve el dato **de antes**,
+    en silencio y sin error. Está medido, y hay una prueba en `pruebas/adaptador.test.js` que
+    lo deja a la vista.
+  - **Y al `enTransaccion` se le hace `await` en el acto**, nunca guardando la promesa para
+    después: sin ese `await` el `catch` de afuera no ve el rechazo del índice único y **CA-1
+    pasa de un mensaje claro a un error 500**.
 - **Autenticación:** contraseña (no enlace mágico).
 - **Correo (confirmaciones y recordatorio de 24h):** Resend — más simple de configurar que
   SendGrid para un proyecto de este tamaño. **No se instala su paquete de npm:** se le manda el
@@ -670,7 +685,8 @@ Existe desde la pieza 3. Las 302 pruebas corren solas en **cada push**, a cualqu
 - **Correr en Node 20 no es un detalle:** es lo que comprueba la promesa del `README.md`. Si una
   dependencia nueva exige una versión mayor, la integración continua se pone roja y hay que elegir
   la dependencia, no cambiar la promesa. Ya pasó con `better-sqlite3` — ver `DISENO.md`,
-  «Decisiones tomadas al construir la pieza 3».
+  «Decisiones tomadas al construir la pieza 3». *(Esa dependencia salió del proyecto el
+  2026-09-04, pero la regla vale igual para cualquier otra.)*
 
 ## Restricciones
 
@@ -685,7 +701,10 @@ confidenciales), este proyecto tiene estas:
 - **Node.js 20 o superior**, tal como lo promete el `README.md`. Nada del código **ni ninguna
   dependencia** puede pedir una versión más nueva. Desde la pieza 3 esto está **comprobado en cada
   push**, no solo escrito: la integración continua corre las pruebas en Node 20 y en Node 24.
-  `better-sqlite3` queda fijado en la línea `^12.11.1` por esta razón — la 13 exige Node 22.
+  *Hasta el 2026-09-04 `better-sqlite3` quedaba fijado en la línea `^12.11.1` por esta razón —
+  la 13 exige Node 22—. Esa dependencia ya no está: la reemplazó `@libsql/client`, que además
+  **no hay que compilar al instalar**, así que el segundo límite duro de más abajo se cumple
+  más holgadamente que antes.*
 - **Un solo servicio externo:** el correo (Resend), declarado como frontera técnica en
   `PROYECTO.md` sección 6. No se agregan más servicios de terceros.
 - **La lista de feriados de Costa Rica se precarga como dato fijo** (`PROYECTO.md` sección 6): no
