@@ -20,25 +20,57 @@ que se vaya a construir de `PLAN.md`, `VISUALS.md` y el `CLAUDE.md` del reposito
 
 ## En qué estado exacto quedó todo
 
+*Esta tabla se puso al día el **2026-09-05**, al cerrar el despliegue.*
+
 | | |
 |---|---|
-| **La pieza 9** | **CERRADA el 2026-08-28.** Sus 8 comprobaciones corridas y la revisión visual terminada |
-| **Pruebas** | `npm test` da **302 de 302** |
-| **CA-1, CA-2 y CA-3** | **Los tres completos**, cubiertos por pruebas que corren en cada push, en Node 20 y Node 24 |
-| **Git** | **Todo subido el 2026-08-28** |
-| **Piezas hechas** | 1, 2, 3, 4, 5, **7, 8, 9**, 10, 11 y 12 — **once de doce** |
-| **Piezas que faltan** | **Solo la 6.** Estuvo trabada por una decisión; **la decisión se tomó el 2026-08-29** y está abajo |
+| **🌐 LA APLICACIÓN ESTÁ PUBLICADA** | **https://reservas-bienestar.vercel.app** — funciona, con datos. Se puede crear cuenta, reservar, cancelar y entrar como Personal desde cualquier teléfono |
+| **Pruebas** | `npm test` da **323 de 323**, en Node 20 y Node 24 |
+| **CA-1, CA-2 y CA-3** | **Los tres completos.** Y **CA-1 está comprobado contra la base publicada**, no sólo contra el archivo local: dos sesiones distintas piden el mismo horario y la segunda recibe `409` |
+| **Git** | Todo subido en la rama **`despliegue-vercel-turso`**. ⚠️ **Todavía NO está en `main`** |
+| **Piezas hechas** | 1, 2, 3, 4, 5, 7, 8, 9, 10, 11 y 12 — **once de doce** |
+| **Piezas que faltan** | **Solo la 6.** Ya no está trabada: era que GitHub no podía llamar a `localhost`, y ahora hay dirección pública |
 | **Del curso** | Falta **preparar la presentación** de la sesión 8 |
 | **Tiempo** | Hasta la entrega del **8 de setiembre** |
-| **Despliegue** | **Decidido el 2026-08-29:** la aplicación se publica en **Vercel con Turso**. Todavía no empezó |
+| **Base de datos** | **Turso** en producción (`database-cinereous-candle`), y el **archivo local** en la computadora. ⚠️ **Son dos bases distintas y no comparten ni una cuenta** |
+| **Motor de la base** | **`@libsql/client`** desde el 2026-09-04. `better-sqlite3` salió del proyecto |
+
+### Las cuentas del sitio publicado
+
+| Cuenta | Correo | Contraseña |
+|---|---|---|
+| **Marta Jiménez** (personal) | `personal@ejemplo.com` | `Personal123` |
+| **Melania López** (cliente) | `melalo9@gmail.com` | La eligió la estudiante con el enlace de recuperación |
+
+**No hay ninguna cita en el sitio publicado.** Si la presentación necesita datos para mostrar, hay
+que crearlos. Está anotado como decisión pendiente en `DESPLIEGUE.md`.
 
 ---
 
 ## Lo que queda, y en qué orden
 
-### 1. Publicar la aplicación en Vercel — DECIDIDO el 2026-08-29
+### 1. ~~Publicar la aplicación en Vercel~~ — ✅ **HECHO el 2026-09-05**
 
-**Va primero, porque la pieza 6 depende de esto.**
+**Las seis etapas de `PLAN-DESPLIEGUE.md` están cerradas.** La aplicación corre en Vercel con la base
+en Turso, y las **11 comprobaciones** contra el sitio en vivo pasaron. El registro completo, con la
+salida cruda de cada paso, está en **`DESPLIEGUE.md`** — incluidas las cosas que el plan no había
+previsto y las dos trampas que aparecieron.
+
+Tres datos de ahí que valen para la presentación:
+
+- **CA-1 comprobado contra la base de verdad.** Es el criterio que **casi se rompe en silencio** al
+  cambiar el motor: `@libsql/client` mueve el nombre fino del error a otro lugar, y en la
+  computadora ese camino casi nunca se recorre. Lo atajó `pruebas/adaptador.test.js`, una prueba de
+  contrato escrita **antes** del cambio.
+- **El enlace del correo abre desde el teléfono, por los dos caminos.** Eso comprueba las dos
+  defensas del hallazgo 21 contra el servicio real — algo que desde `localhost` era imposible, porque
+  el enlace ni siquiera abría.
+- **El calendario de un mes tarda 139 ms**, así que la trampa lenta del despliegue anterior no aplica.
+
+*Lo que sigue de esta sección es el historial de la decisión, del 2026-08-29. Se deja porque explica
+por qué se eligió Vercel y qué costó.*
+
+---
 
 El problema era este: el plan de la pieza 6 dice que una tarea programada de GitHub Actions llama al
 backend. Pero la aplicación corre en `http://localhost:3000`, que quiere decir «esta computadora»:
@@ -79,10 +111,34 @@ está en `Desktop/claudeCodeCenfotec/cursoCenfotecClaude/semana6/cancha-total/DE
 
 El token de Vercel está en `Desktop/connectVercel.txt`.
 
-### 2. La pieza 6 — «Recordatorio de 24 horas», completa
+### 2. 🔨 LA PIEZA 6 — «Recordatorio de 24 horas». **ES LO SIGUIENTE**
 
-**Ya publicada, el obstáculo desaparece:** la tarea programada sí alcanza la aplicación, así que se
-apunta a **las 8 comprobaciones**, no a 7. Sería la pieza **12 de 12**.
+**El obstáculo desapareció:** la tarea programada de GitHub sí alcanza la aplicación publicada, así
+que se apunta a **las 8 comprobaciones** y no a 7. Sería la pieza **12 de 12**.
+
+> **No hay que planearla: ya está planeada, paso a paso.** Está en `PLAN-DESPLIEGUE.md`, sección
+> **«Etapa 6 — La pieza 6»**, con sus 8 pasos, los archivos que se crean y las 7 pruebas descritas
+> una por una. **Se construye con TDD**, como las otras once: la prueba primero, se la ve fallar,
+> después el código.
+>
+> Lo que hay que hacer, en resumen:
+>
+> 1. Escribir `pruebas/recordatorios.test.js` (7 pruebas) y **verlas fallar**
+> 2. `servidor/recordatorios.js` — dos funciones, ninguna sabe de HTTP
+> 3. La plantilla del correo, con `ses:no-track` y la dirección **también** como texto suelto
+> 4. `POST /api/tareas/recordatorios`, protegido con `RECORDATORIOS_SECRETO`
+> 5. `.github/workflows/recordatorios.yml` — la tarea programada
+> 6. Correr las 8 comprobaciones (la 3 y la 8 son a mano)
+> 7. Escribir la evidencia en `PLAN.md`
+> 8. Commit
+>
+> ⚠️ **Dos números del plan están viejos**, porque se escribió antes del cambio de motor: dice que
+> hoy hay 321 pruebas y que quedarán 328. **Hoy son 323, así que van a quedar 330.**
+>
+> ⚠️ **`RECORDATORIOS_SECRETO` no está cargada en Vercel todavía.** La variable ya está declarada en
+> `.env.ejemplo` desde antes, pero hay que ponerle valor en Vercel **y** en los Secrets del
+> repositorio de GitHub. Ojo: **cargar secretos en Vercel lo tiene que hacer la estudiante a mano**
+> —al agente se le bloquea, por seguridad—, así que conviene pedírselo temprano y no al final.
 
 **El correo no es parte del problema.** Resend funciona desde local y está comprobado contra el
 servicio real desde la pieza 4. Si aparece una duda sobre esto, ya está contestada.
@@ -106,6 +162,15 @@ que se defienden solas, porque las tres muestran el método funcionando y no sol
 ---
 
 ## Cómo levantar la aplicación
+
+> **Y desde el 2026-09-05 hay un segundo camino, que para mostrar el proyecto es mejor: no levantar
+> nada.** La aplicación está en **https://reservas-bienestar.vercel.app** y funciona desde cualquier
+> teléfono. Lo de abajo sigue valiendo para **construir**, que es otra cosa: `npm test` y `npm start`
+> funcionan **sin configurar una sola credencial y sin internet**, porque sin la variable
+> `TURSO_DATABASE_URL` la aplicación usa el archivo de `datos/` igual que siempre.
+>
+> ⚠️ **Y no se mezclan.** Las cuentas y las citas de abajo son **las de la computadora**. En el sitio
+> publicado hay otras, y son las de la tabla del principio de este documento.
 
 **Lo más rápido es la skill propia del proyecto.** Con Claude Code abierto en la carpeta, escribí
 `/launch`: revisa que se pueda arrancar, levanta la aplicación, y **cuenta leyéndolo de la base** qué
@@ -158,8 +223,24 @@ como fallidos; la cita se crea igual (RF-19).
   y `actions/setup-node` pasaron a la **versión 5**. Los avisos desaparecieron y la corrida sigue
   verde en Node 20 y Node 24.
 - **El año del pie de página** sigue escrito a mano («2026»). Anotado en `DISENO.md`.
-- 🆕 **`SEGUIMIENTO.md` está muy desactualizado.** Todavía tiene tareas como «subir a GitHub la
-  pieza 1». No molesta a nadie, pero si alguien lo lee esperando el estado real, se confunde.
+- ~~`SEGUIMIENTO.md` está muy desactualizado~~ **PUESTO AL DÍA el 2026-09-05.**
+
+### Y los que dejó el despliegue (2026-09-05)
+
+- ⚠️ **Juntar `despliegue-vercel-turso` con `main`.** Todo el trabajo del despliegue —y del cambio de
+  motor— vive en esa rama. **Conviene hacerlo antes de la entrega**, para que quien mire el
+  repositorio vea el trabajo en la rama principal.
+- **Un favicon en `publico/`.** El navegador pide `/favicon.ico` solo, no lo encuentra, y eso
+  **despierta la función de Vercel por gusto** en cada visita. Hoy no molesta; con la base en la red
+  cuesta un viaje de más.
+- **Decidir si el sitio publicado necesita datos de demostración.** Hoy tiene el catálogo y dos
+  cuentas, pero **ninguna cita**. Para la presentación quizás convenga que haya algo que mostrar.
+- **Las casillas de las Etapas 1, 2 y 3 de `PLAN-DESPLIEGUE.md` quedaron sin marcar** — son 27. Las
+  etapas se hicieron (están en el historial y el motor está cambiado), pero nadie marcó los pasos. No
+  se marcaron a ciegas a propósito: el proyecto no da nada por hecho sin verificarlo.
+- **Rotar la clave de Resend, si se quiere.** El 2026-09-05 quedó escrita en una conversación. No es
+  grave —sólo puede mandar correos a la casilla de la estudiante— pero se puede generar una nueva en
+  Resend y actualizarla en Vercel.
 
 ---
 
