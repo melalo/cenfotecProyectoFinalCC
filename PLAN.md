@@ -924,9 +924,26 @@ defectos de pantalla. Los siete defectos visuales de este proyecto salieron todo
 Es la pieza señalada en `FICHA-APROBACION.md` como la de mayor riesgo técnico y la primera
 candidata a recortar si el tiempo aprieta.
 
+> ⚠️ **Esta pieza creció el 2026-09-05, y no por capricho.** RF-11 cambió: **el correo de
+> confirmación también tiene que llevar los enlaces de cancelar y reagendar**, no sólo el
+> recordatorio. Lo pidió la estudiante después de reservar una cita contra la aplicación **ya
+> publicada** y ver que la confirmación no los traía. El razonamiento está escrito en RF-11 de
+> `ESPECIFICACION.md`.
+>
+> **Va acá y no en una pieza aparte porque los dos correos necesitan el mismo mecanismo, que todavía
+> no existe:** un enlace que abra la aplicación en una cita concreta. Hoy sólo existe el de
+> recuperación (`#restablecer=…`, en `servidor/recuperacion.js`). Hay que decidir además **qué pasa
+> si quien toca el enlace no tiene la sesión abierta**. Resolverlo dos veces sería dos maneras
+> distintas de hacer lo mismo.
+>
+> Lo que se agrega a esta pieza: la plantilla de confirmación gana los dos enlaces, y una prueba que
+> lo fije. La comprobación 3 de acá abajo pasa a correrse **también** con el correo de confirmación,
+> que es más fácil de probar: llega al instante, sin esperar a que falten 24 horas.
+
 **Qué tiene que ser cierto**
 - 24 horas antes de una cita activa, al cliente le llega un correo recordatorio con enlace para
   cancelar **y** para reagendar (RF-12).
+- **El correo de confirmación lleva esos mismos dos enlaces** (RF-11, desde el 2026-09-05).
 - Una cita reservada con **menos** de 24 horas de anticipación no recibe ningún recordatorio, ni
   tardío ni de otro tipo (RN-20).
 - Cada recordatorio se manda **una sola vez** por cita: si el disparador corre dos veces, no llegan

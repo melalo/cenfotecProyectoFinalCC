@@ -563,11 +563,32 @@ igual a las cuentas de Personal.
 10. **RF-10:** El sistema avisa al cliente cuando no hay ningún horario disponible en los próximos
     7 días (RN-14).
 11. **RF-11:** El sistema envía al cliente un correo de confirmación al reservar, con fecha, hora,
-    servicio, proveedor y ubicación del negocio. **También lo envía cuando la cita se reagenda, con
-    la fecha y la hora nuevas.** *(Lo del reagendamiento se decidió el 2026-08-20, al construir la
-    pieza 5. Hasta entonces esta regla solo hablaba de reservar, y eso dejaba al cliente con un
-    correo en su bandeja anunciando un día que ya no era el suyo: el aviso más reciente que tenía
-    decía la fecha vieja. Es el mismo correo, con la misma plantilla, no uno nuevo.)*
+    servicio, proveedor y ubicación del negocio, **y con un enlace para cancelar o reagendar, igual
+    que el recordatorio de RF-12**. **También lo envía cuando la cita se reagenda, con la fecha y la
+    hora nuevas.** *(Lo del reagendamiento se decidió el 2026-08-20, al construir la pieza 5. Hasta
+    entonces esta regla solo hablaba de reservar, y eso dejaba al cliente con un correo en su bandeja
+    anunciando un día que ya no era el suyo: el aviso más reciente que tenía decía la fecha vieja. Es
+    el mismo correo, con la misma plantilla, no uno nuevo.)*
+
+    > **Lo del enlace se decidió el 2026-09-05, y la estudiante lo pidió después de vivirlo.** Reservó
+    > una cita contra la aplicación **ya publicada**, le llegó la confirmación, y notó que no traía
+    > los botones. Hasta entonces la regla decía «llamanos al 2000-0000», y el autoservicio por
+    > enlace estaba solo en RF-12, el recordatorio. La razón del cambio: **quien acaba de reservar y
+    > se equivocó de hora quiere arreglarlo en ese momento**, no llamar por teléfono al día
+    > siguiente — y el recordatorio, que sí trae los enlaces, llega recién 24 horas antes.
+    >
+    > **Es la segunda vez que una regla cambia por haberla vivido, y no por haberla pensado.** La
+    > primera fueron los 7 días de sesión, que bajaron a 4 horas (RN-29) después de que la aplicación
+    > la dejara entrar sola dos días seguidos. Acá pasó lo mismo, y sólo pudo pasar **porque la
+    > aplicación ya estaba publicada**: en la computadora ese correo llegaba con enlaces que no
+    > abrían en ningún lado.
+    >
+    > ⚠️ **Se construye junto con la pieza 6, no antes, y por una razón técnica:** los dos correos
+    > necesitan **el mismo mecanismo, que todavía no existe**. Hoy la aplicación sólo sabe reaccionar
+    > a un enlace de recuperación (`#restablecer=…`); un enlace que abra una cita concreta hay que
+    > inventarlo —incluido qué pasa si quien lo toca no tiene la sesión abierta—. Resolverlo dos veces
+    > sería trabajo duplicado y dos maneras distintas de hacer lo mismo, que es justo lo que las
+    > convenciones de este proyecto evitan.
 12. **RF-12:** El sistema envía al cliente un correo recordatorio 24 horas antes de su cita, con un
     enlace para cancelar o reagendar. Las citas reservadas con menos de 24 horas de anticipación no
     reciben ninguno (RN-20).

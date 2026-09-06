@@ -139,6 +139,23 @@ que se apunta a **las 8 comprobaciones** y no a 7. Sería la pieza **12 de 12**.
 > `.env.ejemplo` desde antes, pero hay que ponerle valor en Vercel **y** en los Secrets del
 > repositorio de GitHub. Ojo: **cargar secretos en Vercel lo tiene que hacer la estudiante a mano**
 > —al agente se le bloquea, por seguridad—, así que conviene pedírselo temprano y no al final.
+>
+> 🆕 ⚠️ **LA PIEZA CRECIÓ EL 2026-09-05, y el plan escrito todavía no lo dice en todos lados.**
+> **RF-11 cambió: el correo de CONFIRMACIÓN también tiene que llevar los enlaces de cancelar y
+> reagendar**, no sólo el recordatorio. Lo pidió la estudiante después de reservar contra la
+> aplicación ya publicada y ver que la confirmación no los traía. El razonamiento completo está en
+> **RF-11 de `ESPECIFICACION.md`** y el alcance nuevo, en la **pieza 6 de `PLAN.md`**.
+>
+> **Por qué va acá y no aparte:** los dos correos necesitan **el mismo mecanismo, que no existe
+> todavía** — un enlace que abra la aplicación en una cita concreta. Hoy sólo existe el de
+> recuperación (`#restablecer=…`, en `servidor/recuperacion.js`), y ése es el modelo a seguir. **Hay
+> una decisión de diseño que hay que tomar y no está tomada: qué pasa si quien toca el enlace no
+> tiene la sesión abierta.** Preguntásela a la estudiante antes de construir.
+>
+> Eso suma a los 8 pasos del plan: la plantilla de confirmación gana los dos enlaces, una prueba que
+> lo fije, y el manejo del enlace nuevo en el JavaScript del navegador. **Y de paso hace más fácil la
+> comprobación 3**, que era abrir el enlace de cancelar del correo: con la confirmación llega al
+> instante, sin esperar a que falten 24 horas para una cita.
 
 **El correo no es parte del problema.** Resend funciona desde local y está comprobado contra el
 servicio real desde la pieza 4. Si aparece una duda sobre esto, ya está contestada.
