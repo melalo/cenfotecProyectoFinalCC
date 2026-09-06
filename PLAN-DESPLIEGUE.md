@@ -2062,7 +2062,7 @@ npx vercel --prod
 Dos despliegues y no uno, porque la dirección no se conoce antes de tenerla. Vale la pena decirlo en
 `DESPLIEGUE.md` para que a nadie le parezca un error.
 
-- [ ] **Paso 7: comprobar contra el sitio en vivo**
+- [x] **Paso 7: comprobar contra el sitio en vivo**
 
 Esto no se puede hacer con `npm test`: son las comprobaciones que sólo existen publicadas.
 

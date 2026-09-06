@@ -230,7 +230,7 @@ Ninguna de éstas se puede hacer con `npm test`: sólo existen publicadas.
 | 5 | **CA-1: otra persona pide el mismo horario** | ✅ **409 `horario_no_disponible`** |
 | 6 | Cancelar | ✅ **204**, y el horario **volvió a aparecer libre** |
 | 7 | Entrar como Personal | ✅ **200**, Marta Jiménez |
-| 8 | El correo de «olvidé mi contraseña» | ⏳ **Pendiente**: hay que mirar una bandeja de entrada de verdad |
+| 8 | El correo de «olvidé mi contraseña», abierto desde el teléfono | ✅ **Los DOS caminos funcionan** — ver abajo |
 | 9 | La sesión sigue valiendo entre pedidos | ✅ **200** (es `SESION_SECRETO` compartido funcionando) |
 | 10 | El registro de Vercel | ✅ Ningún error inesperado — ver abajo |
 | 11 | Cuánto tarda el calendario de un mes | ✅ **139 ms** |
@@ -244,6 +244,26 @@ recorre. Acá está comprobado **contra la base de verdad, con dos sesiones dist
 **Y la 11 cierra la trampa 3 del despliegue anterior.** Allá una función de Vercel se cortaba con
 ~28 consultas dentro de una misma visita, y la portada daba 500. Acá el calendario de un mes entero
 —27 días con 8 horarios cada uno— tarda **139 ms**. No hay nada que optimizar.
+
+### La comprobación 8, y lo que demostró de más
+
+**El enlace del correo abre en el teléfono.** Eso es lo que `localhost` nunca pudo: hasta hoy, un
+enlace de recuperación sólo servía en la computadora donde corría la aplicación, y estaba declarado
+como limitación en `DISENO.md`. **Con `DIRECCION_PUBLICA` apuntando al sitio publicado, la limitación
+desapareció.**
+
+**Pero la estudiante probó los dos caminos, y los dos funcionaron. Eso dice más que el enunciado de
+la comprobación.** Las dos defensas del **hallazgo 21** están comprobadas contra el servicio real:
+
+| Camino | Qué demuestra que funcione |
+|---|---|
+| **El botón** «Elegir mi contraseña nueva» | Que **Resend NO reescribió el enlace**. La marca `ses:no-track` está haciendo su trabajo en producción, que es exactamente lo que no se podía comprobar desde `localhost` |
+| **La dirección escrita como texto suelto** | Que el camino que **no depende de ningún tercero** sigue ahí. Un texto suelto no es un enlace, así que nadie lo puede reescribir |
+
+El 2026-08-28 el botón llevaba a una página de error porque Resend le había puesto encima su
+rastreador de clics (`awstrack.me`), **con las 21 pruebas de la pieza en verde**. Hoy el mismo botón
+abre. La diferencia son dos líneas de defensa escritas a propósito, y **ésta es la primera vez que se
+pueden comprobar las dos**: en la computadora el enlace ni siquiera abría.
 
 ### Lo que dijo el registro
 
@@ -305,11 +325,49 @@ verde la integración continua de GitHub.
 
 ---
 
+## Un tropiezo al hacer la comprobación 8, que deja una regla
+
+**El primer intento no mandó ningún correo, y el sitio no dijo nada.** La estudiante pidió «olvidé mi
+contraseña» con `melalo9@gmail.com` —la única casilla a la que Resend puede escribirle— y no llegó
+nada.
+
+**La causa no era una falla: era que esa cuenta no existía acá.** Vive en la base de la
+computadora. La de Turso se creó ese mismo día, y las únicas cuentas de cliente que llegó a tener
+fueron las dos de las comprobaciones, borradas en el paso 8. La base estaba en cero clientes **a
+propósito**, y el agente igual mandó a recuperar la contraseña de una cuenta inexistente teniendo
+los dos datos delante.
+
+**Por qué no se vio ningún error, y esto sí está bien hecho:** `POST /api/contrasena/olvide`
+devuelve **204 exista o no la cuenta**. Es deliberado — si contestara distinto, cualquiera podría
+averiguar qué correos están registrados probando uno por uno. La pantalla dice lo mismo en los dos
+casos.
+
+**Cómo se diagnosticó, y por qué fue rápido:** tres evidencias independientes, ninguna adivinada.
+El registro de Vercel mostró que el `POST` **sí había llegado** (o sea: la aplicación funcionaba);
+el código mostró el `if (encontrada)` que envuelve todo el envío; y la base mostró **0 clientes y 0
+tokens**. Las tres apuntaban al mismo lugar.
+
+> **La regla que queda: la base publicada y la de la computadora son dos bases distintas, y no
+> comparten ni una cuenta.** Toda cuenta que se quiera usar contra el sitio publicado hay que
+> crearla ahí. Es obvio dicho así, y aun así costó un intento.
+
+## Las cuentas que hay hoy en el sitio publicado
+
+| Cuenta | Correo | Contraseña |
+|---|---|---|
+| **Marta Jiménez** (personal) | `personal@ejemplo.com` | `Personal123` |
+| **Melania López** (cliente) | `melalo9@gmail.com` | **La eligió la estudiante** al usar el enlace de recuperación, el 2026-09-05. No está escrita en ningún lado, y así tiene que ser |
+
+Ninguna cita. La base sigue lista para estrenar.
+
+---
+
 ## Lo que sigue
 
-- [ ] **Comprobación 8**, la única que quedó pendiente: pedir «olvidé mi contraseña» desde el sitio
-      publicado con la casilla real, y comprobar que **el enlace abre en el teléfono** — que es lo
-      que `localhost` nunca pudo, y la razón por la que la pieza 9 dejó `DIRECCION_PUBLICA` puesta.
 - [ ] **La pieza 6**, el recordatorio de 24 horas, que es lo que este despliegue vino a destrabar.
       Ahora la tarea programada de GitHub Actions sí alcanza la aplicación.
+- [ ] **Juntar `despliegue-vercel-turso` con `main`** antes de la entrega, para que quien mire el
+      repositorio vea el trabajo en la rama principal.
 - [ ] Un favicon en `publico/`, para que el navegador deje de despertar la función por gusto.
+- [ ] Decidir si el sitio publicado necesita **datos de demostración** para la presentación (hoy
+      tiene el catálogo y dos cuentas, pero ninguna cita).
