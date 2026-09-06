@@ -75,6 +75,18 @@ Antes de dar por cerrado cualquier cambio:
 - **Cuando pido subir algo al repositorio, eso incluye el `push`.** "Subilo", "hacé commit",
   "guardalo en Git" y cualquier forma parecida significan **commit y push**, en la misma tanda y
   sin volver a preguntarme si lo subo.
+- 🆕 **Pero hay dos momentos en que hay que PREGUNTARME si quiero subir, sin esperar a que me
+  acuerde** *(agregado el 2026-09-05, a pedido mío)*:
+  1. **Cuando te pido un prompt para la siguiente sesión** — pedir eso quiere decir que estoy
+     cerrando.
+  2. **Cuando terminamos una sección**: una etapa, una pieza, un bloque de trabajo.
+
+  **Esto no contradice la regla de arriba: la decisión sigue siendo mía.** Lo que cambia es de quién
+  es la carga de acordarse. El 2026-09-05 tuve que pedir el commit dos veces en una misma sesión, y
+  la segunda ya estaba todo subido — o sea que **no tenía forma de saber si mi trabajo estaba
+  guardado** sin preguntar. La pregunta va corta y concreta, diciendo **qué** se subiría. **Y si ya
+  está todo subido, decilo igual en una línea**: saber que no hay nada pendiente es justamente el
+  dato que me falta.
 - Nunca reescribir historial ya subido sin explicar el riesgo y pedir confirmación. Si se hace,
   crear antes una rama de respaldo y verificar, comparando contra ella, que el contenido quedó
   idéntico.
