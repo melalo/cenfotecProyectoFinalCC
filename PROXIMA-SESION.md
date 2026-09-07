@@ -4,88 +4,44 @@
 decidió publicar la aplicación, y **el 2026-09-07**, al construir la pieza 6. Esta es la hoja para
 retomar sin releer nada.*
 
-> ## ⚠️ LO PRIMERO, ANTES DE CUALQUIER OTRA COSA
+> ## ✅ LA PIEZA 6 ESTÁ TERMINADA, MENOS UNA COMPROBACIÓN
 >
-> **La pieza 6 está construida y probada en producción, pero NO cerrada.** `npm test` da **354 de
-> 354**. Lo que falta:
+> **12 de 12 piezas. `npm test` da 354 de 354**, en Node 20 y Node 24. Todo está subido a la rama y a
+> `main`, y publicado en Vercel.
 >
-> | | Estado |
+> **Falta una sola cosa, y es esperar:**
+>
+> > **Comprobación 8** — entrar a
+> > `https://github.com/melalo/cenfotecProyectoFinalCC/actions/workflows/recordatorios.yml`
+> > y ver una corrida que diga **`Scheduled`** debajo del nombre. Eso significa que arrancó **sola**,
+> > por el reloj. El botón «Run workflow» **no la reemplaza**: lo que se comprueba es justamente que
+> > nadie la disparó.
+> >
+> > Horarios: 03:20, 07:20, 11:20, 15:20, 19:20 y 23:20 **UTC** → en Costa Rica **21:20, 01:20,
+> > 05:20, 09:20, 13:20 y 17:20**. ⚠️ **GitHub no garantiza la hora exacta** — un `cron` puede
+> > atrasarse cuando hay cola. Si pasó la hora y no aparece, esperar; no es un error del código.
+>
+> ### Lo que se resolvió el 2026-09-07, para no volver a investigarlo
+>
+> | | |
 > |---|---|
-> | `RECORDATORIOS_SECRETO` en Vercel y en los Secrets de GitHub, más `DIRECCION_PUBLICA` en los Secrets | ✅ **hecho** |
-> | La tabla `token_cita` en la base de Turso | ✅ **hecha** con `npm run esquema` |
-> | El disparador funcionando contra el sitio en vivo | ✅ **comprobado**: `{"revisadas":1,"enviados":1}`, y llegó un correo de verdad |
-> | **Publicar los dos arreglos de abajo** (`npx vercel --prod`) | ⏳ **pendiente, y hace falta** |
-> | **Comprobación 3**, en el teléfono | ⏳ pendiente — hacerla **después** de publicar |
-> | **Comprobación 8**: que la tarea arranque sola | ⏳ pendiente — hay que esperar el horario |
+> | `RECORDATORIOS_SECRETO` | cargada en **Vercel y en los Secrets de GitHub**, más `DIRECCION_PUBLICA` en los Secrets |
+> | La tabla `token_cita` en Turso | creada con `npm run esquema` — **el despliegue no crea tablas, a propósito** |
+> | La rama unida a `main` | **obligatorio**: GitHub sólo corre tareas programadas desde la rama principal |
+> | Comprobación 3 | hecha en el teléfono: una cita movida y cancelada desde el correo, **sin sesión** |
+> | Revisión visual | completa — **siete defectos encontrados, todos arreglados y publicados** |
 >
-> ### 🔎 Publicar reveló dos defectos que las 349 pruebas no veían. Los dos están arreglados.
+> ### ⚠️ Tres cosas que se aprendieron por las malas y conviene no repetir
 >
-> **1. La base publicada no tenía la tabla `token_cita`, y el síntoma no fue el que correspondía.**
-> El despliegue **no crea tablas**, a propósito (`servidor/aplicacion-desplegada.js` explica por qué).
-> Eso por sí solo debía causar «el correo llega sin botones»; en cambio **reservar contestaba `500`
-> con la cita ya guardada**. La causa de eso era código, no configuración:
-> `enviarConfirmacionDeCita` está documentada desde la pieza 4 como que **nunca lanza un error**
-> —RF-19—, y la pieza 6 le había metido adentro una escritura a la base sin protegerla. Arreglado con
-> `losEnlacesSiSePueden` en `servidor/correo.js`, **una sola función para los dos correos**, y 4
-> pruebas que reproducen el estado exacto de la base publicada. *El recordatorio tenía el mismo
-> agujero: una cita imposible tumbaba la corrida entera.*
->
-> ⚠️ **Y deja una pregunta abierta para el proyecto, que la pieza 6 es la primera en tocar: cuando
-> una pieza nueva agrega una tabla, ¿cómo se entera la base publicada?** Hoy la respuesta es «alguien
-> se acuerda de correr `npm run esquema`». Las doce piezas anteriores son todas de antes del
-> despliegue, así que nunca había pasado.
->
-> **2. Los botones del correo se llamaban distinto que los de la aplicación.** Decían «Cambiar la
-> hora» y «Cancelar la cita»; «Mis citas» dice **Reagendar** y **Cancelar** desde la pieza 5. Rompía
-> la convención de `CLAUDE.md` —*dos caminos al mismo lugar se llaman igual*— y pesa más acá que en
-> una pantalla, porque el correo y la aplicación se leen en momentos separados. **Lo encontró la
-> estudiante leyendo el correo que le llegó**, no una prueba. Arreglado en el correo y en la pantalla,
-> con una prueba que fija el vocabulario. *De paso se alinearon los dos avisos verdes y se pasó a
-> reusar `mensajeDelMovimiento`, que ya existía desde la pieza 5.*
->
-> ### El orden de lo que queda
->
-> 1. **`npx vercel --prod`** — hasta que no se publique, el correo que llega sigue teniendo los
->    botones con el nombre viejo.
-> 2. **Comprobación 3, en el teléfono.** Reservar contra el sitio publicado y, del correo de
->    confirmación, tocar **«Reagendar»** primero y **«Cancelar»** después — en ese orden, porque
->    cancelar deja la cita inservible para probar lo otro. Tiene que abrir la aplicación **sin pedir
->    contraseña**.
-> 3. **Comprobación 8.** En Actions, ver que «Recordatorios de 24 horas» corrió **sola**, a su
->    horario. El botón «Run workflow» **no la reemplaza**: lo que se comprueba es que arranca sin que
->    nadie la dispare. Corre a las 03:20, 07:20, 11:20, 15:20, 19:20 y 23:20 **UTC** — en Costa Rica,
->    21:20, 01:20, 05:20, 09:20, 13:20 y 17:20.
-> 4. **La revisión visual de la pantalla nueva**, que es la que encontró los 19 defectos visuales del
->    proyecto y ninguna prueba puede reemplazar. **Y ya encontró uno acá**: el del punto 2.
->
-> ### 📌 Aplazado a propósito para después de la entrega
->
-> **Toda la letra de la aplicación se dibuja un 20% más chica de lo que dice `VISUALS.md`.** Lo vio
-> la estudiante en el inspector el 2026-09-07 y **eligió no tocarlo antes de la presentación**, que
-> era al día siguiente.
->
-> El porqué: `html { font-size: 80% }` hace que `1rem` valga **12.8px y no 16**, así que las **46**
-> medidas del `.scss` rinden al 80%. Ya medido: 12px→9.6, **14px→11.2**, 16px→**12.8**, 18px→14.4,
-> 24px→19.2. El texto normal queda bajo el mínimo accesible de 16px que `VISUALS.md` nombra.
->
-> **El arreglo es borrar un renglón** —esa línea de `html`— y con eso las 46 rinden lo que su tabla
-> promete. **Lo que hay que revisar después de borrarlo:** todo crece 25%, y las fichas de horario
-> del calendario están al límite a 320px de ancho (por eso muestran «10:00» sin `am`/`pm`).
->
-> La discusión completa, con las tres opciones y por qué se descartó arreglar clase por clase, está
-> en `DISENO.md` → «Decisiones dejadas abiertas».
->
-> ### 🔎 Y se desmintió una creencia que el proyecto arrastraba escrita
->
-> Hasta el 2026-09-07 estaba escrito —y repetido en el prompt de arranque de dos sesiones— que **«a
-> Claude se le bloquea cargar secretos en Vercel»**. **Es falso, y se vio probándolo:**
-> `npx vercel env add` corrió sin problema. **Lo que sí está bloqueado es `npx vercel --prod`**, o sea
-> *publicar* — que es otra cosa, y con sentido: publicar cambia lo que ve el mundo, cargar una
-> variable no.
->
-> La lección es la misma de la caída de Actions del 2026-08-26: **una limitación que nadie comprobó
-> se propaga como si fuera un hecho**, y esta costó una conversación entera de pasos manuales que no
-> hacían falta. **Antes de anotar «esto no se puede», probarlo una vez.**
+> 1. **`git push` no publica nada.** Vercel **no está conectado** al repositorio: el sitio sólo cambia
+>    con `npx vercel --prod`, y lo que se publica es **lo que está en la carpeta**, esté guardado en
+>    git o no. Conviene tener `git status` limpio antes de publicar.
+> 2. **Una tabla nueva no llega sola a Turso.** El despliegue no crea el esquema. Cualquier pieza que
+>    toque `servidor/esquema.js` necesita `npm run esquema` apuntado a Turso **antes** de decir que
+>    está lista. `npm run sembrar` es otra cosa y **sí borra todo**: no confundirlos.
+> 3. **«A Claude se le bloquea cargar secretos en Vercel» es FALSO**, y estuvo escrito en el prompt de
+>    arranque de dos sesiones. `vercel env add` funciona. Lo bloqueado es **publicar**. La lección:
+>    **antes de anotar «esto no se puede», probarlo una vez.**
 
 ---
 

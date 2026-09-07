@@ -2220,10 +2220,10 @@ npm test
 
 ⚠️ **Los dos números estaban viejos, y la estudiante lo detectó antes de construir.** Eran de antes de
 la Etapa 1 del despliegue, que agregó 2 pruebas: al empezar la pieza había **323**, no 321. Y no
-quedaron 330 sino **349**, porque el mecanismo del enlace que RF-11 sumó el 2026-09-05 trajo 12
+quedaron 330 sino **354**, porque el mecanismo del enlace que RF-11 sumó el 2026-09-05 trajo 12
 pruebas propias y el recordatorio 14.
 
-**Lo real, corrido el 2026-09-07: `fail 0`, `pass` **354**.**
+**Lo real, al cerrar el 2026-09-07: `fail 0`, `pass` **354**.** *(Fueron 349 al terminar de construir, y subieron a 354 con las pruebas que salieron de los defectos que encontró publicar y la revisión en el teléfono.)*
 
 Y a mano, contra el sitio publicado:
 

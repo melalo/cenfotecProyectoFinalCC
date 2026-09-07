@@ -2442,3 +2442,108 @@ pieza, y `DISENO1.md` se quedó en 256 sin actualizarse — todavía decía que 
 documento que dice algo falso es peor que no tenerlo.
 
 **`npm test`: 302 de 302.**
+
+---
+
+### 2026-09-02 al 2026-09-05 — el despliegue (registrado aparte)
+
+*Estas cuatro sesiones no tienen entrada acá y no es un olvido:* el plan y el registro completo del
+despliegue —las seis etapas, la salida cruda de cada paso, las dos trampas que aparecieron y las 11
+comprobaciones contra el sitio en vivo— viven en **`PLAN-DESPLIEGUE.md`** y **`DESPLIEGUE.md`**, que
+se escribieron para eso. Repetirlo acá sería tener la misma historia en dos lugares, que es
+exactamente lo que este proyecto evita.
+
+**Lo que hay que saber para leer lo que sigue:** la aplicación quedó publicada en
+`https://reservas-bienestar.vercel.app`, con la base en Turso, y el motor pasó de `better-sqlite3` a
+`@libsql/client`. Eso destrabó la pieza 6, que llevaba semanas esperando: GitHub no podía llamar a
+`localhost`.
+
+---
+
+### 2026-09-07 — Pieza 6: el recordatorio de 24 horas. 12 de 12, y siete defectos que ninguna prueba vio
+
+La última pieza. Se construyó con TDD como las once anteriores y `npm test` pasó de **323 a 354**.
+Pero lo que vale contar de esta sesión no es la pieza: es **todo lo que apareció después de que las
+pruebas estaban en verde**.
+
+#### La decisión que no se podía tomar sola
+
+`RF-11` había cambiado el 2026-09-05 y dejaba una pregunta escrita como pendiente: **qué pasa si
+alguien toca el enlace del correo y no tiene la sesión abierta**. Se le preguntó a la estudiante
+antes de escribir una línea, y eligió: **el enlace entra sin contraseña**.
+
+Es el mismo trato del enlace de recuperación de la pieza 9 —quien tiene acceso al correo puede usar
+lo que llegó ahí— y **a propósito menos poderoso**: aquél cambia la contraseña de la cuenta entera,
+éste alcanza **una** cita y no abre sesión.
+
+**Y resultó más acertada de lo que parecía**, por algo que apareció probando en el teléfono: cuando
+se toca un enlace dentro de una app de correo, el teléfono lo abre en **un navegador propio de esa
+app**, que no comparte la sesión con el Chrome donde la persona entró. O sea que **en un teléfono el
+enlace llega casi siempre sin sesión**. No era el caso raro: era el normal.
+
+#### Publicar encontró dos defectos que 349 pruebas no veían
+
+**El primero parecía de configuración y era de código.** La tabla `token_cita` no existía en la base
+publicada —el despliegue no crea tablas, a propósito— y eso por sí solo debía causar «el correo llega
+sin botones». Causaba que **reservar contestara `500` con la cita ya guardada**.
+
+La culpa era de una línea que esta pieza había agregado adentro de `enviarConfirmacionDeCita`, una
+función documentada **desde la pieza 4** como que *nunca lanza un error*, porque RF-19 dice que un
+correo que falla no puede invalidar una cita. Se le metió una escritura a la base sin protegerla.
+
+**El segundo lo encontró la estudiante leyendo el correo que le llegó:** los botones decían «Cambiar
+la hora» y «Cancelar la cita», y «Mis citas» dice **Reagendar** y **Cancelar** desde la pieza 5. Dos
+nombres para lo mismo, rompiendo una convención que ya estaba escrita.
+
+#### Y la revisión en el teléfono encontró cinco más
+
+Ninguna la vio una prueba. La peor: **el enlace se ignoraba por completo si había sesión abierta**,
+porque `arrancar()` preguntaba por la sesión primero y hacía `return`. Y era **el caso más común**,
+no un borde. Las otras cuatro: una tarjeta con el ancho de un formulario en vez del de una parrilla,
+viñetas de lista sueltas, un botón que prometía algo que no podía dar, y una lista de 88 botones en
+la pantalla de un teléfono.
+
+#### La lección de la sesión, que la pieza dio dos veces el mismo día
+
+**Un comentario que describe una intención no es una garantía.** Los dos defectos más caros vivían al
+lado de un comentario que afirmaba lo contrario del código:
+
+- `enviarConfirmacionDeCita`: *«**Nunca lanza un error**»* — y lanzaba uno.
+- `arrancar()`: *«Los enlaces del correo **mandan sobre todo lo demás**»* — y la sesión estaba arriba.
+
+Los dos se escribieron de buena fe: el primero era cierto en la pieza 4 y dejó de serlo sin que nadie
+volviera a leerlo; el segundo describía lo que quien lo escribió **creía** haber hecho. Es la misma
+idea que el proyecto ya tenía escrita para la base —el `CHECK` que garantiza, contra el comentario
+que pide— llevada al código: **lo que garantiza algo es el código que lo impide, no la frase que lo
+dice.**
+
+#### Una creencia falsa que el proyecto arrastraba escrita
+
+En el prompt de arranque de dos sesiones estaba escrito que **«a Claude se le bloquea cargar secretos
+en Vercel»**. La estudiante preguntó de dónde salía eso, se probó, y **es falso**: `vercel env add`
+corre sin problema. Lo que sí está bloqueado es **publicar**, que es otra cosa.
+
+Nadie lo había comprobado nunca, y costó una conversación entera de pasos manuales innecesarios. Es
+el mismo patrón de la caída de Actions del 2026-08-26: **una limitación que nadie comprobó se propaga
+como si fuera un hecho.**
+
+#### Y al final, la tipografía
+
+La estudiante abrió el inspector y vio que la fecha de una cita, escrita con los 14px de la escala,
+**se dibujaba a 11.2px**. No era esa clase: eran las **46** medidas del `.scss`, por un
+`html { font-size: 80% }` del 2026-08-24. **El archivo decía una cosa y la pantalla mostraba otra**, y
+para saber cómo se veía algo había que multiplicar por 0,8. Nadie multiplicaba.
+
+Se borró esa línea, y lo único que de verdad le parecía grande —el texto normal— se bajó **en la
+escala misma**: `body-md` pasó de 16px a 14px, cambiado primero en `VISUALS.md`, que es la autoridad.
+
+**La idea que lo hizo seguro fue de ella:** dejar el calendario y las fichas de horario quietos, con
+un `× 0.8` escrito al lado. Son las cajas más angostas del proyecto y ya tenían por eso otra
+excepción escrita —mostrar «10:00» sin `am`/`pm`—. Sin esa idea, el cambio habría tocado justo lo que
+podía romperse.
+
+*Y aplazó a propósito la decisión una vez, el día anterior a la entrega, antes de retomarla con los
+números medidos delante. Eso también es método.*
+
+**`npm test`: 354 de 354.** **12 de 12 piezas.** Queda una sola comprobación, y no depende de nadie:
+ver en Actions que la tarea programada arranca **sola** a su horario.

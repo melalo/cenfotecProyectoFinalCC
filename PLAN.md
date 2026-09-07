@@ -1156,25 +1156,43 @@ días y 43 botones, medido contra los datos del sitio publicado.
 *Y de las cuatro, **tres las encontró tocando la pantalla en un teléfono** y una leyendo el correo.
 Ninguna prueba de este proyecto puede hacer ni lo uno ni lo otro.*
 
-**⚠️ LA PIEZA NO ESTÁ CERRADA. Falta esto, y nada se puede hacer desde el código:**
+**LAS 8 COMPROBACIONES, AL CERRAR EL 2026-09-07**
 
-1. **Publicar los dos arreglos** (`npx vercel --prod`). El sitio en vivo tiene el código de antes de
-   ellos: la tabla ya existe, así que el `500` no se puede disparar, pero **los botones del correo
-   siguen saliendo con el nombre viejo** hasta que se publique.
+| # | Cómo se corrió | Resultado |
+|---|---|---|
+| 1 | Prueba automática, y a mano contra el sitio publicado | ✅ una cita a 28.6 h dio `revisadas: 0` |
+| 2 | Prueba automática, **y en producción** | ✅ el disparador dio `{"revisadas":1,"enviados":1}` y **llegó un correo de verdad**, `exito: 1` en la tabla |
+| 3 | **A mano, en el teléfono, contra el sitio publicado** | ✅ **hecha.** Ver abajo |
+| 4 | Prueba automática, y a mano | ✅ el segundo disparo dio `revisadas: 0` |
+| 5 | Prueba automática, y a mano | ✅ una cita reservada hace un minuto para dentro de 21 h quedó afuera (RN-20) |
+| 6 | Prueba automática | ✅ una cita cancelada no recibe |
+| 7 | Prueba automática, **y en producción** | ✅ sin clave `401`, con la equivocada `401`, con la correcta `200` |
+| 8 | **Pendiente: hay que esperar el horario** | ⏳ ver abajo |
 
-   *La clave y la tabla ya están: `RECORDATORIOS_SECRETO` quedó en Vercel **y** en los Secrets de
-   GitHub, más `DIRECCION_PUBLICA` en los Secrets, y `token_cita` se creó en Turso. De paso quedó
-   desmentida una creencia que este proyecto arrastraba escrita en dos prompts de arranque —«a Claude
-   se le bloquea cargar secretos en Vercel»—: **es falsa**, y se vio probándola. Lo que sí está
-   bloqueado es **publicar**, que es otra cosa.*
-2. **Comprobación 3, en el navegador y en el teléfono.** El servidor está comprobado; lo que falta es
-   lo que ninguna prueba de este proyecto puede ver, porque ninguna mira la página dibujada. Es la
-   comprobación que era literalmente imposible antes de la Etapa 5 del despliegue. **Se prueba
-   «Reagendar» primero y «Cancelar» después**, en ese orden: cancelar deja la cita inservible para
-   probar lo otro.
-3. **Comprobación 8: ver en Actions que la tarea corrió sola, a su horario.** Hay que esperar a que
-   llegue la hora — `workflow_dispatch` **no la reemplaza**, porque lo que se comprueba es
-   justamente que arranca sin que nadie la dispare.
+**La comprobación 3, con la base como testigo.** Desde el teléfono, abriendo el enlace del correo
+**sin ninguna sesión**, sobre la cita del 8 de setiembre:
+
+| Momento | Qué quedó en la base publicada |
+|---|---|
+| 12:27:40 | La cita **se movió** del 8 a las 10:00am al **18 a las 2:00pm** |
+| 12:27:51 | La cita quedó **cancelada**, con `cancelada_por = cliente` |
+
+*Y apareció algo que no estaba previsto y que hace más acertada la decisión de la estudiante: cuando
+se toca un enlace dentro de una app de correo, el teléfono lo abre en **un navegador propio de esa
+app**, que no comparte la sesión con aquel donde la persona entró. O sea que **en un teléfono el
+enlace llega casi siempre sin sesión**. No era el caso raro que había que cubrir: era el normal.*
+
+**⚠️ FALTA LA COMPROBACIÓN 8, Y NO DEPENDE DE NADIE: hay que esperar.**
+
+Ver en la pestaña Actions que «Recordatorios de 24 horas» corrió **sola**, a su horario. El botón
+«Run workflow» **no la reemplaza**, porque lo que se comprueba es justamente que arranca sin que
+nadie la dispare.
+
+> 🔑 **Y para que pudiera pasar hubo que juntar la rama con `main`**, lo que nadie había previsto:
+> **GitHub sólo ejecuta las tareas programadas que están en la rama principal.** Mientras el archivo
+> vivió sólo en `despliegue-vercel-turso`, GitHub contestaba `404` y la tarea no existía para él. Se
+> unió el 2026-09-07, con las 354 pruebas corridas **antes** de mover `main`, y desde entonces el
+> workflow figura como `active`.
 
 ---
 
