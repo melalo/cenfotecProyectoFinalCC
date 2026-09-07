@@ -592,7 +592,11 @@ body {
   &__enlace {
     // Es un botón porque cambia de vista, no un enlace a otra página: no hay ninguna dirección a
     // la que ir. Pero se tiene que ver y tocar como un enlace del menú.
-    padding: 12px $stack-xs;
+    // ⚠️ **10px, y es una excepción a la retícula de 4px** *(pedida por la estudiante el
+    // 2026-09-07, mirando los dos menús juntos)*. El sistema pide múltiplos de 4 y 10 no lo es: 8 le
+    // quedaba corto y 12 largo. **Los dos menús llevan el mismo número a propósito** — son el mismo
+    // menú en dos lugares, y si uno separara la rayita 12px y el otro 10 se vería como un descuido.
+    padding: 10px $stack-xs;
     font: inherit;
     font-size: 0.875rem;
     font-weight: 600;
@@ -684,7 +688,14 @@ body {
   }
 
   &__enlace {
-    padding: 0;
+    // ⚠️ **10px, y es una excepción a la retícula de 4px** *(pedida por la estudiante el
+    // 2026-09-07, mirando los dos menús juntos)*. El sistema pide múltiplos de 4 y 10 no lo es: 8 le
+    // quedaba corto y 12 largo. **Los dos menús llevan el mismo número a propósito** — son el mismo
+    // menú en dos lugares, y si uno separara la rayita 12px y el otro 10 se vería como un descuido.
+    //
+    // El horizontal se deja en 0 y **no** se copia el del encabezado: allá separa un enlace del
+    // siguiente, y acá eso ya lo hace el `gap` del contenedor. Copiarlo sumaría dos separaciones.
+    padding: 10px 0;
     font: inherit;
     font-size: 0.875rem;
     font-weight: 600;
@@ -692,6 +703,9 @@ body {
     color: $azul-claro;
     background-color: transparent;
     border: 0;
+    // **La misma rayita transparente que el menú del encabezado**, y por la misma razón que está
+    // escrita allá: existe siempre, así que marcar la sección **no mueve el texto dos píxeles**.
+    border-bottom: 2px solid transparent;
     cursor: pointer;
 
     &:hover {
@@ -704,9 +718,16 @@ body {
       outline-offset: 2px;
     }
 
+    // En qué sección se está, **marcado igual que arriba**. *Lo pidió la estudiante el 2026-09-07,
+    // mirando los dos menús juntos: el de arriba usaba un borde y éste el subrayado del navegador,
+    // que se pega al texto y cuyo grosor decide cada navegador.* Son el mismo menú en dos lugares:
+    // tienen que decir «estás acá» de la misma manera.
+    //
+    // Y sigue sin alcanzar con el color: la rayita lo dice también para quien no distingue bien los
+    // tonos — que es la razón por la que el subrayado estaba, y no se pierde al cambiarlo.
     &.esta-aca {
       color: $blanco;
-      text-decoration: underline;
+      border-bottom-color: $azul-claro;
     }
 
     // La otra mitad de la regla de «Salir»: en el pie solo se ve desde tableta, porque en teléfono
