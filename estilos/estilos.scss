@@ -597,9 +597,21 @@ body {
     font-size: 0.875rem;
     font-weight: 600;
     line-height: 1.25rem;
-    letter-spacing: 0.04em;
     text-align: left;
-    text-transform: uppercase;
+    // ── Acá había `text-transform: uppercase` y `letter-spacing: 0.04em` ──────────────────────
+    //
+    // *Los sacó la estudiante el 2026-09-07, mirando la pantalla: el menú de arriba decía
+    // «RESERVAR · MIS CITAS · USUARIO» y el del pie «Reservar · Mis citas · Usuario».* **Son los
+    // mismos enlaces, a los mismos lugares, escritos de dos maneras.** Es la convención del proyecto
+    // —*dos caminos al mismo lugar se llaman igual*— aplicada a cómo se ven.
+    //
+    // **El `letter-spacing` se fue con las mayúsculas y no por separado:** ese aire entre letras
+    // existía **porque** el texto era versal —las mayúsculas lo piden para leerse—, y sobre texto
+    // normal deja las palabras desparramadas. Quitar uno y dejar el otro habría sido cambiar el
+    // defecto por otro.
+    //
+    // Lo que queda es **exactamente `.pie__enlace`**: mismo tamaño, mismo peso, mismo interlineado
+    // y mismo color. Si un día hay que tocar uno, hay que mirar el otro.
     color: $azul-claro;
     background-color: transparent;
     border: 0;
