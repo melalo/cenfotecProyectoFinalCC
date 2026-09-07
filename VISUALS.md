@@ -80,7 +80,7 @@ typography:
     lineHeight: 28px
   body-md:
     fontFamily: Manrope
-    fontSize: 16px
+    fontSize: 14px   # ← 16px hasta el 2026-09-07; ver «El texto normal mide 14px» más abajo
     fontWeight: '400'
     lineHeight: 24px
   label-md:
@@ -151,19 +151,40 @@ proyecto evita.
    ve crecer toda la aplicación, en vez de que lo ignore. **Los espaciados no se convirtieron**: la
    retícula de 4px es *layout*, no letra.
 
-2. **Toda la tipografía se dibuja al 80%**, con un `font-size: 80%` en `html`. Es decir: lo que la
-   escala llama 16px se ve a **12.8px**, 24px se ve a 19.2px, y así con todo — las proporciones entre
-   un tamaño y otro no cambian, bajan todos juntos. Se hace con un porcentaje y no con un tamaño fijo
-   para que **la persona que agranda la letra de su navegador siga pudiendo hacerlo**, partiendo de un
-   20% menos.
+2. **La escala se dibuja tal cual está escrita: lo que dice 14px se ve a 14px.** *(Desde el
+   2026-09-07.)* No hay ningún factor global que la achique.
 
-   > ⚠️ **Esto se aparta de una línea de este mismo archivo**, y por eso está escrito: *«Body: 16px
-   > remains the standard for accessibility»*. Con el 80%, el texto normal queda en 12.8px y los
-   > avisos y textos de ayuda en 9.6px, por debajo de ese mínimo. **La estudiante lo decidió el
-   > 2026-08-24 después de que se le advirtiera**, mirando la pantalla y buscando que la aplicación
-   > entrara más holgada. Volver atrás es borrar esa única línea del `.scss`.
+   > 🔄 **Esto cambió, y conviene saber qué había antes.** Entre el 2026-08-24 y el 2026-09-07 el
+   > `.scss` tenía un `html { font-size: 80% }` que achicaba **toda** la tipografía de una sola vez:
+   > lo que la escala llamaba 16px se veía a **12.8px**, y los avisos a **9.6px**. Las proporciones
+   > no cambiaban, pero **este archivo decía una cosa y la pantalla mostraba otra**, y encontrar la
+   > diferencia costaba hacer una multiplicación que nadie hacía.
+   >
+   > Lo descubrió la estudiante el 2026-09-07 mirando el inspector del navegador: la fecha de una
+   > cita está escrita como los 14px de esta escala y **se dibujaba a 11.2px**. Se eligió borrar esa
+   > línea, y **bajar en la escala misma** el único tamaño que de verdad le parecía grande.
 
-3. **Los títulos usan `clamp()`**, así que no tienen un tamaño fijo: crecen con el ancho de la
+3. **El texto normal mide 14px, no 16.** *Decidido por la estudiante el 2026-09-07, con esta razón:
+   «16 es demasiado grande para texto normal de lectura; está bien para títulos, pero ahí usamos el
+   `clamp`».*
+
+   > ⚠️ **Se aparta a propósito de una línea de este mismo archivo** —*«Body: 16px remains the
+   > standard for accessibility»*— y por eso queda escrito acá en vez de resuelto en silencio. Es un
+   > apartamiento **mucho menor que el anterior**: antes el texto normal quedaba en 12.8px y los
+   > avisos en 9.6px; ahora el texto normal está en 14px y **los avisos suben de 9.6 a 12px**, que es
+   > lo que esta escala siempre dijo para ellos.
+   >
+   > `body-md` y `label-md` quedan los dos en 14px, y eso es a propósito: se distinguen por el peso
+   > —400 y 600— y por el interlineado, no por el tamaño.
+
+4. **El calendario y las fichas de horario son la excepción, y está medida.** Sus tamaños llevan un
+   `× 0.8` escrito en el `.scss` para que **sigan dibujándose exactamente como antes del cambio**.
+   No es un capricho: son las cajas más angostas del proyecto —siete columnas de días, ocho fichas de
+   horario por fila— y ya tenían por eso otra excepción escrita, la de mostrar «10:00» sin `am`/`pm`
+   porque a 320px de ancho no cabe más. Las cuatro que llevan el factor están nombradas una por una
+   en el `.scss`, con esta misma razón al lado.
+
+5. **Los títulos usan `clamp()`**, así que no tienen un tamaño fijo: crecen con el ancho de la
    pantalla entre un mínimo y un máximo. Los máximos son los de la escala de arriba —32px el `<h1>`,
    24px los títulos de sección, 18px el del cartel de reagendar— y los mínimos son un escalón más
    abajo. El interlineado de esos títulos va **sin unidad** (un multiplicador), para que el aire siga

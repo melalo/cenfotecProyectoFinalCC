@@ -153,12 +153,19 @@ $radio-circulo: 9999px;
 // de su navegador, cosa que hace mucha gente que ve poco: con píxeles la aplicación la ignora y sigue
 // igual de chica; con `rem` **todo crece junto** y proporcionado.
 //
-// **Ojo con la cuenta, que cambió el mismo día:** más abajo, en `html`, hay un `font-size: 80%` que
-// achica toda la tipografía de la aplicación de una sola vez *(decisión de la estudiante del
-// 2026-08-24)*. Así que en un navegador sin tocar, **`1rem` se dibuja a 12.8px, no a 16**. La tabla de
-// acá abajo sigue diciendo de dónde salió cada valor —la escala de `VISUALS.md`, que está en
-// píxeles— y **las proporciones entre un tamaño y otro no cambiaron**: todo bajó un 20% junto. Para
-// saber cómo se ve algo en pantalla, se multiplica su columna de píxeles por 0,8.
+// **La tabla de acá abajo se lee literal, y eso hay que cuidarlo.** `1rem` se dibuja a **16px**, así
+// que cada valor rinde el píxel que tiene escrito al lado: `0.875rem` son 14px de verdad en la
+// pantalla.
+//
+// *Entre el 2026-08-24 y el 2026-09-07 no era así: había un `font-size: 80%` en `html` que achicaba
+// todo un 20%, y para saber cómo se veía algo había que multiplicar esta columna por 0,8. **Nadie
+// multiplicaba.** La estudiante lo descubrió en el inspector —la fecha de una cita, escrita con los
+// 14px de la escala, se dibujaba a 11.2px— y se borró. Lo único que de verdad le parecía grande, el
+// texto normal, se bajó **en la escala misma**: `body-md` pasó de 16px a 14px en `VISUALS.md`.*
+//
+// ⚠️ **Cuatro medidas del calendario y de las fichas de horario llevan un `× 0.8` escrito al lado** y
+// por eso no salen de esta tabla: son las cajas más angostas del proyecto y se dejaron dibujando
+// igual que antes. Cada una tiene su razón anotada donde está.
 //
 // **La tabla, de dónde salió cada valor:** el píxel de `VISUALS.md` dividido entre 16.
 //
@@ -213,10 +220,9 @@ $radio-circulo: 9999px;
 // es exactamente el de antes. Lo que se agrega es que en pantalla angosta bajan un escalón en vez de
 // quedarse grandes y apretar todo lo demás.
 //
-// *(Los tres bajan además un 20% junto con todo lo demás, por el `font-size: 80%` de `html`. La parte
-// `vw` de cada `clamp` **no** baja —mide la ventana, no la letra—, así que hoy cada título llega a su
-// tamaño máximo en una pantalla un poco más angosta que antes. Sigue siendo el comportamiento
-// correcto: nunca menos que el mínimo, nunca más que el máximo.)*
+// *(Hasta el 2026-09-07 los tres bajaban además un 20%, por un `font-size: 80%` que había en `html`.
+// Esa línea se borró, así que **hoy los títulos llegan a los máximos de la escala tal como están
+// escritos**: 32px el `<h1>`, 24px los de sección, 18px el del cartel de reagendar.)*
 
 // El título del encabezado, el `<h1>` con el nombre del negocio. **Reemplaza un salto que ya existía:**
 // hasta hoy pasaba de 28px a 32px de golpe al cruzar la tableta, con un `@media`. Ahora sube de a poco
@@ -310,12 +316,23 @@ html {
   // línea: es una regla del lenguaje, no una elección. Así que la aplicación sigue cambiando de
   // formato a los mismos 476, 768 y 1024 píxeles de siempre.
   //
-  // **El costo, escrito para que no quede escondido:** `VISUALS.md` dice *«Body: 16px remains the
-  // standard for accessibility»*, y con esta línea el texto normal queda en 12.8px y los avisos y
-  // textos de ayuda en 9.6px. **La estudiante lo decidió sabiéndolo**, después de que se le
-  // advirtiera, y por eso queda anotado acá, en `VISUALS.md` y en `DISENO.md` en vez de resuelto en
-  // silencio. Volver atrás es borrar esta línea.
-  font-size: 80%;
+  // ── ACÁ HABÍA UN `font-size: 80%`, Y SE BORRÓ EL 2026-09-07 ───────────────────────────────
+  //
+  // Achicaba **toda** la tipografía de una sola vez: lo que la escala llamaba 16px se dibujaba a
+  // 12.8px y los avisos a 9.6px. *Lo decidió la estudiante el 2026-08-24, sabiendo el costo.*
+  //
+  // **Lo que lo tumbó fue que este archivo decía una cosa y la pantalla mostraba otra.** La
+  // estudiante abrió el inspector el 2026-09-07 y vio que la fecha de una cita, escrita `0.875rem`
+  // —los 14px de la escala—, se dibujaba a **11.2px**. Para saber cómo se veía algo había que
+  // multiplicar por 0,8, y nadie multiplicaba.
+  //
+  // **Sin esta línea, la tabla de conversión de arriba vuelve a ser verdad**: el píxel de
+  // `VISUALS.md` dividido entre 16 se dibuja a ese píxel. Y lo único que de verdad le parecía grande
+  // —el texto normal— se bajó **en la escala misma**, de 16px a 14px, que es donde se decide un
+  // tamaño. Un archivo que se lee literal vale más que uno que hay que corregir de memoria.
+  //
+  // Las cuatro medidas del calendario y las fichas de horario llevan un `× 0.8` escrito al lado
+  // para no moverse: son las cajas más angostas y su razón está medida.
 }
 
 body {
@@ -363,8 +380,10 @@ body {
 
   color: $texto;
   font-family: $tipografia;
-  // body-md del sistema: 16px con línea de 24px. 16px es el mínimo accesible.
-  font-size: 1rem;
+  // body-md del sistema, que **desde el 2026-09-07 son 14px y no 16** (`VISUALS.md`): la estudiante
+  // decidió que 16 es grande para texto de lectura. El interlineado se deja en 24px a propósito —
+  // con 14px de letra queda más aireado, y eso ayuda a leer.
+  font-size: 0.875rem;
   line-height: 1.5rem;
   -webkit-font-smoothing: antialiased;
 
@@ -786,7 +805,7 @@ body {
 
   &__nota {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.875rem; // body-md: 14px desde el 2026-09-07 (`VISUALS.md`)
     line-height: 1.5rem;
     color: $texto-suave;
   }
@@ -958,7 +977,7 @@ body {
   width: 100%;
   padding: 12px $gutter;
   font: inherit;
-  font-size: 1rem;
+  font-size: 0.875rem; // body-md: 14px desde el 2026-09-07 (`VISUALS.md`)
   font-weight: 600;
   line-height: 1.5rem;
   color: $blanco;
@@ -1196,7 +1215,7 @@ body {
     flex: none;
     width: 32px;
     height: 32px;
-    font-size: 1rem;
+    font-size: 0.875rem; // body-md: 14px desde el 2026-09-07 (`VISUALS.md`)
     font-weight: 700;
     line-height: 1.5rem;
     color: $blanco;
@@ -1398,7 +1417,10 @@ body {
 
   &__dias-semana {
     // label-sm: 12px, en mayúscula, para las iniciales de los días.
-    font-size: 0.75rem;
+    // ⚠️ `× 0.8` a propósito: **se dibuja igual que antes del 2026-09-07**, cuando el resto de
+    // la tipografía subió a los valores de `VISUALS.md`. Es una de las cuatro excepciones y la
+    // razón está medida — las iniciales Lu Ma Mi, en siete columnas.
+    font-size: 0.6rem; // 0.75rem × 0.8
     font-weight: 500;
     line-height: 1rem;
     letter-spacing: 0.04em;
@@ -1431,7 +1453,10 @@ body {
   }
 
   &__numero {
-    font-size: 1rem;
+    // ⚠️ `× 0.8` a propósito: **se dibuja igual que antes del 2026-09-07**, cuando el resto de
+    // la tipografía subió a los valores de `VISUALS.md`. Es una de las cuatro excepciones y la
+    // razón está medida — el número del día, en siete columnas.
+    font-size: 0.8rem; // 1rem × 0.8
     font-weight: 600;
     line-height: 1.25rem;
   }
@@ -1439,7 +1464,10 @@ body {
   // El numerito de cuántos horarios quedan libres. Ocupa su lugar siempre, aunque esté vacío, para
   // que los números de los días no se muevan de una casilla a otra.
   &__marca {
-    font-size: 0.75rem;
+    // ⚠️ `× 0.8` a propósito: **se dibuja igual que antes del 2026-09-07**, cuando el resto de
+    // la tipografía subió a los valores de `VISUALS.md`. Es una de las cuatro excepciones y la
+    // razón está medida — la marca de estado del día.
+    font-size: 0.6rem; // 0.75rem × 0.8
     font-weight: 500;
     line-height: 1rem;
     min-height: 16px;
@@ -1577,7 +1605,10 @@ body {
   // El relleno de los lados es chico a propósito: el ancho de la ficha ya lo fija la columna, y
   // este número solo marca el mínimo por debajo del cual el texto se apretaría.
   padding: $stack-xs $base;
-  font-size: 1rem;
+  // ⚠️ `× 0.8` a propósito: **se dibuja igual que antes del 2026-09-07**, cuando el resto de
+  // la tipografía subió a los valores de `VISUALS.md`. Es una de las cuatro excepciones y la
+  // razón está medida — la ficha de horario: la caja más angosta de todo el proyecto.
+  font-size: 0.8rem; // 1rem × 0.8
   font-weight: 600;
   line-height: 1.5rem;
   // Números de ancho fijo: el 1 pasa a ocupar lo mismo que el 0, así las horas quedan alineadas
@@ -1667,7 +1698,7 @@ body {
   // dice si se está moviendo la cita correcta— y tiene que leerse como contenido de verdad.
   &__cual {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.875rem; // body-md: 14px desde el 2026-09-07 (`VISUALS.md`)
     font-weight: 600;
     line-height: 1.5rem;
   }
@@ -1712,7 +1743,7 @@ body {
 
   &__dato {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.875rem; // body-md: 14px desde el 2026-09-07 (`VISUALS.md`)
     font-weight: 600;
     line-height: 1.5rem;
     text-align: right;
@@ -1886,14 +1917,14 @@ body {
   // los títulos—. Un tamaño más grande habría hecho competir al nombre con la hora, que es el otro
   // dato con el que se identifica un renglón.
   &__cliente {
-    font-size: 1rem;
+    font-size: 0.875rem; // body-md: 14px desde el 2026-09-07 (`VISUALS.md`)
     font-weight: 600;
     line-height: 1.5rem;
     color: $navy-oscuro;
   }
 
   &__servicio {
-    font-size: 1rem;
+    font-size: 0.875rem; // body-md: 14px desde el 2026-09-07 (`VISUALS.md`)
     font-weight: 600;
     line-height: 1.5rem;
   }
