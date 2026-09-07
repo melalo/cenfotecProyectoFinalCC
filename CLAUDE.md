@@ -157,14 +157,17 @@ Un slice no se da por cerrado hasta que ese bloque de "cómo probarlo" está esc
 | `npm install` | Instala las dependencias. |
 | `npm run datos` | Crea la base SQLite desde cero y carga los datos de prueba inventados. Se puede correr las veces que haga falta, **pero con la aplicación apagada**: borra el archivo de la base, y Windows no deja borrar un archivo que otro programa tiene abierto. Si `npm start` está corriendo, el comando falla y lo explica. Carga la cuenta de Personal, el negocio, **las dos categorías con sus cuatro servicios** (desde la pieza 11), los tres proveedores, el horario semanal y los feriados de 2026 y 2027. Ninguna cita, ninguna cuenta de cliente y ningún correo registrado: esos se crean desde la aplicación, a partir de las piezas 3, 4 y 7. |
 | `npm start` | Levanta la aplicación en **http://localhost:3000**. Antes de levantar compila los estilos SASS, automáticamente. |
-| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **323** *(actualizado el 2026-09-05; decía «302» desde antes del cambio de motor)*. **El desglose se cuenta por archivo y no por pieza, desde el 2026-09-05**, por una razón concreta: escrito por pieza se puso viejo tres veces —cada revisión visual agregaba pruebas después de que alguien había anotado el número—, y además dejó de cuadrar (la suma daba 300, no 302). Por archivo **se puede comprobar**, que es lo que vale: `personal.test.js` 58, `cancelar-y-reagendar.test.js` 39, `cierre-de-citas.test.js` 27, `contrasenas-y-correos.test.js` 26, `recuperacion.test.js` 23, `reservas.test.js` 23, **`adaptador.test.js` 21**, `disponibilidad.test.js` 19, `usuario.test.js` 19, `cambio-de-contrasena.test.js` 18, `autenticacion.test.js` 16, `correo.test.js` 14, `categorias.test.js` 12, `catalogo.test.js` 8. **Las 21 de `adaptador.test.js` son las más nuevas y las más importantes de entender**: no prueban una regla del negocio sino **el contrato entre el código y la biblioteca de la base**, y son las que atajaron que CA-1 se rompiera en silencio al cambiar el motor — el detalle está en la Etapa 3 de `PLAN-DESPLIEGUE.md`. Dentro de `autenticacion.test.js` hay **2 que vigilan cuánto dura la sesión** (RN-29): ese número vivía en una constante que ninguna prueba miraba, así que cambiarlo por accidente no rompía nada. ⚠️ **`contrasenas-y-correos.test.js` se pone rojo de vez en cuando en la corrida completa y pasa siempre corriéndolo solo** *(visto el 2026-09-05, 1 vez de 4)*: son varios archivos corriendo a la vez y pisándose, no un defecto del código. Antes de investigar un rojo, correr ese archivo solo. **Los tres criterios de aceptación están cubiertos por completo**: CA-1 y CA-2 desde la pieza 3, y **CA-3 entero desde la pieza 7** — la parte del cliente la trajo la 5, la de Personal la 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
+| `npm test` | Corre las pruebas automáticas. **Se escribe `node --test`, sin decirle qué archivos**: así Node los busca solo, y funciona igual en Node 20 que en Node 24. Con un patrón de comodines (`pruebas/**/*.test.js`) **solo funciona desde Node 22**, y eso rompió la integración continua la primera vez que corrió. Hoy son **354** *(actualizado el 2026-09-07, al construir la pieza 6; decía «323», y antes «302», desde antes del cambio de motor)*. **El desglose se cuenta por archivo y no por pieza, desde el 2026-09-05**, por una razón concreta: escrito por pieza se puso viejo tres veces —cada revisión visual agregaba pruebas después de que alguien había anotado el número—, y además dejó de cuadrar (la suma daba 300, no 302). Por archivo **se puede comprobar**, que es lo que vale: `personal.test.js` 58, `cancelar-y-reagendar.test.js` 39, `cierre-de-citas.test.js` 27, `contrasenas-y-correos.test.js` 26, `recuperacion.test.js` 23, `reservas.test.js` 23, **`adaptador.test.js` 21**, `disponibilidad.test.js` 19, `usuario.test.js` 19, `cambio-de-contrasena.test.js` 18, `autenticacion.test.js` 16, **`recordatorios.test.js` 16** (pieza 6), `correo.test.js` 14, `categorias.test.js` 12, **`enlaces-de-cita.test.js` 15** (pieza 6), `catalogo.test.js` 8. **La suma da 354 y se puede comprobar corriendo cada archivo solo.** **Las 21 de `adaptador.test.js` son las más nuevas y las más importantes de entender**: no prueban una regla del negocio sino **el contrato entre el código y la biblioteca de la base**, y son las que atajaron que CA-1 se rompiera en silencio al cambiar el motor — el detalle está en la Etapa 3 de `PLAN-DESPLIEGUE.md`. Dentro de `autenticacion.test.js` hay **2 que vigilan cuánto dura la sesión** (RN-29): ese número vivía en una constante que ninguna prueba miraba, así que cambiarlo por accidente no rompía nada. ⚠️ **Un archivo se pone rojo de vez en cuando en la corrida completa y pasa siempre corriéndolo solo**: son varios archivos corriendo a la vez y pisándose, no un defecto del código. Antes de investigar un rojo, **correr ese archivo solo**. Le pasó a `contrasenas-y-correos.test.js` *(2026-09-05, 1 vez de 4)* y a **`autenticacion.test.js`** *(2026-09-07, 1 vez de 2 — y solo dio 16 de 16 tres veces seguidas)*. **No es de un archivo en particular**, que era la lectura fácil del primer caso: es de la corrida en paralelo, y le puede tocar a cualquiera de los que crean cuentas. **Los tres criterios de aceptación están cubiertos por completo**: CA-1 y CA-2 desde la pieza 3, y **CA-3 entero desde la pieza 7** — la parte del cliente la trajo la 5, la de Personal la 7. Desde la pieza 3 estas pruebas **también corren solas en cada push** — ver «Integración continua» más abajo. |
 | `npm run estado` | **Cuenta en qué estado está el proyecto, leyéndolo de la base de datos.** Cuatro revisiones antes de arrancar —puerto libre, `.env`, clave del correo, base creada— y después qué cuentas hay, cuántas citas y de qué tipo, y qué se puede mostrar. **Solo lee** (abre la base en modo `readonly`), así que se puede correr con la aplicación levantada. Existe desde el 2026-08-24, y lo usa la skill `/launch`. |
 | `npm run estilos` | Compila `estilos/estilos.scss` a `publico/css/estilos.css`. **No hace falta correrlo a mano**: `npm start` ya lo hace. Sirve para recompilar los estilos sin reiniciar la aplicación. |
 
 Variables de entorno, en un `.env` que **no se sube**, con un `.env.ejemplo` versionado al lado:
 `PORT` y `SESION_SECRETO` (desde la pieza 1), `RESEND_API_KEY` y `CORREO_REMITENTE` (desde la 4),
-`DIRECCION_PUBLICA` (desde la 9) y `RECORDATORIOS_SECRETO` (previsto para la 6, que todavía no está
-construida). **`DIRECCION_PUBLICA` es con qué dirección se escriben los enlaces que salen por
+`DIRECCION_PUBLICA` (desde la 9) y `RECORDATORIOS_SECRETO` (desde la 6, construida el 2026-09-07).
+**`RECORDATORIOS_SECRETO` protege el disparador del recordatorio**, y tiene una particularidad que
+conviene saber: **si se deja vacía el disparador queda cerrado para todos, no abierto** — es el único
+fallo seguro de los dos posibles. En el despliegue hay que cargarla en **dos** lados con el mismo
+valor: en Vercel y en los Secrets de GitHub, porque el disparo sale del repositorio. **`DIRECCION_PUBLICA` es con qué dirección se escriben los enlaces que salen por
 correo**; si se deja vacía se arma sola con el puerto, y eso quiere decir `http://localhost:3000` —
 o sea «esta computadora», así que el enlace **solo abre donde la aplicación está corriendo**. Sin `RESEND_API_KEY` la aplicación tiene que levantar igual:
 los correos fallan y quedan registrados como fallidos, pero las citas se siguen creando (RF-19).
@@ -197,6 +200,11 @@ cenfotecProyectoFinalCC/
 │   │                      estado, y donde viven la ventana de 4 horas (RN-5) y RN-26
 │   ├── recuperacion.js    los enlaces para restablecer la contraseña: cuánto viven y cuándo
 │   │                      sirven (RN-27). Una regla, un lugar
+│   ├── enlaces-de-cita.js los enlaces que abren UNA cita desde el correo (pieza 6): el código de
+│   │                      cada cita y cómo se escriben sus dos direcciones. Es lo que deja
+│   │                      cancelar o mover sin la sesión abierta
+│   ├── recordatorios.js   a qué citas les toca el recordatorio de 24 horas y cómo se les manda
+│   │                      (RF-12, RN-20). No sabe de HTTP
 │   ├── correo.js          los correos: armarlos, entregarlos y dejar constancia
 │   ├── plantillas-de-correo.js  qué dice cada correo — solo arma texto, no manda nada
 │   ├── enviador-resend.js el único archivo que habla con un servicio de afuera
@@ -640,13 +648,28 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
   frase dice algo falso**: en la pieza 5 el texto «faltan menos de 4 horas» salía debajo de una cita
   que ya había ocurrido, y las pruebas estaban todas en verde, porque comprobaban la regla y la regla
   estaba bien. Por eso **una pieza no se cierra sin que una persona abra el navegador y mire.** Los
-  **diecinueve** defectos visuales encontrados hasta hoy salieron todos de ahí, ninguno de una prueba,
-  **más dos hallazgos que no eran de apariencia** —el 20 y el 21, los dos abajo—. La cuenta de los
-  visuales: **doce** hasta la pieza 5, **seis** de la revisión de la pieza 7, **uno** que no estaba
-  roto pero se veía (la etiqueta que partía en dos líneas) y **uno** de la revisión de la pieza 8. *(Este número decía «ocho» hasta el
-  2026-08-21 y «doce» hasta el 2026-08-24: se quedó viejo tres veces, las tres porque la revisión
-  visual siguió encontrando cosas después de que alguien anotó el número. Si volvés a tocarlo, mirá
-  primero el final de `BITACORA.md`.)*
+  defectos visuales encontrados hasta hoy salieron todos de ahí, ninguno de una prueba, **más los
+  hallazgos que no eran de apariencia** —el 20 y el 21, los dos abajo, y el de la pieza 6—. La cuenta
+  de los visuales: **doce** hasta la pieza 5, **seis** de la revisión de la pieza 7, **uno** que no
+  estaba roto pero se veía (la etiqueta que partía en dos líneas), **uno** de la revisión de la pieza
+  8 y **tres** de la pieza 6 *(los botones del correo con nombres inventados, un botón que prometía
+  algo que no podía dar, y una lista de 88 botones en un teléfono)*.
+
+  ⚠️ **Este número dejó de escribirse en palabras a propósito, el 2026-09-07.** Decía «ocho» hasta el
+  2026-08-21, «doce» hasta el 2026-08-24 y **«diecinueve» hasta hoy — y ese último ya no cuadraba con
+  su propio desglose, que sumaba veinte.** Se quedó viejo cuatro veces, siempre por lo mismo: la
+  revisión visual sigue encontrando cosas después de que alguien anotó el total. **La lista de abajo
+  es la cuenta; el total, si hace falta, se suma al leerla.** Si volvés a tocarlo, mirá primero el
+  final de `BITACORA.md`.
+- **Y el de la pieza 6 no fue de apariencia tampoco: fue un comentario que decía lo contrario del
+  código de al lado** (2026-09-07). El enlace del correo **se ignoraba por completo si había sesión
+  abierta**: `arrancar()` preguntaba por la sesión primero y hacía `return`, y tres líneas más abajo
+  un comentario afirmaba que «los enlaces del correo mandan sobre todo lo demás». Lo encontró la
+  estudiante en el teléfono, y era **el caso más común**: quien reserva desde el celular queda con la
+  sesión abierta 4 horas (RN-29) y la confirmación le llega tres segundos después. Su primera prueba
+  había funcionado sólo porque venía sin sesión. **La lección: un comentario que describe una
+  intención no es una garantía** — y ese día la misma pieza tuvo dos, porque
+  `enviarConfirmacionDeCita` también decía «nunca lanza un error» mientras lanzaba uno.
 - **El hallazgo 21 tampoco fue de apariencia, y fue todavía más afuera: lo hizo un servicio de
   terceros** (pieza 9, 2026-08-28). El botón del correo de recuperación llevaba a una página de
   error porque **Resend había reescrito el enlace** con un rastreador de clics propio. Del lado
@@ -673,7 +696,7 @@ Quedaron fijadas al construir la pieza 4, que es la primera que habla con un ser
 
 ### Integración continua
 
-Existe desde la pieza 3. Las **323** pruebas corren solas en **cada push**, a cualquier rama, en
+Existe desde la pieza 3. Las **354** pruebas corren solas en **cada push**, a cualquier rama, en
 **Node 20 y Node 24**, configuradas en `.github/workflows/pruebas.yml`.
 
 - **Corre solo en push, no en pull request.** *Cambiado el 2026-08-25, a pedido de la estudiante:

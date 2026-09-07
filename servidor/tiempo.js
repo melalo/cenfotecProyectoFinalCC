@@ -117,7 +117,8 @@ export function esAnteriorOIgual(a, b) {
  * Existe desde la pieza 5, porque la ventana de cancelación (RN-5) es la primera regla del proyecto
  * que mide una **distancia** entre dos momentos en vez de comparar dos fechas.
  *
- * Es el único lugar de todo el proyecto donde un momento se convierte con `new Date()`, y acá es
+ * Es uno de los dos únicos lugares de todo el proyecto donde un momento se convierte con
+ * `new Date()` —el otro es `horasEntre`, acá abajo, agregado por la pieza 6—, y acá es
  * seguro justamente por la regla de formato del proyecto: el texto trae su desfase escrito al final
  * (`-06:00`), así que no hay nada que adivinar — `new Date` no puede interpretarlo como si fuera la
  * hora de otro lugar. Es lo contrario de lo que pasaría con un `2026-09-02T10:00:00` a secas, que
@@ -129,6 +130,25 @@ export function esAnteriorOIgual(a, b) {
 export function horasHasta(momentoDelProyecto, ahora) {
   const cuando = new Date(momentoDelProyecto).getTime()
   return (cuando - ahora.getTime()) / MILISEGUNDOS_POR_HORA
+}
+
+/**
+ * Cuántas horas hay **entre dos momentos del proyecto**, los dos escritos como texto.
+ *
+ * Existe desde la pieza 6, y la diferencia con `horasHasta` es cuál es el segundo momento:
+ * `horasHasta` mide contra **ahora** —un `Date` que llega del reloj—, y esto mide entre dos momentos
+ * que los dos salen de la base. Es lo que RN-20 necesita: **cuánta anticipación tuvo una reserva** es
+ * la distancia entre `creada_en` y `inicio`, y ninguno de los dos es «ahora».
+ *
+ * Está acá y no en `recordatorios.js` por la convención del proyecto: **toda cuenta de fechas se
+ * escribe en este archivo**. Y por eso los dos únicos `new Date()` de todo el proyecto están en
+ * estas dos funciones vecinas, donde es seguro: el texto trae su desfase escrito al final
+ * (`-06:00`), así que no hay nada que adivinar.
+ */
+export function horasEntre(momentoAnterior, momentoPosterior) {
+  const desde = new Date(momentoAnterior).getTime()
+  const hasta = new Date(momentoPosterior).getTime()
+  return (hasta - desde) / MILISEGUNDOS_POR_HORA
 }
 
 /**

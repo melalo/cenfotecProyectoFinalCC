@@ -43,8 +43,19 @@ const TIPOGRAFIA =
  * El correo de confirmación de una reserva (RF-11).
  *
  * Lleva los cinco datos que el requisito exige —fecha, hora, servicio, proveedor y ubicación— y el
- * teléfono del negocio. El teléfono no está de adorno: hasta la pieza 5 no existe manera de
- * cancelar desde la aplicación, y aunque exista, RN-5 manda llamar cuando faltan menos de 4 horas.
+ * teléfono del negocio. El teléfono no está de adorno: RN-5 manda llamar cuando faltan menos de 4
+ * horas, que es justo cuando los dos botones dejan de servir.
+ *
+ * ── `enlaces` es el cambio del 2026-09-05 (pieza 6) ──────────────────────────────────────────
+ *
+ * Son `{ cancelar, reagendar }`, y los pidió la estudiante **después de vivirlo**: reservó contra la
+ * aplicación ya publicada, le llegó este correo, y no traía los botones. Hasta entonces este correo
+ * decía «llamanos al 2000-0000» y el autoservicio por enlace estaba solo en el recordatorio de
+ * RF-12 — que llega recién 24 horas antes, cuando quien se equivocó de hora ya lleva un día
+ * esperando.
+ *
+ * **Es el mismo correo que se manda al reagendar** (RF-14), así que estos botones también van en
+ * ése, con el mismo código: no hace falta nada especial, es la misma plantilla.
  */
 export function armarCorreoDeConfirmacion({
   clienteNombre,
@@ -55,6 +66,7 @@ export function armarCorreoDeConfirmacion({
   negocioNombre,
   negocioTelefono,
   negocioUbicacion,
+  enlaces,
 }) {
   const fecha = escribirFechaEnPalabras(fechaDelMomento(inicio))
   const hora = escribirHoraDelMomento(inicio)
@@ -70,8 +82,83 @@ export function armarCorreoDeConfirmacion({
   return {
     para: clienteCorreo,
     asunto: `Tu reserva quedó confirmada — ${fecha}, ${hora}`,
-    html: enHtml({ clienteNombre, negocioNombre, negocioTelefono, datos }),
-    texto: enTextoPlano({ clienteNombre, negocioNombre, negocioTelefono, datos }),
+    html: enHtml({
+      clienteNombre,
+      negocioNombre,
+      negocioTelefono,
+      datos,
+      enlaces,
+      titulo: "Tu reserva quedó confirmada",
+      entrada: `Ya tenés tu cita apartada en ${negocioNombre}. Estos son los datos:`,
+    }),
+    texto: enTextoPlano({
+      clienteNombre,
+      negocioNombre,
+      negocioTelefono,
+      datos,
+      enlaces,
+      titulo: "TU RESERVA QUEDÓ CONFIRMADA",
+      entrada: `Ya tenés tu cita apartada en ${negocioNombre}. Estos son los datos:`,
+    }),
+  }
+}
+
+/**
+ * El correo recordatorio, 24 horas antes de la cita (RF-12, pieza 6).
+ *
+ * **Lleva los mismos datos que la confirmación y los mismos dos botones**, y eso es a propósito: es
+ * el mismo aviso mirado en otro momento, no una noticia distinta. Lo único que cambia es el
+ * encabezado y la frase de arriba, porque quien lo lee ya sabe que tiene la cita — lo que necesita
+ * es que se la recuerden y poder arreglarla si algo le cambió.
+ *
+ * **El asunto no dice «mañana».** La ventana son 24 horas, así que casi siempre es mañana, pero una
+ * corrida de la tarea a la 1 de la mañana alcanzaría una cita de **hoy** por la tarde — y un correo
+ * que dijera «mañana» estaría mintiendo justo cuando más importa. Dice la fecha y la hora, que
+ * nunca puede ser falso.
+ */
+export function armarCorreoDeRecordatorio({
+  clienteNombre,
+  clienteCorreo,
+  servicio,
+  proveedor,
+  inicio,
+  negocioNombre,
+  negocioTelefono,
+  negocioUbicacion,
+  enlaces,
+}) {
+  const fecha = escribirFechaEnPalabras(fechaDelMomento(inicio))
+  const hora = escribirHoraDelMomento(inicio)
+
+  const datos = [
+    ["Servicio", servicio],
+    ["Terapista", proveedor],
+    ["Día", fecha],
+    ["Hora", hora],
+    ["Dónde", negocioUbicacion],
+  ]
+
+  return {
+    para: clienteCorreo,
+    asunto: `Te recordamos tu cita — ${fecha}, ${hora}`,
+    html: enHtml({
+      clienteNombre,
+      negocioNombre,
+      negocioTelefono,
+      datos,
+      enlaces,
+      titulo: "Te recordamos tu cita",
+      entrada: `Falta poco para tu cita en ${negocioNombre}. Estos son los datos:`,
+    }),
+    texto: enTextoPlano({
+      clienteNombre,
+      negocioNombre,
+      negocioTelefono,
+      datos,
+      enlaces,
+      titulo: "TE RECORDAMOS TU CITA",
+      entrada: `Falta poco para tu cita en ${negocioNombre}. Estos son los datos:`,
+    }),
   }
 }
 
@@ -230,8 +317,14 @@ function recuperacionEnTextoPlano({ nombre, enlace, cuantoDura, negocioNombre, n
   ].join("\n")
 }
 
-/** La versión con diseño. */
-function enHtml({ clienteNombre, negocioNombre, negocioTelefono, datos }) {
+/**
+ * La versión con diseño de los dos correos de una cita: la confirmación y el recordatorio.
+ *
+ * **Es una sola función para los dos**, y `titulo` y `entrada` son lo único que los distingue. Los
+ * datos de la cita, los dos botones, el aviso de las 4 horas y el pie son idénticos — escribirlo dos
+ * veces querría decir que el día que se arregle algo del diseño hay que acordarse de los dos.
+ */
+function enHtml({ clienteNombre, negocioNombre, negocioTelefono, datos, enlaces, titulo, entrada }) {
   const filas = datos
     .map(
       ([etiqueta, valor]) => `
@@ -247,7 +340,7 @@ function enHtml({ clienteNombre, negocioNombre, negocioTelefono, datos }) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tu reserva quedó confirmada</title>
+    <title>${escapar(titulo)}</title>
   </head>
   <body style="margin: 0; padding: 0; background-color: ${SUPERFICIE}; font-family: ${TIPOGRAFIA}; color: ${TEXTO};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: ${SUPERFICIE}; padding: 24px 16px;">
@@ -256,7 +349,7 @@ function enHtml({ clienteNombre, negocioNombre, negocioTelefono, datos }) {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: ${BLANCO}; border: 1px solid ${BORDE}; border-radius: 8px; overflow: hidden;">
             <tr>
               <td style="background-color: ${NAVY}; padding: 24px; color: ${BLANCO}; font-size: 24px; line-height: 32px; font-weight: 600;">
-                Tu reserva quedó confirmada
+                ${escapar(titulo)}
               </td>
             </tr>
             <tr>
@@ -265,16 +358,18 @@ function enHtml({ clienteNombre, negocioNombre, negocioTelefono, datos }) {
                   Hola, ${escapar(clienteNombre)}:
                 </p>
                 <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 24px; color: ${TEXTO_SUAVE};">
-                  Ya tenés tu cita apartada en ${escapar(negocioNombre)}. Estos son los datos:
+                  ${escapar(entrada)}
                 </p>
 
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top: 1px solid ${BORDE}; border-bottom: 1px solid ${BORDE}; border-left: 4px solid ${INDIGO}; padding: 8px 16px;">
                   ${filas}
                 </table>
 
+                ${botonesDeAutoservicio(enlaces)}
+
                 <p style="margin: 24px 0 0 0; font-size: 16px; line-height: 24px; color: ${TEXTO_SUAVE};">
-                  Si necesitás cambiar o cancelar tu cita, llamanos al
-                  <strong style="color: ${TEXTO};">${escapar(negocioTelefono)}</strong>.
+                  Si faltan menos de 4 horas para tu cita, esos dos botones ya no sirven: en ese caso
+                  llamanos al <strong style="color: ${TEXTO};">${escapar(negocioTelefono)}</strong>.
                 </p>
               </td>
             </tr>
@@ -291,23 +386,110 @@ function enHtml({ clienteNombre, negocioNombre, negocioTelefono, datos }) {
 </html>`
 }
 
-/** La versión de respaldo, sin diseño. Dice exactamente lo mismo. */
-function enTextoPlano({ clienteNombre, negocioNombre, negocioTelefono, datos }) {
+/** La versión de respaldo, sin diseño. Dice exactamente lo mismo, para los dos correos. */
+function enTextoPlano({
+  clienteNombre,
+  negocioNombre,
+  negocioTelefono,
+  datos,
+  enlaces,
+  titulo,
+  entrada,
+}) {
   const lineas = datos.map(([etiqueta, valor]) => `${etiqueta}: ${valor}`)
 
   return [
-    "TU RESERVA QUEDÓ CONFIRMADA",
+    titulo,
     "",
     `Hola, ${clienteNombre}:`,
     "",
-    `Ya tenés tu cita apartada en ${negocioNombre}. Estos son los datos:`,
+    entrada,
     "",
     ...lineas,
     "",
-    `Si necesitás cambiar o cancelar tu cita, llamanos al ${negocioTelefono}.`,
+    ...autoservicioEnTextoPlano(enlaces),
+    `Si faltan menos de 4 horas para tu cita, esos enlaces ya no sirven: en ese caso llamanos`,
+    `al ${negocioTelefono}.`,
     "",
     `${negocioNombre} — este correo se envió automáticamente, no hace falta contestarlo.`,
   ].join("\n")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// LOS DOS BOTONES DE AUTOSERVICIO (pieza 6: RF-11 desde el 2026-09-05, y RF-12)
+//
+// Están acá abajo, en funciones aparte, porque **los usan dos correos distintos**: la confirmación
+// de una reserva y el recordatorio de 24 horas. Escritos adentro de cada plantilla serían la misma
+// cosa dos veces, y el día que cambie el texto de un botón cambiaría en un solo correo.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Los dos botones, con diseño, y las dos direcciones a la vista debajo.
+ *
+ * **Las tres convenciones del correo de este proyecto se aplican acá, y ninguna se descubre sola:**
+ *
+ *   - **`ses:no-track` en cada enlace.** Es la marca con la que el servicio que entrega el correo lo
+ *     deja en paz; sin ella lo reescribe por uno suyo de rastreo de clics, y el de verdad queda
+ *     adentro del de ellos — si su rastreador no abre, el botón no lleva a ningún lado. Pasó de
+ *     verdad el 2026-08-28 (hallazgo 21, en `DISENO.md`).
+ *   - **La dirección va además como texto suelto.** No es el plan B del botón, y por eso no dice «si
+ *     el botón no funciona»: son dos caminos al mismo lugar, y éste es el único que ningún servicio
+ *     de afuera puede tocar, porque es texto y no un enlace.
+ *   - **Los dos botones se llaman igual que los de la aplicación: «Reagendar» y «Cancelar».** No es
+ *     un detalle de estilo, es la convención de `CLAUDE.md`: *dos caminos al mismo lugar se llaman
+ *     igual*. Y acá pesa más que en la pantalla, porque el correo y la aplicación se leen en momentos
+ *     separados — quien tocó «Cambiar la hora» en el correo y después busca ese botón en «Mis citas»
+ *     no lo encuentra. **Decían «Cambiar la hora» y «Cancelar la cita» hasta el 2026-09-07**, y lo
+ *     encontró la estudiante leyendo el correo que le llegó. Hay una prueba que lo fija.
+ *   - **Aguanta que no haya enlaces.** Los correos de las citas que se crearon antes de esta pieza
+ *     —o cualquier llamada que no los pase— siguen saliendo, solo sin los botones. Un correo que se
+ *     cayera por esto sería peor que uno sin botones (RF-19).
+ */
+function botonesDeAutoservicio(enlaces) {
+  if (!enlaces) return ""
+
+  return `
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0 16px 0;">
+                  <tr>
+                    <td style="background-color: ${INDIGO}; border-radius: 8px;">
+                      <a href="${escapar(enlaces.reagendar)}" ses:no-track style="display: inline-block; padding: 12px 24px; font-size: 16px; line-height: 24px; font-weight: 600; color: ${BLANCO}; text-decoration: none;">
+                        Reagendar
+                      </a>
+                    </td>
+                    <td style="width: 8px;">&nbsp;</td>
+                    <td style="border: 1px solid ${BORDE}; border-radius: 8px;">
+                      <a href="${escapar(enlaces.cancelar)}" ses:no-track style="display: inline-block; padding: 12px 24px; font-size: 16px; line-height: 24px; font-weight: 600; color: ${TEXTO}; text-decoration: none;">
+                        Cancelar
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin: 0 0 8px 0; font-size: 12px; line-height: 16px; color: ${TEXTO_SUAVE};">
+                  O copiá una de estas direcciones y pegala en tu navegador:
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background-color: ${SUPERFICIE}; border: 1px solid ${BORDE}; border-radius: 8px; padding: 12px 16px; font-family: Consolas, 'Courier New', monospace; font-size: 14px; line-height: 20px; color: ${TEXTO}; word-break: break-all;">
+                      Reagendar:<br />${escapar(enlaces.reagendar)}<br /><br />
+                      Cancelar:<br />${escapar(enlaces.cancelar)}
+                    </td>
+                  </tr>
+                </table>`
+}
+
+/** Lo mismo sin diseño, para la versión de respaldo. Devuelve las líneas ya listas. */
+function autoservicioEnTextoPlano(enlaces) {
+  if (!enlaces) return []
+
+  return [
+    "Para REAGENDAR tu cita, copiá esta dirección y pegala en tu navegador:",
+    enlaces.reagendar,
+    "",
+    "Y para CANCELARLA, esta otra:",
+    enlaces.cancelar,
+    "",
+  ]
 }
 
 /**

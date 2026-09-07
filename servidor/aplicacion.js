@@ -63,6 +63,10 @@ export function crearAplicacion({
   reloj = RELOJ_DE_VERDAD,
   enviador = ENVIADOR_SIN_CONFIGURAR,
   direccionPublica = DIRECCION_PUBLICA_POR_OMISION,
+  // La clave que protege el disparador del recordatorio (pieza 6). **No tiene valor por omisión a
+  // propósito**: sin ella el disparador queda cerrado, que es el único fallo seguro. Un valor por
+  // omisión sería una clave que está escrita en el repositorio, o sea ninguna clave.
+  recordatoriosSecreto,
 }) {
   const aplicacion = express()
 
@@ -75,7 +79,17 @@ export function crearAplicacion({
     crearRutasDeAutenticacion({ base, sesiones, reloj, enviador, direccionPublica }),
   )
   aplicacion.use("/api", crearRutasDeCatalogo({ base, sesiones, reloj }))
-  aplicacion.use("/api", crearRutasDeCitas({ base, sesiones, reloj, enviador }))
+  aplicacion.use(
+    "/api",
+    crearRutasDeCitas({
+      base,
+      sesiones,
+      reloj,
+      enviador,
+      direccionPublica,
+      recordatoriosSecreto,
+    }),
+  )
   aplicacion.use("/api", crearRutasDeUsuario({ base, sesiones, reloj }))
   aplicacion.use("/api", crearRutasDePersonal({ base, sesiones, reloj }))
 

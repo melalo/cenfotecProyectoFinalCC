@@ -330,6 +330,36 @@ async function crearTablas(base) {
       CHECK ((cliente_id IS NULL) <> (personal_id IS NULL))
     );
   `)
+
+  // ── Pieza 6: los enlaces que abren una cita desde el correo (RF-11, RF-12) ──────────────────
+  //
+  // Un código al azar por cita. Es lo que deja que el enlace del correo abra **esa** cita sin
+  // pedir la contraseña, que es lo que decidió la estudiante el 2026-09-07.
+  //
+  // ⚠️ **Se parece a `token_recuperacion` y NO se comporta igual**, y las dos diferencias son a
+  // propósito:
+  //
+  //   - **No tiene `vence_en`.** El vencimiento ya lo pone la cita: una cita que ya pasó no se
+  //     cancela ni se mueve (RN-26), y dentro de las 4 horas tampoco (RN-5). Agregarle una fecha
+  //     propia sería una segunda regla de vencimiento que un día diría algo distinto de la
+  //     primera. Y una fecha fija no serviría: la confirmación se manda al reservar, que puede
+  //     ser meses antes de la cita.
+  //   - **No tiene `usado_en`: sirve más de una vez.** El de recuperación se apaga al usarse
+  //     porque cambiar la contraseña dos veces es un problema; acá no hay nada que apagar — quien
+  //     entró por el enlace, miró y cerró, tiene que poder volver a entrar. Lo que impide el daño
+  //     no es que el enlace se gaste, es que la cita deje de estar activa.
+  //
+  // `cita_id` es **UNIQUE**, y eso es lo que hace que el código sea de la cita y no del correo: la
+  // confirmación, la confirmación del reagendamiento y el recordatorio llevan **el mismo enlace**.
+  // Si cada correo inventara uno nuevo, el botón del correo viejo dejaría de funcionar.
+  await base.ejecutar(`
+    CREATE TABLE IF NOT EXISTS token_cita (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      cita_id   INTEGER NOT NULL UNIQUE REFERENCES cita(id),
+      codigo    TEXT    NOT NULL UNIQUE,
+      creado_en TEXT    NOT NULL
+    );
+  `)
 }
 
 /**

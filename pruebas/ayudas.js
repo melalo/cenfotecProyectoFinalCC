@@ -82,6 +82,10 @@ export function borrarCarpetaDePrueba(carpeta) {
  * `opciones.enviador` deja poner un enviador de correo de mentira (pieza 4). Si no se pasa, la
  * aplicación usa el mismo que cuando no hay `RESEND_API_KEY`: falla sin tocar la red. Eso es a
  * propósito — **ninguna prueba automática puede mandar un correo de verdad**.
+ *
+ * `opciones.recordatoriosSecreto` es la clave que protege el disparador del recordatorio (pieza 6).
+ * **Si no se pasa, el disparador queda cerrado para todos**, que es lo mismo que pasa en el
+ * despliegue si nadie cargó `RECORDATORIOS_SECRETO` — y hay una prueba que lo fija.
  */
 export async function crearEntornoDePrueba(contexto, opciones = {}) {
   const carpeta = mkdtempSync(join(tmpdir(), "reservas-prueba-"))
@@ -107,6 +111,7 @@ export async function crearEntornoDePrueba(contexto, opciones = {}) {
         sesionSecreto: SESION_SECRETO_DE_PRUEBA,
         reloj: opciones.reloj,
         enviador: opciones.enviador,
+        recordatoriosSecreto: opciones.recordatoriosSecreto,
       }).listen(0)
       await once(servidor, "listening")
       entorno.direccion = `http://localhost:${servidor.address().port}`

@@ -677,6 +677,101 @@ segunda para «limpiar» el correo, la prueba se pone roja.
 por la que `credenciales.js` existe desde la pieza 1: **una regla, un lugar**. El endpoint pregunta y
 obedece; no sabe qué es una hora ni qué significa «usado».
 
+## Decisiones tomadas al construir la pieza 6
+
+*Del 2026-09-07. El recordatorio de 24 horas (RF-12) y, desde el cambio de RF-11 del 2026-09-05, los
+dos enlaces de autoservicio en el correo de confirmación. **Es la última pieza: cierra 12 de 12.***
+
+*La pieza no agregó ningún servicio nuevo —el correo funciona desde la pieza 4— y agregó **dos cosas
+que el proyecto no tenía**: la única cosa que pasa **sin que nadie la pida** (una tarea que arranca
+porque el reloj llegó a cierta hora), y la única pantalla que **se ve sin haber entrado**.*
+
+| Qué se decidió | Alternativas | Elegida | Por qué |
+|---|---|---|---|
+| **Qué pasa si alguien toca el enlace del correo y no tiene la sesión abierta** | (a) **Entra sin contraseña**, con un código propio en el enlace; (b) el enlace solo señala la cita y le pide entrar, aterrizando después en ella | **(a) Entra sin contraseña** | La decidió la estudiante, y era la decisión que RF-11 dejó escrita como pendiente desde el 2026-09-05. La razón sale del propio cambio de RF-11: **quien acaba de reservar y se equivocó de hora quiere arreglarlo en ese momento**, y mandarlo a acordarse de su contraseña en el teléfono es mandarlo a llamar por teléfono con más pasos. El trato de confianza no es nuevo —es el mismo que el proyecto ya aceptó en la pieza 9, «quien tiene acceso al correo puede usar lo que le llegó ahí»— y **a propósito es menos poderoso**: el enlace de recuperación cambia la contraseña de la cuenta entera, y éste alcanza **una** cita. La (b) era bastante más barata (ni tabla nueva ni endpoints nuevos) y se descartó por eso mismo: ahorraba código a costa de lo único que la pieza venía a arreglar. |
+| **El código no vence y sirve más de una vez** | Copiar `token_recuperacion` tal cual: un solo uso y 1 hora de vida | **Ni vencimiento ni un solo uso** | **El vencimiento ya lo pone la cita**: una cita que ya pasó no se cambia (RN-26) y dentro de las 4 horas tampoco (RN-5). Una fecha propia sería una **segunda** regla de vencimiento que un día diría algo distinto de la primera. Y una fecha fija no podía servir: la confirmación se manda al reservar, que puede ser meses antes de la cita. Lo del uso único es lo mismo mirado del otro lado: el de recuperación se apaga porque cambiar la contraseña dos veces es un problema, y acá **no hay nada que apagar** — quien entró, miró y cerró tiene que poder volver. Lo que impide el daño no es que el enlace se gaste, es que la cita deje de estar activa. |
+| **El código es de la cita, no del correo** | Uno nuevo por cada correo | **Uno por cita** (`cita_id` es `UNIQUE`) | Si cada correo inventara el suyo, el botón del correo de confirmación —que la persona **todavía tiene en su bandeja**— dejaría de funcionar en cuanto llegara el recordatorio. Hay una prueba que lo fija: se mueve la cita y se comprueba que el código no cambió. |
+| **Cuatro endpoints angostos `/api/citas/por-enlace/:codigo`** | Que el código abra una sesión normal y funcione toda la aplicación | **Los cuatro endpoints** | Canjearlo por una sesión era mucho menos código y **daba muchísimo más poder del necesario**: un enlace que no vence y que abre la cuenta entera. Así el código alcanza **una** cita y nada más — no abre sesión, así que con él no hay forma de pedir «mis citas» ni de nombrar otra cita, y hay una prueba que lo comprueba. ⚠️ Y **no repiten ninguna regla**: cada uno saca el `clienteId` **de la cita** y llama a la misma función de `reservas.js` que usa la pantalla con sesión, con `quien = QUIEN_CLIENTE`. La ventana de las 4 horas y RN-26 siguen valiendo sin un solo `if` que lo diga. |
+| **Sin clave configurada, el disparador queda cerrado para todos** | Que sin clave quede abierto (comparar «lo que vino» contra «nada») | **Cerrado** | Es lo contrario de lo que uno escribiría sin pensarlo, y tiene su prueba. De los dos fallos posibles es el único aceptable: sin la variable no salen recordatorios **y eso se nota**; abierto no se nota hasta que alguien de afuera lo usa. |
+| **Un recordatorio que falló no se reintenta** | Reintentar en la corrida siguiente | **No se reintenta** | El criterio de «ya se le mandó» que fija `PLAN.md` es *que exista una fila en `correo_enviado`*, y esa tabla guarda **también** los intentos fallidos (REG-3). Así que la fila de la falla es la que lo saca de la lista. Es la opción segura: el reintento automático de un correo que se manda solo puede terminar mandando el mismo aviso cinco veces, y eso se nota más que un aviso que no llegó. A quién no le llegó **se puede averiguar**, que es justamente para lo que la tabla existe. |
+| **Seis corridas al día, no una** | Una vez al día, a una hora fija | **Cada 4 horas** | Una sola corrida diaria deja un hueco: una cita reservada con 26 horas de anticipación puede **entrar y salir** de la ventana de las 24 horas entre dos corridas, y esa persona no recibe nada. Con seis revisiones, toda cita que pase por la ventana se ve al menos cinco veces — y no se manda nada de más, porque las otras cinco la ven ya registrada. |
+| **La acción del enlace va tras una barra (`#cita=X/cancelar`), no con un `&`** | `#cita=X&hacer=cancelar` | **La barra** | No es estético: **se descubrió escribiendo la prueba, antes del código**. Estas direcciones viajan adentro del HTML de un correo, donde todo texto pasa por `escapar()`, que convierte `&` en `&amp;`. Escrito con `&`, la página habría leído la acción con un `amp;` pegado adelante. Con la barra no hay nada que escapar. |
+| **La pantalla del enlace muestra una lista de próximos horarios, no la parrilla del mes** | Reusar la parrilla de la pantalla de reservar | **La lista** | La parrilla vive dentro del flujo con sesión —depende de `eleccion`, de `esPersonal()` y del recorrido de cuatro pasos—, así que reusarla pedía tocar **la pantalla más revisada del proyecto** y arriesgar las once piezas que ya funcionan. **No hay regla duplicada**, que es lo que la convención protege: qué está libre lo sigue decidiendo el mismo `servidor/disponibilidad.js`, y acá se muestra de otra forma. Y en un teléfono —que es donde se abre un correo— una lista de «los próximos que te sirven» se usa mejor que una parrilla de mes. |
+| **El asunto del recordatorio no dice «mañana»** | «Te esperamos mañana» | **La fecha y la hora** | La ventana son 24 horas, así que casi siempre es mañana — pero una corrida a la 1 de la madrugada alcanza una cita de **hoy** por la tarde, y ahí «mañana» sería mentira justo cuando más importa. La fecha y la hora no pueden ser falsas. |
+
+### El borde que no pedía el plan, y que apareció escribiendo la prueba
+
+La ventana de las 24 horas se mide con una **distancia**, y una cita de la semana pasada tiene una
+distancia **negativa** — que también es «menos de 24 horas». Sin un borde de abajo escrito a
+propósito (`todaviaNoEmpezo`), la primera corrida de la tarea en producción le habría mandado un
+recordatorio a **todas las citas viejas de la base**.
+
+Ninguna de las 7 comprobaciones del plan lo pedía. Apareció al escribir el filtro con la prueba
+delante, y quedó con su propia prueba. **Es la misma clase de hallazgo que el borde de `ya_paso` de
+la pieza 8:** una regla que parecía completa porque nadie había mirado el otro extremo.
+
+### Lo que encontró publicar, y que las 349 pruebas no veían
+
+Las 26 pruebas de la pieza estaban en verde **y el sitio publicado estaba roto**. Vale escribirlo
+porque las dos cosas que aparecieron son de clases distintas y las dos enseñan algo.
+
+**1. Un contrato que se rompió sin que nadie lo notara.** `enviarConfirmacionDeCita` está documentada
+**desde la pieza 4** como que *nunca lanza un error*, porque RF-19 dice que un correo que falla no
+puede invalidar una cita. Esta pieza le metió adentro **una escritura a la base** —conseguir el código
+del enlace— sin protegerla. Mientras la tabla existiera, no se notaba nada; en la base publicada, que
+no la tenía, **reservar devolvía `500` con la cita ya guardada**.
+
+La forma del error es lo que importa: la tabla que faltaba era el **disparador**, y el contrato roto
+fue lo que convirtió «el correo llega sin botones» en «reservar no funciona». Arreglado con
+`losEnlacesSiSePueden`, **una sola función para los dos correos** — el recordatorio tenía el mismo
+agujero, y ahí una cita imposible tumbaba la corrida entera.
+
+> **La lección, que es una versión nueva de una que el proyecto ya tenía escrita:** cuando una pieza
+> agrega algo adentro de una función que **promete no fallar**, esa promesa hay que volver a
+> comprobarla. Un comentario que dice «nunca lanza un error» no es una garantía, es una intención de
+> quien lo escribió — y acá quedó **falsa el mismo día** en que se agregó la línea. Es la misma idea
+> del `CHECK` de la base contra el comentario: *lo que garantiza algo es el código que lo impide, no
+> la frase que lo dice*.
+
+**2. Dos nombres para la misma acción.** Los botones del correo decían «Cambiar la hora» y «Cancelar
+la cita»; «Mis citas» dice **Reagendar** y **Cancelar** desde la pieza 5. **Lo encontró la estudiante
+leyendo el correo que le llegó**, y es el vigésimo defecto del proyecto encontrado por una persona
+mirando en vez de por una prueba.
+
+Rompía una convención que ya estaba escrita en `CLAUDE.md` —*dos caminos al mismo lugar se llaman
+igual*— y acá pesa más que dentro de una pantalla: **el correo y la aplicación se leen en momentos
+separados**, así que quien tocaba «Cambiar la hora» y después buscaba ese botón en la aplicación no lo
+encontraba. Quedó con **una prueba que fija el vocabulario**, y eso se puede hacer porque el correo es
+texto que una función devuelve — la pantalla sigue dependiendo de que alguien la mire.
+
+### La lección que esta pieza dio dos veces en el mismo día
+
+**Un comentario que describe una intención no es una garantía.** Los dos defectos más caros de la
+pieza 6 fueron exactamente eso, y los dos en el mismo archivo que lo afirmaba:
+
+| Lo que decía el comentario | Lo que hacía el código |
+|---|---|
+| `enviarConfirmacionDeCita`: *«**Nunca lanza un error**, pase lo que pase con el envío»* | Lanzaba uno, porque esta pieza le agregó adentro una escritura a la base sin protegerla |
+| `arrancar()`: *«Los enlaces del correo **mandan sobre todo lo demás**»* | La comprobación de sesión estaba **arriba** y hacía `return`, así que el enlace se ignoraba |
+
+Los dos se escribieron de buena fe: el primero era cierto en la pieza 4 y dejó de serlo sin que nadie
+volviera a leerlo, y el segundo describía lo que quien lo escribió **creía** haber hecho.
+
+**Es la misma idea que el proyecto ya tenía escrita para la base de datos** —el `CHECK` que garantiza
+que sólo una de dos columnas venga llena, en vez de un comentario que lo pida— llevada al código:
+*lo que garantiza algo es el código que lo impide, no la frase que lo dice*. Y la consecuencia
+práctica: **cuando una pieza agrega algo adentro de una función que promete no fallar, esa promesa hay
+que volver a comprobarla**, y si el orden de unas líneas *es* la regla, conviene que algo lo verifique
+y no sólo que esté escrito al lado.
+
+### `horasEntre`, y por qué `horasHasta` no alcanzaba
+
+RN-20 mide **cuánta anticipación tuvo una reserva**, o sea la distancia entre `creada_en` e `inicio`
+— y **ninguno de los dos es «ahora»**. `horasHasta` solo sabía medir contra el reloj, así que hizo
+falta una función vecina en `servidor/tiempo.js`, que es donde vive toda cuenta de fechas. Con eso,
+los dos únicos `new Date()` de todo el proyecto quedan uno al lado del otro, en el único archivo
+donde es seguro convertir un momento.
+
 ## El sistema visual
 
 La apariencia de la aplicación no se inventa en el código: sale de **`VISUALS.md`**, el sistema
@@ -746,3 +841,4 @@ consolidaron en un solo `VISUALS.md`.
 | ~~Subir a `ESPECIFICACION.md`, como RN, la duración de la sesión de login~~ | **RESUELTA el 2026-08-28, el mismo día que se planteó.** Es **RN-29**, y de paso el número cambió: de 7 días a **4 horas**. Con esto, **ninguna regla de negocio con número queda escondida** en la tabla «Otras decisiones» de este archivo. |
 | Que restablecer la contraseña **cierre las sesiones que ya estaban abiertas** | La estudiante. Hoy no las cierra: la nota firmada del navegador no guarda la contraseña, así que no se entera de que cambió, y quien ya estuviera adentro con esa cuenta se queda hasta que se le venzan sus 4 horas (RN-29). **El cambio de 7 días a 4 horas del 2026-08-28 achicó mucho este problema** —de una semana a media jornada— pero no lo cierra. Planteado el 2026-08-28 al terminar la pieza 9. |
 | Parametrizar la política de cancelación (hoy fija en 4 horas) por negocio | Ya señalado en la hoja de ruta de `PROYECTO.md`; fuera de esta entrega. |
+| 🆕 **Cómo se enteran las tablas nuevas de la base publicada** | **Planteada el 2026-09-07, y ya costó un error real.** El despliegue **no crea el esquema**, a propósito (`servidor/aplicacion-desplegada.js`), así que una pieza que agrega una tabla necesita que **alguien se acuerde** de correr `npm run esquema` contra Turso. La pieza 6 fue la primera en agregar una tabla **después** de publicar, y nadie se acordó: el sitio quedó roto hasta que se buscó por qué. Las doce piezas son de antes del despliegue, así que el proyecto nunca había tenido que contestar esto. Las salidas posibles, sin elegir ninguna: dejarlo como paso escrito en el `README.md`; hacerlo parte del despliegue (y pagar los viajes a la red, que es justo lo que se quiso evitar); o que la aplicación **compruebe** el esquema al arrancar y se niegue a atender con un mensaje claro en vez de dar `500` — que es lo que ya hace `exigirQueElCatalogoEsteAlDia` para el catálogo, así que el patrón existe. |

@@ -982,6 +982,200 @@ candidata a recortar si el tiempo aprieta.
 
 **Evidencia**
 
+**Construida el 2026-09-07, con TDD: las primeras 26 pruebas se escribieron primero y se vieron fallar
+antes de escribir una línea de código.** `npm test` pasó de **323 a 354, fail 0**.
+
+*El plan de la Etapa 6 de `PLAN-DESPLIEGUE.md` decía «321 hoy, 328 al final», y los dos números
+estaban viejos: eran de antes de la Etapa 1 del despliegue, que agregó 2. Se partió de 323.*
+
+**Lo primero que se hizo no fue código, fue una pregunta.** RF-11 avisaba que la pieza tenía una
+decisión sin tomar —**qué pasa si alguien toca el enlace del correo y no tiene la sesión abierta**— y
+esa decisión la tomó la estudiante antes de que se escribiera nada: **el enlace entra sin
+contraseña**. El razonamiento entero está en `servidor/enlaces-de-cita.js` y resumido en
+`DISENO.md`, «Decisiones tomadas al construir la pieza 6».
+
+**Se construyó en dos ciclos, y no en el orden de los 8 pasos del plan**, porque el plan es anterior
+al crecimiento de RF-11 del 2026-09-05: primero **el mecanismo del enlace**, que RF-11 y RF-12
+comparten, y después **el recordatorio**, que lo usa.
+
+**Qué se construyó**
+
+*El mecanismo del enlace (15 pruebas, `pruebas/enlaces-de-cita.test.js`):*
+- `servidor/enlaces-de-cita.js` — el código de cada cita y cómo se escriben sus dos direcciones.
+  Una regla, un lugar, igual que `recuperacion.js`.
+- La tabla `token_cita`. **Se parece a `token_recuperacion` y no se comporta igual**, con dos
+  diferencias a propósito: **no vence** —lo hace la cita, por RN-5 y RN-26— y **sirve más de una
+  vez**. Las dos razones están escritas en `servidor/esquema.js`.
+- Cuatro endpoints `/api/citas/por-enlace/:codigo` —ver, calendario, cancelar, mover— **sin guardia
+  de sesión**, los únicos del proyecto. **No repiten ninguna regla de negocio:** cada uno saca el
+  `clienteId` de la cita y llama a la misma función de `reservas.js` que usa la pantalla con sesión,
+  con `quien = QUIEN_CLIENTE`. Por eso la ventana de las 4 horas, la cita pasada y el horario ocupado
+  siguen valiendo sin que haya un solo `if` que lo diga.
+- La confirmación gana los dos botones (**RF-11**), y con eso el reagendamiento también: es la misma
+  plantilla. El código es **de la cita y no del correo**, así que el botón de la confirmación vieja
+  sigue funcionando después de mover la cita — hay una prueba que lo fija.
+- `publico/index.html` y `publico/aplicacion-cliente.js`: la pantalla `pantalla-cita`, **la única de
+  la aplicación que se ve sin haber entrado**.
+
+*El recordatorio (16 pruebas, `pruebas/recordatorios.test.js`):*
+- `servidor/recordatorios.js` — a qué citas les toca y cómo se les manda. No sabe de HTTP.
+- `POST /api/tareas/recordatorios`, protegido por `RECORDATORIOS_SECRETO` en la cabecera
+  `x-recordatorios-secreto`.
+- La plantilla `recordatorio`, con los mismos datos y los mismos dos botones que la confirmación:
+  `enHtml` y `enTextoPlano` son **una sola función para los dos correos**, y lo único que los
+  distingue es el título y la frase de entrada.
+- `.github/workflows/recordatorios.yml` — seis veces al día, más `workflow_dispatch`.
+- `horasEntre` en `servidor/tiempo.js`: RN-20 mide entre `creada_en` e `inicio`, y **ninguno de los
+  dos es «ahora»**, que es lo único que `horasHasta` sabía medir.
+
+**Tres decisiones que conviene no volver a discutir**
+
+1. **Sin clave configurada el disparador queda cerrado para todos, no abierto para todos.** Tiene su
+   prueba. De los dos fallos posibles es el único aceptable: sin la variable no salen recordatorios y
+   **eso se nota**; abierto no se nota hasta que alguien de afuera lo usa.
+2. **Un recordatorio que falló no se reintenta**, porque el criterio de «ya se le mandó» que este
+   plan fija es *que exista una fila*, y `correo_enviado` guarda también los intentos fallidos. Es la
+   opción segura: el reintento automático de un correo que se manda solo puede terminar mandando el
+   mismo aviso cinco veces. A quién no le llegó se averigua con
+   `SELECT * FROM correo_enviado WHERE tipo = 'recordatorio' AND exito = 0`.
+3. **La pantalla del enlace muestra una lista de los próximos horarios libres, no la parrilla del
+   mes.** Esa parrilla vive dentro del flujo con sesión, y reusarla pedía tocar la pantalla más
+   revisada del proyecto. **No hay regla duplicada**: qué está libre lo sigue decidiendo
+   `servidor/disponibilidad.js`, y acá se muestra de otra forma.
+
+**Las 8 comprobaciones**
+
+| # | Cómo se corrió | Resultado |
+|---|---|---|
+| 1 | Prueba automática, y a mano contra la aplicación levantada | ✅ a 24 h 10 min no le toca. A mano: una cita a 28.6 h dio `revisadas: 0` |
+| 2 | Prueba automática | ✅ a 23 h 50 min sí, y el correo trae los dos enlaces en el HTML **y** en la versión de texto |
+| 3 | **Servidor: sí. Navegador: pendiente** | ⚠️ ver abajo |
+| 4 | Prueba automática, y a mano | ✅ el segundo disparo dio `revisadas: 0` y a la persona le llegó un solo correo |
+| 5 | Prueba automática, y a mano | ✅ una cita reservada hace un minuto para dentro de 21 h quedó afuera (RN-20) |
+| 6 | Prueba automática | ✅ una cita cancelada no recibe |
+| 7 | Prueba automática, y a mano | ✅ sin clave `401`, con la clave equivocada `401`, con la correcta `200` |
+| 8 | **Pendiente** | ⚠️ ver abajo |
+
+*Y una que el plan no pedía y salió de escribir la prueba: **una cita que ya pasó tampoco recibe**.
+La ventana se mide con una distancia, y una cita de la semana pasada tiene una distancia
+**negativa** — que también es «menos de 24 horas». Sin ese borde escrito a propósito, la primera
+corrida en producción le habría mandado un recordatorio a todas las citas viejas de la base.*
+
+**Comprobado además contra la aplicación levantada de verdad** (`npm start`, base de trabajo, Resend
+configurado), y no solo en pruebas: registrarse, reservar, y después **sin ninguna galleta de
+sesión** ver la cita por el enlace, ver sus horarios libres, moverla, y cancelarla —`204`, y en la
+base quedó `cancelada_por = cliente`—. Un código inventado da `404`; cancelar dos veces da `409`. Y
+`/api/disponibilidad`, el normal, **sigue dando `401` sin sesión**: el enlace no abrió una puerta de
+más. Los dos correos salieron `exito: 0` porque la dirección de prueba `ana@ejemplo.com` no existe y
+la dirección prestada de Resend solo entrega a la casilla registrada — **y las citas siguieron
+válidas, que es RF-19**.
+
+**⚠️ Y PUBLICAR ENCONTRÓ DOS DEFECTOS QUE LAS 349 PRUEBAS NO VEÍAN**
+
+*Esto es lo más valioso de la pieza para contar, porque es el método funcionando: las 26 pruebas
+estaban en verde y el sitio publicado estaba roto.*
+
+**1. La base publicada no tenía la tabla `token_cita` — y el síntoma no fue el que correspondía.**
+
+El despliegue **no crea tablas**, a propósito: `servidor/aplicacion-desplegada.js` lo dice desde el
+2026-09-02, porque hacerlo en cada visita fría serían decenas de viajes a una base de la red. El
+esquema de Turso era el del 2026-09-05, de antes de esta pieza.
+
+Eso por sí solo tenía que causar «el correo llega sin botones». En cambio causaba que **reservar
+contestara `500` con la cita ya guardada**, y esa parte era código: `enviarConfirmacionDeCita` está
+documentada **desde la pieza 4** como que *nunca lanza un error* —porque RF-19 dice que un correo que
+falla no puede invalidar una cita— y la pieza 6 le metió adentro una escritura a la base **sin
+protegerla**.
+
+- Arreglado con `losEnlacesSiSePueden` en `servidor/correo.js`: **una sola función para los dos
+  correos**, porque el recordatorio tenía exactamente el mismo agujero —ahí una cita imposible
+  tumbaba la corrida entera y dejaba sin aviso a las que venían detrás—.
+- **4 pruebas nuevas** que reproducen el estado exacto de la base publicada (`DROP TABLE token_cita`
+  y después reservar). Se vieron fallar con el mismo `500`.
+- La tabla se creó en Turso con `npm run esquema`, que **no borra nada**: se verificaron las tres
+  migraciones destructivas del esquema —todas desactivadas en esa base— y se compararon los datos
+  antes y después, fila por fila.
+
+> 🔓 **Y deja una pregunta abierta que esta pieza es la primera en tocar: cuando una pieza nueva
+> agrega una tabla, ¿cómo se entera la base publicada?** Hoy la respuesta es «alguien se acuerda de
+> correr `npm run esquema`», y eso ya falló una vez — la primera. Las doce piezas anteriores son
+> todas **de antes** del despliegue, así que el proyecto nunca había tenido que responderla.
+
+**2. Los botones del correo se llamaban distinto que los de la aplicación.**
+
+Decían «Cambiar la hora» y «Cancelar la cita». **«Mis citas» dice «Reagendar» y «Cancelar» desde la
+pieza 5.** Rompía la convención de `CLAUDE.md` —*dos caminos al mismo lugar se llaman igual, si se
+llamaran distinto parecerían dos lugares*— y acá pesa más que en una pantalla: el correo y la
+aplicación **se leen en momentos separados**, así que quien tocaba «Cambiar la hora» y después buscaba
+ese botón en la aplicación no lo encontraba.
+
+**Lo encontró la estudiante leyendo el correo que le llegó.** Ninguna prueba lo miraba. Arreglado en
+el correo y en la pantalla, **con una prueba que fija el vocabulario** — se puede, porque el correo es
+texto que una función devuelve; la pantalla sigue dependiendo de que una persona la mire. *De paso se
+alinearon los dos avisos verdes con las palabras que ya usaba «Mis citas», y los rechazos al mover
+pasaron a usar `mensajeDelMovimiento`, que existía desde la pieza 5 y explica mejor dos casos.*
+
+*Con los dos arreglos: **31 pruebas** de esta pieza, `npm test` da **354 de 354**.*
+
+**Comprobado contra el sitio publicado, después de arreglar:** el endpoint del enlace da `404` con un
+código inventado (antes `500`), el disparador da `401` sin clave y **`{"revisadas":1,"enviados":1}`
+con la clave** — y ese `1` fue **un recordatorio real entregado**, `exito: 1` en la tabla, a la cita
+del 8 de setiembre. O sea que **la comprobación 2 pasó en producción**, no solo en pruebas.
+
+**⚠️ Y LA REVISIÓN EN EL TELÉFONO ENCONTRÓ CUATRO COSAS MÁS. Ninguna la vio una prueba.**
+
+*Las 354 estaban en verde. Esta es la parte de la pieza que se defiende sola en la presentación,
+porque muestra para qué sirve el paso que ninguna herramienta reemplaza.*
+
+**1. 🔴 El enlace se ignoraba por completo si había sesión abierta.** El más grave de los cuatro.
+`arrancar()` preguntaba por la sesión primero y hacía `return`; **tres líneas más abajo, un comentario
+afirmaba que «los enlaces del correo mandan sobre todo lo demás»**. Tocar «Reagendar» en el correo
+llevaba a la pantalla de reservar, como si no se hubiera tocado nada.
+
+Y era **el caso más común, no un borde**: quien reserva desde el celular queda con la sesión abierta
+4 horas (RN-29) y la confirmación le llega tres segundos después. La primera prueba de la estudiante
+había funcionado **sólo porque venía sin sesión**.
+
+Arreglado invirtiendo el orden, con **una sola excepción que sigue mandando sobre el enlace: RF-4** —
+si la cuenta tiene la contraseña temporal pendiente, no hay otra pantalla que mostrar. *El enlace de
+recuperación de la pieza 9 tiene el mismo comportamiento y **no se tocó**: cambiar cuándo se atiende
+ese enlace es cambiar otra pieza, y se decide aparte.*
+
+**2. El botón de salida prometía algo que no podía dar.** Decía «Ir a la aplicación», la estudiante lo
+tocó esperando entrar, y encontró la pantalla de la contraseña con su cita perdida de vista. Ahora
+dice **«Ver todas mis citas»** cuando hay sesión y **«Entrar a mi cuenta»** cuando no — porque a quien
+ya entró no se le puede ofrecer entrar.
+
+**3. La lista para reagendar eran 11 días y unos 88 botones.** La estudiante vio cuatro días y
+preguntó si eso estaba bien: no lo estaba, y por lo contrario de lo que parecía. Bajó de 14 días de
+horizonte a **7 — el número que RN-14 ya usa** para la ventana en la que el negocio piensa. Quedan 6
+días y 43 botones, medido contra los datos del sitio publicado.
+
+**4. Los nombres de los botones**, que ya está contado arriba.
+
+*Y de las cuatro, **tres las encontró tocando la pantalla en un teléfono** y una leyendo el correo.
+Ninguna prueba de este proyecto puede hacer ni lo uno ni lo otro.*
+
+**⚠️ LA PIEZA NO ESTÁ CERRADA. Falta esto, y nada se puede hacer desde el código:**
+
+1. **Publicar los dos arreglos** (`npx vercel --prod`). El sitio en vivo tiene el código de antes de
+   ellos: la tabla ya existe, así que el `500` no se puede disparar, pero **los botones del correo
+   siguen saliendo con el nombre viejo** hasta que se publique.
+
+   *La clave y la tabla ya están: `RECORDATORIOS_SECRETO` quedó en Vercel **y** en los Secrets de
+   GitHub, más `DIRECCION_PUBLICA` en los Secrets, y `token_cita` se creó en Turso. De paso quedó
+   desmentida una creencia que este proyecto arrastraba escrita en dos prompts de arranque —«a Claude
+   se le bloquea cargar secretos en Vercel»—: **es falsa**, y se vio probándola. Lo que sí está
+   bloqueado es **publicar**, que es otra cosa.*
+2. **Comprobación 3, en el navegador y en el teléfono.** El servidor está comprobado; lo que falta es
+   lo que ninguna prueba de este proyecto puede ver, porque ninguna mira la página dibujada. Es la
+   comprobación que era literalmente imposible antes de la Etapa 5 del despliegue. **Se prueba
+   «Reagendar» primero y «Cancelar» después**, en ese orden: cancelar deja la cita inservible para
+   probar lo otro.
+3. **Comprobación 8: ver en Actions que la tarea corrió sola, a su horario.** Hay que esperar a que
+   llegue la hora — `workflow_dispatch` **no la reemplaza**, porque lo que se comprueba es
+   justamente que arranca sin que nadie la dispare.
+
 ---
 
 ### Pieza 7: Personal atiende el teléfono

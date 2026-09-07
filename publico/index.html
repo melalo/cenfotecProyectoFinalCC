@@ -464,6 +464,117 @@
           </div>
         </section>
 
+        <!--
+          La pantalla que abre el enlace del correo (pieza 6, RF-11 y RF-12).
+
+          Es la única pantalla del proyecto que **se ve sin haber entrado**, y lo que la autoriza es
+          el código que viene en la dirección (`#cita=…`). Decidido por la estudiante el 2026-09-07:
+          quien abre el correo en el teléfono no tiene la sesión puesta, y mandarlo a acordarse de su
+          contraseña es mandarlo a llamar por teléfono con más pasos.
+
+          **No tiene menú ni pie de navegación**, por la misma razón que la del cambio obligatorio de
+          contraseña: quien llegó acá vino a hacer una cosa con una cita, no a recorrer la
+          aplicación — y sin sesión, cualquier otra sección le contestaría «no sé quién sos».
+
+          Reusa las clases que ya existen (`tarjeta`, `cita__fecha`, `cita__hora`, `horarios`,
+          `horario`, `aviso`) en vez de traer clases nuevas: es la misma información que ya se muestra
+          en «Mis citas» y en el calendario, vista desde otra puerta.
+        -->
+        <section id="pantalla-cita" class="pantalla" hidden>
+          <div>
+            <article class="tarjeta tarjeta--sola">
+              <h2 class="tarjeta__titulo">Tu cita</h2>
+
+              <div id="cita-enlace-datos" class="cita">
+                <div class="cita__cuando">
+                  <span id="cita-enlace-fecha" class="cita__fecha"></span>
+                  <span id="cita-enlace-hora" class="cita__hora"></span>
+                </div>
+                <div class="cita__que">
+                  <span id="cita-enlace-servicio" class="cita__servicio"></span>
+                  <span id="cita-enlace-proveedor" class="cita__proveedor"></span>
+                </div>
+              </div>
+
+              <p id="cita-enlace-donde" class="tarjeta__nota"></p>
+
+              <!--
+                Los dos botones. **Cuál se puede usar lo decide el servidor**, en los campos
+                `sePuedeCambiar` y `porQueNo` que esta cita trae — igual que en «Mis citas» desde la
+                pieza 5. La pantalla no cuenta las 4 horas: si las contara con el reloj de la
+                computadora de quien mira, un navegador con la hora mal puesta mostraría un botón que
+                el servidor va a rechazar.
+              -->
+              <div id="cita-enlace-acciones" class="cita__acciones">
+                <!--
+                  **Se llaman igual que los de «Mis citas»**, y los del correo también: «Reagendar» y
+                  «Cancelar». Es la convención de `CLAUDE.md` —*dos caminos al mismo lugar se llaman
+                  igual*— y acá se había roto: decían «Cambiar la hora» y «Cancelar la cita» hasta que
+                  la estudiante lo notó leyendo el correo, el 2026-09-07.
+                -->
+                <button id="boton-cita-enlace-reagendar" class="boton boton--suave" type="button">
+                  Reagendar
+                </button>
+                <button id="boton-cita-enlace-cancelar" class="boton boton--suave" type="button">
+                  Cancelar
+                </button>
+              </div>
+
+              <!-- La pregunta antes de cancelar: cancelar no se deshace, así que se pregunta. -->
+              <div id="cita-enlace-confirmar-cancelar" class="cita__acciones" hidden>
+                <p class="tarjeta__nota">
+                  ¿Seguro que querés cancelar esta cita? Ese horario queda libre para otra persona.
+                </p>
+                <button id="boton-cita-enlace-cancelar-si" class="boton" type="button">
+                  Sí, cancelarla
+                </button>
+                <button id="boton-cita-enlace-cancelar-no" class="boton boton--suave" type="button">
+                  No, dejarla
+                </button>
+              </div>
+
+              <!--
+                Los horarios libres para mover la cita. **Es una lista de los próximos, no la
+                parrilla del mes** que usa la pantalla de reservar, y la razón es de construcción y no
+                de gusto: esa parrilla vive dentro del flujo con sesión y reusarla acá pedía tocar la
+                pantalla más revisada del proyecto. No hay ninguna regla duplicada — qué está libre lo
+                sigue decidiendo el servidor, en el mismo `servidor/disponibilidad.js`; acá solo se
+                muestra de otra forma. Y en un teléfono se usa mejor que una parrilla.
+              -->
+              <div id="cita-enlace-mover" hidden>
+                <h3 class="paso__titulo">Elegí el horario nuevo</h3>
+                <p id="cita-enlace-mover-ayuda" class="forma__ayuda">
+                  Estos son los próximos horarios libres de tu terapista. Tocá el que te sirva.
+                </p>
+                <ul id="lista-cita-enlace-horarios" class="citas"></ul>
+              </div>
+
+              <p id="aviso-cita-enlace" class="aviso" role="alert" hidden></p>
+
+              <!--
+                La salida. **Lleva a la pantalla de entrar y no a «Mis citas»**, porque quien está acá
+                no tiene sesión: mandarlo a una sección le daría un error.
+
+                ⚠️ **Decía «Ir a la aplicación» y era una trampa.** *(Corregido el 2026-09-07: la
+                estudiante lo tocó en el teléfono, en su primera prueba, esperando entrar — y lo que
+                encontró fue la pantalla de la contraseña, con su cita perdida de vista.)*
+
+                El nombre viejo prometía algo que este botón no puede dar: **acá no hay sesión**, así
+                que lo único que puede hacer es mandar a entrar. «Entrar a mi cuenta» lo dice, y de
+                paso avisa que va a pedir la contraseña. Es la misma regla que ya tenía el proyecto
+                escrita para los mensajes: **una etiqueta no puede prometer lo que no va a pasar.**
+              -->
+              <!--
+                **No lleva `data-accion="volver-a-entrar"`**, que es el que usa la pantalla de la
+                contraseña: ese manda siempre a entrar, y acá depende. **Y no lleva texto escrito
+                acá**, por lo mismo: lo pone el JavaScript, porque con la sesión abierta dice «Ver
+                todas mis citas» y sin ella «Entrar a mi cuenta».
+              -->
+              <button id="boton-cita-enlace-salir" class="boton boton--suave" type="button"></button>
+            </article>
+          </div>
+        </section>
+
         <!-- Pantalla de quien ya entró: elegir servicio, elegir proveedor, ver el calendario. -->
         <section id="pantalla-dentro" class="pantalla" hidden>
           <div class="saludo">

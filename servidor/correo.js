@@ -15,7 +15,12 @@
 // tabla para que se pueda saber a quién no le llegó.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-import { armarCorreoDeConfirmacion, armarCorreoDeRecuperacion } from "./plantillas-de-correo.js"
+import { armarLosEnlacesDeLaCita, codigoDeLaCita } from "./enlaces-de-cita.js"
+import {
+  armarCorreoDeConfirmacion,
+  armarCorreoDeRecordatorio,
+  armarCorreoDeRecuperacion,
+} from "./plantillas-de-correo.js"
 import { MINUTOS_QUE_DURA_EL_ENLACE } from "./recuperacion.js"
 import { escribirMomento } from "./tiempo.js"
 
@@ -80,7 +85,13 @@ export const ENVIADOR_SIN_CONFIGURAR = async () => {
  * **Nunca lanza un error**, pase lo que pase con el envío: la cita ya está guardada cuando esto
  * corre, y RF-19 exige que siga siendo válida aunque el correo no salga.
  */
-export async function enviarConfirmacionDeCita({ base, enviador, citaId, ahora }) {
+export async function enviarConfirmacionDeCita({
+  base,
+  enviador,
+  citaId,
+  ahora,
+  direccionPublica,
+}) {
   const datos = await leerLoQueElCorreoTieneQueDecir(base, citaId)
 
   // Si la cita no existe no hay nada que confirmar, y tampoco a quién avisarle. No debería pasar
@@ -88,7 +99,13 @@ export async function enviarConfirmacionDeCita({ base, enviador, citaId, ahora }
   // peor que no mandar ninguno.
   if (!datos) return
 
-  const correo = armarCorreoDeConfirmacion(datos)
+  // Los dos enlaces de autoservicio, desde la pieza 6 (RF-11, cambiado el 2026-09-05). Se piden
+  // **después** de comprobar que la cita existe: el código se guarda en una fila que apunta a ella,
+  // y pedirlo antes fallaría por la llave foránea en vez de contestar «esa cita no está».
+  const correo = armarCorreoDeConfirmacion({
+    ...datos,
+    enlaces: await losEnlacesSiSePueden({ base, citaId, ahora, direccionPublica }),
+  })
 
   await entregarYRegistrar({
     base,
@@ -142,6 +159,74 @@ export async function enviarEnlaceDeRecuperacion({ base, enviador, ahora, cuenta
 }
 
 /**
+ * Le manda al cliente el recordatorio de su cita (RF-12, pieza 6).
+ *
+ * Devuelve `true` si el correo salió y `false` si no. Es la única de las tres funciones de envío que
+ * lo devuelve, y hace falta: las otras dos las llama alguien que ya le está contestando a una
+ * persona, y a esta la llama una tarea que corre sola y **cuyo único informe es ese número**.
+ *
+ * **Nunca lanza un error**, igual que las otras dos: la cita sigue siendo válida aunque el aviso no
+ * salga (RF-19), y un recordatorio que se cae no puede impedir el de la cita siguiente.
+ */
+export async function enviarRecordatorioDeCita({
+  base,
+  enviador,
+  citaId,
+  ahora,
+  direccionPublica,
+}) {
+  const datos = await leerLoQueElCorreoTieneQueDecir(base, citaId)
+  if (!datos) return false
+
+  return await entregarYRegistrar({
+    base,
+    enviador,
+    ahora,
+    tipo: TIPO_RECORDATORIO,
+    clienteId: datos.clienteId,
+    personalId: null,
+    citaId,
+    correo: armarCorreoDeRecordatorio({
+      ...datos,
+      enlaces: await losEnlacesSiSePueden({ base, citaId, ahora, direccionPublica }),
+    }),
+  })
+}
+
+/**
+ * Los dos enlaces de autoservicio de esa cita, o `null` si no se pudieron conseguir.
+ *
+ * ── ⚠️ POR QUÉ ESTO TIENE UN `try` Y NO ES PARANOIA (2026-09-07) ─────────────────────────────
+ *
+ * **Existe por un defecto real, encontrado en producción el mismo día que se construyó la pieza 6.**
+ * Conseguir el código **escribe en la base**, y las dos funciones de arriba están documentadas desde
+ * la pieza 4 como que **nunca lanzan un error** — porque RF-19 dice que un correo que falla no puede
+ * invalidar una cita. La pieza 6 les metió adentro esa escritura sin protegerla, y el resultado en
+ * el sitio publicado no fue «el correo llegó sin botones»: fue que **reservar contestaba `500` con
+ * la cita ya guardada**. (La tabla `token_cita` no existía allá: el despliegue no crea tablas, a
+ * propósito.)
+ *
+ * **Devolver `null` es una degradación aceptable y está pensada:** las dos plantillas saben salir
+ * sin botones, y un correo que dice la fecha y la hora sirve igual — mientras que una reserva que se
+ * cae no sirve para nada. La falla queda en la consola, que es donde se ve por qué faltan.
+ *
+ * **Está escrito una sola vez para los dos correos**, que es la razón de que sea una función: el
+ * defecto apareció en la confirmación, y el recordatorio tenía exactamente el mismo agujero.
+ */
+async function losEnlacesSiSePueden({ base, citaId, ahora, direccionPublica }) {
+  try {
+    const codigo = await codigoDeLaCita({ base, citaId, ahora })
+    return armarLosEnlacesDeLaCita(direccionPublica, codigo)
+  } catch (falla) {
+    console.warn(
+      `Aviso: el correo de la cita ${citaId} sale sin los botones de cancelar y reagendar — ` +
+        falla.message,
+    )
+    return null
+  }
+}
+
+/**
  * Intenta entregar un correo y **siempre** deja una fila en `correo_enviado` diciendo qué pasó
  * (REG-3), haya salido bien o mal.
  *
@@ -173,6 +258,10 @@ async function entregarYRegistrar({
     escribirMomento(ahora),
     exito ? 1 : 0,
   )
+
+  // Se devuelve **después** de dejar la constancia, nunca antes: quien llama usa esto para contar, y
+  // un número que no coincida con la tabla sería peor que no tener el número.
+  return exito
 }
 
 /**

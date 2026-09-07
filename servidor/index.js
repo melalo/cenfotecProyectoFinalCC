@@ -56,6 +56,17 @@ const enviador = crearEnviadorResend({
 // declarado en `DISENO.md`, «La limitación del enlace, dicha en voz alta».
 const direccionPublica = process.env.DIRECCION_PUBLICA || `http://localhost:${puerto}`
 
-crearAplicacion({ base, sesionSecreto, enviador, direccionPublica }).listen(puerto, () => {
+// La clave que protege el disparador del recordatorio (pieza 6). Si no está, ese endpoint queda
+// cerrado y no se mandan recordatorios: en esta computadora es lo normal, porque acá los
+// recordatorios se disparan a mano cuando se los quiere probar.
+const recordatoriosSecreto = process.env.RECORDATORIOS_SECRETO
+
+crearAplicacion({
+  base,
+  sesionSecreto,
+  enviador,
+  direccionPublica,
+  recordatoriosSecreto,
+}).listen(puerto, () => {
   console.log(`Reservas en línea levantada en http://localhost:${puerto}`)
 })

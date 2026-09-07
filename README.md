@@ -244,11 +244,24 @@ que se sepa cuáles hacen falta.
 | `SESION_SECRETO` | 1 | Firma las sesiones de login. Cualquier texto largo e inventado. |
 | `RESEND_API_KEY` | 4 | Clave del servicio de correo. Se saca de una cuenta gratuita de Resend. |
 | `CORREO_REMITENTE` | 4 | Dirección desde la que salen los correos, escrita `Nombre <correo@dominio>`. |
-| `RECORDATORIOS_SECRETO` | 6 | Clave que protege el disparador del recordatorio, para que nadie de afuera lo pueda ejecutar. |
+| `DIRECCION_PUBLICA` | 9 | Con qué dirección se escriben los enlaces que salen por correo. Si no está, se arma con el puerto: `http://localhost:3000` — que quiere decir «esta computadora», así que el enlace **solo abre donde la aplicación está corriendo**. |
+| `RECORDATORIOS_SECRETO` | 6 | Clave que protege el disparador del recordatorio, para que nadie de afuera lo pueda ejecutar. Cualquier texto largo e inventado. |
 
 **Sin `RESEND_API_KEY` la aplicación tiene que levantar igual.** Los correos van a fallar y quedar
 registrados como fallidos, pero las citas se siguen creando: así lo exige RF-19 de
 `ESPECIFICACION.md`.
+
+**Y sin `RECORDATORIOS_SECRETO` también levanta igual**, con una particularidad que conviene saber
+porque es lo contrario de lo que uno esperaría: **el disparador del recordatorio queda cerrado para
+todos, no abierto**. Es a propósito, y es el único fallo seguro de los dos posibles — sin la variable
+no salen recordatorios y eso se nota; abierto no se nota hasta que alguien de afuera lo usa. En esta
+computadora dejarla vacía es lo normal.
+
+**⚠️ En el despliegue, `RECORDATORIOS_SECRETO` va en DOS lados con el mismo valor:** en las variables
+de entorno del hosting (donde corre la aplicación) y en los **Secrets del repositorio** en GitHub
+(de donde sale el disparo, en `.github/workflows/recordatorios.yml`). Y en los Secrets hace falta
+además `DIRECCION_PUBLICA`, para que la tarea sepa a qué dirección tocarle el timbre. Cargada en un
+solo lado, la tarea corre y recibe `401` sin mandar ningún recordatorio.
 
 ### Cómo conseguir la clave de Resend
 

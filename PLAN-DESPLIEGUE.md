@@ -2134,7 +2134,8 @@ un **momento** en que se manda un correo que ya se sabe mandar.
 
 **Se construye con TDD, como las otras once**: la prueba primero, se la ve fallar, después el código.
 
-- [ ] **Paso 1: escribir las 7 pruebas y verlas fallar**
+- [x] **Paso 1: escribir las 7 pruebas y verlas fallar** — ✅ hecho, y salieron **26** en vez de 7:
+      14 del recordatorio y 12 del mecanismo del enlace, que RF-11 sumó el 2026-09-05.
 
 Crear `pruebas/recordatorios.test.js`, con una prueba por cada comprobación del plan (`PLAN.md:922`),
 usando `crearEntornoDePrueba`, `relojDetenidoEn` y `enviadorDeMentira`, que ya existen:
@@ -2155,7 +2156,7 @@ Las comprobaciones 3 y 8 no son automatizables y se corren a mano en el Paso 6.
 node --test pruebas/recordatorios.test.js    # tiene que fallar: el endpoint no existe
 ```
 
-- [ ] **Paso 2: `servidor/recordatorios.js`**
+- [x] **Paso 2: `servidor/recordatorios.js`** — ✅ hecho.
 
 Dos funciones, y ninguna sabe de HTTP:
 
@@ -2171,7 +2172,8 @@ Dos funciones, y ninguna sabe de HTTP:
 demás: cada una se registra por separado, con su éxito o su fracaso. Es la misma regla de la pieza 4
 (RF-19) y la misma que pide el adaptador.
 
-- [ ] **Paso 3: la plantilla del correo**
+- [x] **Paso 3: la plantilla del correo** — ✅ hecha, y la de confirmación también (RF-11): `enHtml`
+      y `enTextoPlano` son **una sola función para los dos correos**.
 
 En `servidor/plantillas-de-correo.js`, una plantilla `recordatorio` con los dos enlaces. **Tres
 convenciones del proyecto que se aplican acá y no se descubren solas:**
@@ -2181,7 +2183,8 @@ convenciones del proyecto que se aplican acá y no se descubren solas:**
 - La dirección va **además como texto suelto**, que es lo único que ningún servicio puede tocar.
 - La hora se escribe con `am`/`pm`.
 
-- [ ] **Paso 4: el endpoint**
+- [x] **Paso 4: el endpoint** — ✅ hecho. Y **cuatro más** que el plan no previó,
+      `/api/citas/por-enlace/:codigo`, que son los que hacen posible la comprobación 3.
 
 `POST /api/tareas/recordatorios` en `servidor/rutas/citas.js`. Compara una cabecera contra
 `RECORDATORIOS_SECRETO`; devuelve `200` con `{revisadas, enviados}`, y `401` sin la clave.
@@ -2194,7 +2197,7 @@ npx vercel env add RECORDATORIOS_SECRETO production
 npx vercel --prod
 ```
 
-- [ ] **Paso 5: la tarea programada**
+- [x] **Paso 5: la tarea programada** — ✅ hecha, seis corridas al día más `workflow_dispatch`.
 
 Crear `.github/workflows/recordatorios.yml`. Un `schedule` con `cron`, más `workflow_dispatch` para
 poder dispararla a mano — la misma decisión que ya tomó `pruebas.yml` el 2026-08-26 y por la misma
@@ -2205,13 +2208,22 @@ archivo que **GitHub no garantiza la hora exacta** del `cron`: puede atrasarse b
 cola. Para esta pieza no importa —la ventana es de 24 h y se revisa varias veces al día— pero es
 justo la clase de cosa que después parece un error del código.
 
-- [ ] **Paso 6: correr las 8 comprobaciones, y las 3 y 8 a mano**
+- [~] **Paso 6: correr las 8 comprobaciones, y las 3 y 8 a mano** — ⚠️ **6 de 8.** Las automatizables
+      pasan, más una verificación a mano contra la aplicación levantada. **Faltan la 3 (navegador y
+      teléfono) y la 8 (esperar el horario).**
 
 ```bash
 npm test
 ```
 
-`fail 0`, y `pass` ahora es **328** (321 + 7).
+~~`fail 0`, y `pass` ahora es **328** (321 + 7).~~
+
+⚠️ **Los dos números estaban viejos, y la estudiante lo detectó antes de construir.** Eran de antes de
+la Etapa 1 del despliegue, que agregó 2 pruebas: al empezar la pieza había **323**, no 321. Y no
+quedaron 330 sino **349**, porque el mecanismo del enlace que RF-11 sumó el 2026-09-05 trajo 12
+pruebas propias y el recordatorio 14.
+
+**Lo real, corrido el 2026-09-07: `fail 0`, `pass` **354**.**
 
 Y a mano, contra el sitio publicado:
 
@@ -2222,7 +2234,8 @@ Y a mano, contra el sitio publicado:
   nadie la disparara. Hay que esperar a que llegue la hora: no se puede apurar, y `workflow_dispatch`
   no la reemplaza porque lo que se comprueba es justamente que arranca sola.
 
-- [ ] **Paso 7: escribir la evidencia**
+- [x] **Paso 7: escribir la evidencia** — ✅ hecha en `PLAN.md`, `SEGUIMIENTO.md`,
+      `PROXIMA-SESION.md`, `DISENO.md`, `ESPECIFICACION.md`, `CLAUDE.md`, `README.md` y `.env.ejemplo`.
 
 Llenar el bloque **«Evidencia»** de la pieza 6 en `PLAN.md`, con el mismo formato que las otras once:
 qué se construyó, cuántas pruebas nuevas, cuánto da `npm test`, y las 8 comprobaciones con cómo se
@@ -2230,7 +2243,7 @@ corrió cada una.
 
 Y en `SEGUIMIENTO.md` y `PROXIMA-SESION.md`: **12 de 12**.
 
-- [ ] **Paso 8: commit**
+- [ ] **Paso 8: commit** — ⏳ **pendiente a propósito: lo pide la estudiante, no el agente.**
 
 ```bash
 git add servidor/recordatorios.js servidor/plantillas-de-correo.js servidor/rutas/citas.js \
@@ -2240,8 +2253,13 @@ git commit -m "feat: pieza 6, el recordatorio de 24 horas, con su tarea programa
 git push
 ```
 
-**Si parás en la Etapa 6:** **12 de 12 piezas**, 328 pruebas en verde, dirección pública, y una tarea
-programada que corre sola. El proyecto está terminado.
+**Si parás en la Etapa 6:** **12 de 12 piezas**, ~~328~~ **354** pruebas en verde, dirección pública, y
+una tarea programada que corre sola. El proyecto está terminado.
+
+> ✅ **CONSTRUIDA el 2026-09-07.** El código está entero y las 354 pruebas pasan. **Faltan tres cosas
+> y ninguna es código:** cargar `RECORDATORIOS_SECRETO` en Vercel y en los Secrets de GitHub, la
+> comprobación 3 en el teléfono, y la comprobación 8 esperando el horario. Están anotadas arriba de
+> todo en `PROXIMA-SESION.md`.
 
 ---
 

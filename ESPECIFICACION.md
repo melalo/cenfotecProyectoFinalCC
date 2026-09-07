@@ -589,6 +589,19 @@ igual a las cuentas de Personal.
     > inventarlo —incluido qué pasa si quien lo toca no tiene la sesión abierta—. Resolverlo dos veces
     > sería trabajo duplicado y dos maneras distintas de hacer lo mismo, que es justo lo que las
     > convenciones de este proyecto evitan.
+    >
+    > ✅ **CONSTRUIDO el 2026-09-07, y la decisión que faltaba la tomó la estudiante ese día, antes de
+    > que se escribiera una línea de código: el enlace entra sin contraseña.** Quien lo toca en el
+    > teléfono ve su cita y la puede cancelar o mover sin escribir nada. Es el mismo trato de
+    > confianza del enlace de recuperación —quien tiene acceso al correo puede usar lo que llegó
+    > ahí— y **a propósito es menos poderoso**: el de recuperación cambia la contraseña de la cuenta
+    > entera, y éste alcanza **una** cita y nada más. **No abre una sesión**, así que con el código no
+    > hay manera de pedir «mis citas» ni de nombrar otra cita.
+    >
+    > **Y no saltea ninguna regla de este documento:** RN-5 (la ventana de 4 horas), RN-26 (una cita
+    > que ya pasó) y RN-1 (el horario ocupado) siguen valiendo igual, porque el enlace llama a las
+    > **mismas** funciones que la pantalla con sesión. El razonamiento completo está en
+    > `DISENO.md`, «Decisiones tomadas al construir la pieza 6».
 12. **RF-12:** El sistema envía al cliente un correo recordatorio 24 horas antes de su cita, con un
     enlace para cancelar o reagendar. Las citas reservadas con menos de 24 horas de anticipación no
     reciben ninguno (RN-20).

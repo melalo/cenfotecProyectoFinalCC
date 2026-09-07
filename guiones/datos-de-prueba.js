@@ -162,6 +162,8 @@ export async function cargarDatosDePrueba(base) {
     -- llaves foráneas encendidas SQLite se niega a borrar una fila que alguien todavía señala.
     DELETE FROM token_recuperacion;
     DELETE FROM correo_enviado;
+    -- \`token_cita\` apunta a \`cita\` (pieza 6), así que va antes que ella por lo mismo.
+    DELETE FROM token_cita;
     DELETE FROM cita;
     DELETE FROM servicio_proveedor;
     DELETE FROM servicio;

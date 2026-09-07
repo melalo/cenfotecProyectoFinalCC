@@ -1,0 +1,96 @@
+# La tarea programada que dispara los recordatorios de 24 horas (pieza 6, RF-12).
+#
+# ── QUÉ HACE, EN UNA FRASE ────────────────────────────────────────────────────────────────────
+#
+# Cada cierto tiempo le toca el timbre a la aplicación publicada y le dice «revisá si hay
+# recordatorios pendientes». **No decide nada**: la regla de a qué citas les toca vive en
+# `servidor/recordatorios.js`, y quién tiene permiso de tocar ese timbre lo decide el endpoint. Este
+# archivo solo decide **cada cuánto**.
+#
+# Son tres preguntas distintas en tres lugares distintos a propósito: se puede cambiar la frecuencia
+# sin tocar la regla, y se puede probar la regla sin GitHub.
+#
+# ── POR QUÉ GITHUB ACTIONS Y NO EL HOSTING ────────────────────────────────────────────────────
+#
+# Está declarado en `CLAUDE.md` desde el diseño: la cuenta gratuita de Vercel no incluye tareas
+# programadas con la frecuencia que esto necesita, y GitHub Actions ya está en el proyecto desde la
+# pieza 3. **Nota para el futuro, también escrita en `CLAUDE.md`:** si esto se convirtiera en una
+# aplicación real en producción, este disparador debería mudarse al sistema de tareas programadas del
+# hosting. Depender del repositorio para que salgan los correos de un negocio es correcto para un
+# proyecto de curso y no lo sería para uno de verdad.
+#
+# ── ⚠️ GITHUB NO GARANTIZA LA HORA EXACTA, y esto conviene leerlo antes de reportar un error ──
+#
+# Un `cron` de GitHub Actions **puede atrasarse bastante** —minutos, y en horas de mucha cola bastante
+# más— porque las corridas programadas de todo el mundo entran en la misma fila. GitHub lo dice en su
+# documentación: los `schedule` son «best effort», no una promesa.
+#
+# **Para esta pieza no importa, y por diseño:** la ventana de RF-12 es de 24 horas y esto la revisa
+# varias veces al día, así que un atraso de una hora no deja a nadie sin su aviso — solo lo corre la
+# revisión siguiente. Pero es justo la clase de cosa que después parece un error del código: «lo puse
+# a las 8 y llegó 8:40». No es un error. No hay nada que arreglar.
+#
+# Y por la misma razón el `cron` no está a las 0:00 ni a la hora en punto: los minutos redondos son
+# los más pedidos y los que más cola tienen.
+
+name: Recordatorios de 24 horas
+
+on:
+  # Seis veces al día, cada 4 horas. **Está en hora universal (UTC), no en la de Costa Rica**, que es
+  # 6 horas más temprano: las 07:20 UTC son las 01:20 de la madrugada acá.
+  #
+  # **Por qué seis y no una.** Una sola corrida diaria dejaría un hueco: una cita reservada con 26
+  # horas de anticipación podría entrar y salir de la ventana de las 24 horas entre dos corridas, y
+  # esa persona no recibiría nada. Con una revisión cada 4 horas, toda cita que pase por la ventana
+  # es vista al menos cinco veces. **No manda correos de más**: el criterio de «ya se le mandó» es
+  # una fila en `correo_enviado`, así que las otras cinco revisiones la ven y la saltan — eso es la
+  # comprobación 4 del plan.
+  schedule:
+    - cron: "20 3,7,11,15,19,23 * * *"
+
+  # El botón para dispararla a mano desde la pestaña Actions. **Es la misma decisión que tomó
+  # `pruebas.yml` el 2026-08-26 y por la misma razón:** después de una corrida roja se puede
+  # reintentar sin inventar un commit vacío para forzarla.
+  #
+  # ⚠️ **Y no reemplaza a la comprobación 8 del plan**, que es ver que la tarea arrancó **sola** a su
+  # horario. Apretar el botón comprueba que el disparador funciona, que es otra cosa: lo que la
+  # comprobación 8 vigila es justamente que nadie lo aprete.
+  workflow_dispatch:
+
+jobs:
+  recordatorios:
+    runs-on: ubuntu-latest
+
+    steps:
+      # No hay `checkout` ni `setup-node`, y no es un olvido: esta tarea **no corre el proyecto**.
+      # Solo manda un pedido HTTP a la aplicación ya publicada, así que no necesita el código ni
+      # instalar dependencias. Es la diferencia de fondo con `pruebas.yml`.
+      - name: Pedirle a la aplicación que revise los recordatorios pendientes
+        env:
+          # ⚠️ **Los dos salen de los Secrets del repositorio, nunca escritos acá.** Un archivo de
+          # workflow se sube al repositorio como cualquier otro, así que una clave escrita en esta
+          # línea sería una clave pública. Se cargan en Settings → Secrets and variables → Actions.
+          #
+          # `DIRECCION_PUBLICA` es la del sitio publicado, la misma que la aplicación usa para
+          # escribir los enlaces de los correos.
+          DIRECCION_PUBLICA: ${{ secrets.DIRECCION_PUBLICA }}
+          RECORDATORIOS_SECRETO: ${{ secrets.RECORDATORIOS_SECRETO }}
+        run: |
+          # `--fail-with-body` es lo que convierte esto en una tarea que se puede vigilar: sin él,
+          # `curl` termina contento aunque el servidor conteste 401 o 500, y la corrida saldría verde
+          # con nadie avisado. Con él, la corrida se pone **roja** y además muestra qué contestó el
+          # servidor — que es el dato que hace falta para saber qué pasó.
+          #
+          # `--silent --show-error` calla la barra de progreso y deja los errores.
+          #
+          # La clave viaja en una cabecera y no en la dirección a propósito: las direcciones quedan
+          # escritas en los registros del servidor, las cabeceras no.
+          curl --fail-with-body --silent --show-error \
+               --request POST \
+               --header "x-recordatorios-secreto: ${RECORDATORIOS_SECRETO}" \
+               "${DIRECCION_PUBLICA%/}/api/tareas/recordatorios"
+
+          # La respuesta que queda arriba en el registro de la corrida es `{"revisadas":N,"enviados":N}`.
+          # Que sean dos números y no uno es lo que hace útil este registro: `3 y 3` y `3 y 0` son dos
+          # situaciones muy distintas.
+          echo ""

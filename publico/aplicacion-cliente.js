@@ -150,11 +150,31 @@ const campoCorreoEntrar = formaEntrar.querySelector('input[name="correo"]')
  * Va acá abajo y no arriba de todo porque las dos últimas nacen en esta pieza. Quien agregue una
  * sexta la suma a esta lista y no tiene que tocar nada más.
  */
+// La pantalla que abre el enlace del correo (pieza 6). Es la única que se ve sin haber entrado.
+const pantallaCita = document.getElementById("pantalla-cita")
+const citaEnlaceDatos = document.getElementById("cita-enlace-datos")
+const citaEnlaceFecha = document.getElementById("cita-enlace-fecha")
+const citaEnlaceHora = document.getElementById("cita-enlace-hora")
+const citaEnlaceServicio = document.getElementById("cita-enlace-servicio")
+const citaEnlaceProveedor = document.getElementById("cita-enlace-proveedor")
+const citaEnlaceDonde = document.getElementById("cita-enlace-donde")
+const citaEnlaceAcciones = document.getElementById("cita-enlace-acciones")
+const citaEnlaceConfirmarCancelar = document.getElementById("cita-enlace-confirmar-cancelar")
+const citaEnlaceMover = document.getElementById("cita-enlace-mover")
+const listaCitaEnlaceHorarios = document.getElementById("lista-cita-enlace-horarios")
+const avisoCitaEnlace = document.getElementById("aviso-cita-enlace")
+const botonCitaEnlaceCancelar = document.getElementById("boton-cita-enlace-cancelar")
+const botonCitaEnlaceCancelarSi = document.getElementById("boton-cita-enlace-cancelar-si")
+const botonCitaEnlaceCancelarNo = document.getElementById("boton-cita-enlace-cancelar-no")
+const botonCitaEnlaceReagendar = document.getElementById("boton-cita-enlace-reagendar")
+const botonCitaEnlaceSalir = document.getElementById("boton-cita-enlace-salir")
+
 const TODAS_LAS_PANTALLAS = [
   pantallaEntrada,
   pantallaCambiarContrasena,
   pantallaOlvide,
   pantallaRestablecer,
+  pantallaCita,
   pantallaDentro,
 ]
 
@@ -2548,9 +2568,396 @@ function abrirElEnlaceSiVinoUno() {
  */
 function olvidarElCodigoYLimpiarLaDireccion() {
   codigoDeRecuperacion = null
+  // El de la cita se olvida en el mismo lugar, y no en otro: es la lección del hallazgo número 20 —
+  // si limpiar algo pide tocar el dato y la dirección, las dos cosas van en la misma función.
+  codigoDeLaCitaDelEnlace = null
   if (window.location.hash !== "") {
     window.history.replaceState(null, "", window.location.pathname + window.location.search)
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// LA PANTALLA QUE ABRE EL ENLACE DEL CORREO (pieza 6, RF-11 y RF-12)
+//
+// Es la única parte de la aplicación que funciona **sin haber entrado**, y lo que la autoriza es el
+// código que viene en la dirección. La estudiante lo decidió el 2026-09-07 y la razón está escrita
+// en `servidor/enlaces-de-cita.js`.
+//
+// ── LO QUE ESTA PANTALLA NO DECIDE ───────────────────────────────────────────────────────────
+//
+// **Si la cita se puede cancelar o mover no lo decide acá**: viene en `sePuedeCambiar` y `porQueNo`,
+// los mismos dos campos que recibe «Mis citas» desde la pieza 5. Y **qué horarios están libres
+// tampoco**: los marca `servidor/disponibilidad.js`, y acá solo se dibujan los que llegaron marcados
+// como disponibles. Es la regla del proyecto: el frontend no cuenta las 4 horas ni adivina la agenda.
+//
+// ── POR QUÉ ES UNA LISTA DE PRÓXIMOS HORARIOS Y NO LA PARRILLA DEL MES ───────────────────────
+//
+// La parrilla mes-a-mes de la pantalla de reservar vive dentro del flujo con sesión —depende de
+// `eleccion`, de `esPersonal()` y del recorrido de cuatro pasos—, así que reusarla acá pedía tocar la
+// pantalla más revisada del proyecto y arriesgar las once piezas que ya funcionan.
+//
+// **No hay ninguna regla duplicada**, que es lo que la convención protege: qué está libre lo sigue
+// decidiendo el mismo archivo del servidor, y acá se muestra de otra forma. Y en un teléfono —que es
+// donde se abre un correo— una lista de «los próximos que te sirven» se usa mejor que una parrilla.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** El pedacito de la dirección que trae el código de una cita, tal como lo escribe el correo. */
+const MARCA_DEL_ENLACE_DE_CITA = "#cita="
+
+/**
+ * Cuántos días adelante se le ofrecen a quien viene a mover su cita desde el correo.
+ *
+ * **Siete, y el número no se eligió acá: es el de RN-14**, que ya dice que la ventana en la que el
+ * negocio piensa son «los próximos 7 días». Reusarlo hace que tenga una razón en vez de ser un gusto.
+ *
+ * *Eran 14 hasta el 2026-09-07, y los puso este archivo sin ninguna razón detrás. La estudiante abrió
+ * la pantalla en el teléfono, vio cuatro días y preguntó si eso estaba bien: **no lo estaba, y por lo
+ * contrario de lo que parecía** — el servidor le ofrecía **once** días, o sea unos 88 botones, y ella
+ * había visto los primeros cuatro sin llegar al fondo. Una lista tan larga deja de ser una lista para
+ * elegir.*
+ *
+ * Con 7 quedan unos 6 días con horarios. Sigue habiendo que bajar el dedo, y eso se aceptó a
+ * propósito: el otro camino —cortar por cantidad de horarios— pedía además una frase avisando que hay
+ * más, porque sin ella alguien podría creer que la semana siguiente está llena.
+ */
+const DIAS_DE_HORARIOS_QUE_SE_OFRECEN = 7
+
+/** El código de la cita que se está mirando, mientras esta pantalla está puesta. */
+let codigoDeLaCitaDelEnlace = null
+
+/**
+ * La cuenta que estaba en sesión cuando se abrió el enlace, o `null` si no había ninguna.
+ *
+ * Se guarda para **una sola cosa**: decidir a dónde lleva la salida. Con sesión, mandarla a la
+ * pantalla de entrar sería pedirle la contraseña a quien ya entró.
+ */
+let cuentaAlAbrirElEnlace = null
+
+/**
+ * Si la dirección trae el código de una cita, deja esta pantalla puesta con esa cita.
+ *
+ * Devuelve `true` cuando encontró uno, para que el arranque sepa que ya hay una pantalla puesta y no
+ * muestre otra encima — igual que `abrirElEnlaceSiVinoUno` de la pieza 9.
+ *
+ * ⚠️ **Es `async`, al contrario de la de recuperación**, y por una diferencia real: el enlace de
+ * recuperación no necesita preguntarle nada al servidor —el código se usa recién al guardar la
+ * contraseña—, y éste tiene que ir a buscar la cita para poder mostrarla.
+ */
+async function abrirLaCitaDelEnlaceSiVinoUna(cuenta = null) {
+  const direccion = window.location.hash
+  if (!direccion.startsWith(MARCA_DEL_ENLACE_DE_CITA)) return false
+
+  // `#cita=<codigo>` o `#cita=<codigo>/cancelar` o `#cita=<codigo>/reagendar`. La acción va después
+  // de una barra y no con un `&` porque estas direcciones viajan adentro del HTML de un correo, donde
+  // un `&` se escribe `&amp;` — la razón entera está en `servidor/enlaces-de-cita.js`.
+  const [codigo, hacer] = direccion.slice(MARCA_DEL_ENLACE_DE_CITA.length).split("/")
+  if (!codigo) return false
+
+  codigoDeLaCitaDelEnlace = codigo
+  cuentaAlAbrirElEnlace = cuenta
+  mostrarSoloEstaPantalla(pantallaCita)
+
+  // **La salida dice a dónde lleva de verdad**, y eso depende de si hay sesión: a quien ya entró no
+  // se le puede ofrecer «Entrar a mi cuenta», que es lo que decía antes de este arreglo.
+  botonCitaEnlaceSalir.textContent = cuenta ? "Ver todas mis citas" : "Entrar a mi cuenta"
+
+  // Sin menú y sin pie de navegación **incluso con la sesión abierta**, por lo mismo que la pantalla
+  // del cambio obligatorio: quien llegó acá vino a hacer una cosa con una cita. Y es una sola
+  // manera de verse, con sesión y sin ella — dos comportamientos según el estado del navegador es
+  // justo lo que hizo falta arreglar hoy.
+  navegacion.hidden = true
+  botonMenu.hidden = true
+
+  await pintarLaCitaDelEnlace(hacer)
+  return true
+}
+
+/**
+ * Busca la cita del código y la dibuja. `hacer` es qué botón se tocó en el correo, para abrir ese
+ * paso de una vez en vez de hacerle tocar otro botón a quien ya tocó uno.
+ */
+async function pintarLaCitaDelEnlace(hacer) {
+  esconderAviso(avisoCitaEnlace)
+  citaEnlaceMover.hidden = true
+  citaEnlaceConfirmarCancelar.hidden = true
+
+  const respuesta = await pedirAlApi(`/api/citas/por-enlace/${codigoDeLaCitaDelEnlace}`)
+
+  if (respuesta.estado !== 200) {
+    // Un código que no abre nada. Se dice acá y no se lo manda a la pantalla de entrar sin
+    // explicación: quien tocó un botón de un correo merece saber qué pasó con ese botón.
+    esconderLaCitaDelEnlace()
+    mostrarAviso(
+      avisoCitaEnlace,
+      "Este enlace ya no lleva a ninguna cita. Puede que la dirección se haya cortado al copiarla. " +
+        `Entrá a la aplicación para ver tus citas, o llamanos al ${eleccion.negocio.telefono}.`,
+    )
+    return
+  }
+
+  dibujarLosDatosDeLaCitaDelEnlace(respuesta.cuerpo)
+
+  if (hacer === "cancelar") preguntarSiCancelaLaCitaDelEnlace()
+  if (hacer === "reagendar") await abrirLosHorariosParaMover()
+}
+
+/** Pinta los cinco datos de la cita y decide qué botones se muestran. */
+function dibujarLosDatosDeLaCitaDelEnlace(cita) {
+  citaEnlaceFecha.textContent = tituloDelDia(cita.inicio.slice(0, 10))
+  citaEnlaceHora.textContent = horaConAmPm(cita.inicio)
+  citaEnlaceServicio.textContent = cita.servicio
+  citaEnlaceProveedor.textContent = `Terapista: ${cita.proveedor}`
+  citaEnlaceDonde.textContent = eleccion.negocio.ubicacion
+
+  citaEnlaceDatos.hidden = false
+
+  // **El servidor decide.** `sePuedeCambiar` ya tuvo en cuenta la ventana de las 4 horas (RN-5), si
+  // la cita ya pasó (RN-26) y si sigue activa; acá solo se obedece.
+  if (cita.sePuedeCambiar) {
+    citaEnlaceAcciones.hidden = false
+    return
+  }
+
+  citaEnlaceAcciones.hidden = true
+
+  // Y el **porqué** también viene del servidor, en `porQueNo`. Se traduce con la misma tabla que usa
+  // «Mis citas», para que las dos pantallas no le den dos explicaciones distintas a lo mismo.
+  const nota = NOTA_DE_LA_CITA[cita.porQueNo]
+  mostrarAviso(
+    avisoCitaEnlace,
+    nota
+      ? nota()
+      : cita.porQueNo === "cita_no_activa"
+        ? "Esta cita ya está cancelada, así que no hay nada que cambiar."
+        : `Esta cita ya pasó. Si necesitás otra, entrá a la aplicación o llamanos al ${eleccion.negocio.telefono}.`,
+  )
+}
+
+/** Esconde todo lo que habla de la cita. Se usa cuando el enlace no abrió ninguna. */
+function esconderLaCitaDelEnlace() {
+  citaEnlaceDatos.hidden = true
+  citaEnlaceAcciones.hidden = true
+  citaEnlaceMover.hidden = true
+  citaEnlaceConfirmarCancelar.hidden = true
+}
+
+// ── Cancelar ─────────────────────────────────────────────────────────────────────────────────
+
+botonCitaEnlaceCancelar.addEventListener("click", preguntarSiCancelaLaCitaDelEnlace)
+
+/**
+ * Antes de cancelar, pregunta. Es la misma decisión que la estudiante tomó el 2026-08-20 para «Mis
+ * citas», y por la misma razón: cancelar no se deshace — la cita no se borra (RN-15), pero el
+ * horario queda libre en el acto y otra persona puede llevárselo (RN-7).
+ */
+function preguntarSiCancelaLaCitaDelEnlace() {
+  esconderAviso(avisoCitaEnlace)
+  citaEnlaceMover.hidden = true
+  citaEnlaceAcciones.hidden = true
+  citaEnlaceConfirmarCancelar.hidden = false
+}
+
+botonCitaEnlaceCancelarNo.addEventListener("click", () => {
+  citaEnlaceConfirmarCancelar.hidden = true
+  citaEnlaceAcciones.hidden = false
+})
+
+botonCitaEnlaceCancelarSi.addEventListener("click", async () => {
+  const respuesta = await pedirAlApi(`/api/citas/por-enlace/${codigoDeLaCitaDelEnlace}`, {
+    method: "DELETE",
+  })
+
+  citaEnlaceConfirmarCancelar.hidden = true
+
+  if (respuesta.estado !== 204) {
+    citaEnlaceAcciones.hidden = false
+    mostrarAviso(avisoCitaEnlace, mensajeDelError(respuesta.cuerpo))
+    return
+  }
+
+  // Queda la cita a la vista y el aviso verde debajo: quien acaba de cancelar tiene que poder ver
+  // **cuál** canceló. Los botones se van, porque ya no hay nada que hacer con ella.
+  esconderAviso(avisoCitaEnlace)
+
+  // **Las mismas palabras que usa «Mis citas»**, no unas parecidas: es la misma noticia. Lo único
+  // que se le saca es el «Acá abajo queda anotada» del final, porque acá no hay ninguna lista abajo.
+  mostrarAvisoDeExito(
+    avisoCitaEnlace,
+    "Tu cita quedó cancelada, y ese horario vuelve a estar libre.",
+  )
+})
+
+// ── Mover la cita a otro horario ─────────────────────────────────────────────────────────────
+
+botonCitaEnlaceReagendar.addEventListener("click", abrirLosHorariosParaMover)
+
+/**
+ * Muestra los próximos horarios libres de esa cita.
+ *
+ * Se piden **dos meses** y no uno: si hoy es el 28, el mes en curso casi no tiene días por delante y
+ * una sola consulta dejaría la lista casi vacía sin que falte nada. Los dos meses se piden a la vez,
+ * no uno y después el otro, porque son dos pedidos que no dependen entre sí.
+ */
+async function abrirLosHorariosParaMover() {
+  esconderAviso(avisoCitaEnlace)
+  citaEnlaceConfirmarCancelar.hidden = true
+  citaEnlaceMover.hidden = false
+  listaCitaEnlaceHorarios.replaceChildren()
+
+  const hoy = eleccion.negocio.hoy
+  const esteMes = hoy.slice(0, 7)
+
+  const [primero, segundo] = await Promise.all([
+    pedirAlApi(calendarioDelEnlace(esteMes)),
+    pedirAlApi(calendarioDelEnlace(moverMes(esteMes, 1))),
+  ])
+
+  if (primero.estado !== 200) {
+    citaEnlaceMover.hidden = true
+    mostrarAviso(avisoCitaEnlace, mensajeDelError(primero.cuerpo))
+    return
+  }
+
+  const dias = [...primero.cuerpo.dias, ...(segundo.estado === 200 ? segundo.cuerpo.dias : [])]
+  const hasta = sumarDiasEnPantalla(hoy, DIAS_DE_HORARIOS_QUE_SE_OFRECEN)
+
+  let hayAlguno = false
+
+  for (const dia of dias) {
+    if (dia.fecha > hasta) break
+
+    // **No se filtra por fecha ni se cuenta nada**: se dibujan los horarios que el servidor marcó
+    // `disponible`. Para el cliente hoy nunca trae ninguno (RN-4, CA-2), así que este día se salta
+    // solo sin que la pantalla tenga que saber esa regla.
+    const libres = dia.horarios.filter((horario) => horario.disponible)
+    if (libres.length === 0) continue
+
+    listaCitaEnlaceHorarios.appendChild(diaConHorariosLibres(dia, libres))
+    hayAlguno = true
+  }
+
+  if (!hayAlguno) {
+    citaEnlaceMover.hidden = true
+    mostrarAviso(
+      avisoCitaEnlace,
+      "No queda ningún horario libre de tu terapista en los próximos días. Si necesitás mover tu " +
+        `cita, llamanos al ${eleccion.negocio.telefono}.`,
+    )
+  }
+}
+
+/** La dirección del calendario de esta cita. El servicio y la terapista los saca el servidor. */
+function calendarioDelEnlace(mes) {
+  return `/api/citas/por-enlace/${codigoDeLaCitaDelEnlace}/disponibilidad?mes=${mes}`
+}
+
+/** Un día de la lista: su fecha, y debajo la cuadrícula de sus horarios libres. */
+function diaConHorariosLibres(dia, libres) {
+  const renglon = document.createElement("li")
+  renglon.className = "dia-libre"
+  renglon.appendChild(textoEn("span", "dia-libre__fecha", tituloDelDia(dia.fecha)))
+
+  const cuadricula = document.createElement("ul")
+  cuadricula.className = "horarios"
+
+  for (const horario of libres) {
+    const casilla = document.createElement("li")
+    const ficha = document.createElement("button")
+    ficha.type = "button"
+    ficha.className = "horario"
+
+    // La hora de 24, sin `am`/`pm`, **igual que las fichas del calendario y por la misma razón
+    // medida**: `.horarios` es una cuadrícula de cuatro columnas, la caja más angosta del proyecto, y
+    // `10:00am` no entra en un teléfono de 320px. La razón entera está en `fichaDeHorario`.
+    ficha.textContent = horario.inicio.slice(11, 16)
+    ficha.title = "Libre: tocá para mover tu cita acá"
+    ficha.addEventListener("click", () => moverLaCitaDelEnlaceA(horario.inicio))
+
+    casilla.appendChild(ficha)
+    cuadricula.appendChild(casilla)
+  }
+
+  renglon.appendChild(cuadricula)
+  return renglon
+}
+
+/** Mueve la cita al horario que se tocó. */
+async function moverLaCitaDelEnlaceA(inicio) {
+  const respuesta = await pedirAlApi(`/api/citas/por-enlace/${codigoDeLaCitaDelEnlace}`, {
+    // Se manda **solo** el inicio, que es lo único que reagendar cambia (RN-18). El servidor
+    // tampoco mira el servicio ni la terapista aunque se los mandaran.
+    method: "PATCH",
+    cuerpo: { inicio },
+  })
+
+  if (respuesta.estado !== 200) {
+    // El calendario se vuelve a pedir **primero**: si el horario lo tomó otra persona, el que está
+    // en pantalla quedó viejo. Es lo mismo que hace la pantalla con sesión, por la misma razón.
+    //
+    // ⚠️ **Y va antes del aviso, no después**, porque `abrirLosHorariosParaMover` empieza escondiendo
+    // el aviso — puesto al revés, el mensaje se dibujaría y se borraría solo, y parecería que el
+    // error no dice nada.
+    await abrirLosHorariosParaMover()
+
+    // **`mensajeDelMovimiento` y no `mensajeDelError`**, que es la que ya existe para esto desde la
+    // pieza 5: sabe explicar los dos rechazos que tienen mensaje propio —el horario que alguien tomó
+    // primero, y el día de hoy— y los demás los delega igual. Escribir acá una segunda versión de
+    // esas frases sería la misma explicación dicha de dos maneras.
+    mostrarAviso(avisoCitaEnlace, mensajeDelMovimiento(respuesta.cuerpo))
+    return
+  }
+
+  // La cita se vuelve a pedir en vez de pintar lo que devolvió el `PATCH`, y no es por vueltas: la
+  // respuesta del `PATCH` es la cita cruda, sin `sePuedeCambiar` ni `porQueNo`, y sin esos dos campos
+  // la pantalla no sabría si los botones siguen sirviendo. Moverla al horario nuevo puede dejarla
+  // dentro de las 4 horas, y entonces ya no se puede volver a mover.
+  await pintarLaCitaDelEnlace(null)
+  mostrarAvisoDeExito(
+    avisoCitaEnlace,
+    "Tu cita quedó movida. Te mandamos un correo con el día y la hora nuevos.",
+  )
+}
+
+/**
+ * La salida de esta pantalla, que **lleva a dos lugares distintos según haya sesión o no**.
+ *
+ * Con sesión va a «Mis citas», que es lo que esa persona quería ver y ya puede ver. Sin sesión, a la
+ * pantalla de entrar. **Antes de este arreglo decía siempre «Entrar a mi cuenta» y llevaba siempre a
+ * entrar**, así que a quien ya había entrado le pedía la contraseña de nuevo — y perdía de vista su
+ * cita, que es exactamente lo que le pasó a la estudiante en su primera prueba (2026-09-07).
+ *
+ * Los dos caminos limpian la dirección primero: si el código quedara escrito ahí, recargar la página
+ * volvería a abrir esta pantalla.
+ */
+botonCitaEnlaceSalir.addEventListener("click", () => {
+  const cuenta = cuentaAlAbrirElEnlace
+  olvidarElCodigoYLimpiarLaDireccion()
+
+  if (cuenta) {
+    // `mostrarPantallaDentro` devuelve el menú y deja la sección «Reservar»; el `mostrarVista` de
+    // después la corrige a «Mis citas» y **de paso vuelve a pedir la lista**, que es lo que hace que
+    // la cita recién movida o cancelada aparezca como quedó.
+    mostrarPantallaDentro(cuenta)
+    mostrarVista("citas")
+    return
+  }
+
+  esconderAviso(avisoEntrar)
+  mostrarPantallaEntrada()
+})
+
+/**
+ * La fecha que cae tantos días después de otra, escrita igual: «2026-09-01» + 14 = «2026-09-15».
+ *
+ * Es la misma cuenta que `sumarDias` de `servidor/tiempo.js`, y está escrita dos veces por la razón
+ * de siempre: este archivo corre en el navegador, que **no puede leer** nada de `servidor/`. No es
+ * una regla de negocio —cuántos días adelante se ofrecen es una decisión de esta pantalla—, así que
+ * las dos copias no se pueden desincronizar en nada que importe.
+ */
+function sumarDiasEnPantalla(fecha, cuantos) {
+  const dia = new Date(`${fecha}T12:00:00Z`)
+  dia.setUTCDate(dia.getUTCDate() + cuantos)
+  return dia.toISOString().slice(0, 10)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -2842,14 +3249,46 @@ async function arrancar() {
   await cargarNegocio()
 
   const respuesta = await pedirAlApi("/api/yo")
+  const cuenta = respuesta.estado === 200 ? respuesta.cuerpo : null
 
-  if (respuesta.estado === 200) {
-    mostrarPantallaDentro(respuesta.cuerpo)
+  // ── ⚠️ EL ORDEN DE ESTAS TRES PREGUNTAS ES LA REGLA, Y ESTUVO MAL (2026-09-07) ─────────────
+  //
+  // **Hasta hoy la sesión se preguntaba primero y hacía `return`**, así que **el enlace de una cita
+  // se ignoraba por completo si había sesión abierta**: la persona tocaba «Reagendar» en el correo y
+  // aterrizaba en la pantalla de reservar, como si no hubiera tocado nada.
+  //
+  // Lo encontró la estudiante en el teléfono, y el caso es **el más común de todos**: quien reserva
+  // desde el celular queda con la sesión abierta 4 horas (RN-29), y la confirmación le llega tres
+  // segundos después. La primera prueba había funcionado sólo porque venía sin sesión.
+  //
+  // *Y acá arriba había un comentario que decía «los enlaces del correo mandan sobre todo lo demás».
+  // Era la intención de quien lo escribió, no lo que el código hacía — la segunda vez en el mismo día
+  // que un comentario de esta pieza afirmaba algo que el código de al lado desmentía.*
+
+  // **RF-4 manda incluso sobre el enlace**, y es la única cosa que lo hace: si esta cuenta todavía
+  // tiene la contraseña temporal que le puso Personal, no hay ninguna otra pantalla que mostrar. El
+  // servidor rechaza igual todo lo demás, así que abrir la cita acá sólo daría una pantalla que no
+  // funciona.
+  if (cuenta?.debeCambiarContrasena) {
+    mostrarPantallaDentro(cuenta)
     return
   }
 
-  // El enlace del correo manda sobre todo lo demás: si la dirección trae un código, quien abrió
-  // la página no vino a entrar, vino a elegir su contraseña nueva.
+  // **El enlace de una cita manda sobre la sesión.** El código de la dirección es una intención
+  // explícita —«quiero ver ESTA cita»— y la sesión es sólo el estado en que quedó el navegador. Se le
+  // pasa la cuenta porque la pantalla la necesita para una sola cosa: saber si la salida es «Ver
+  // todas mis citas» o «Entrar a mi cuenta».
+  if (await abrirLaCitaDelEnlaceSiVinoUna(cuenta)) return
+
+  if (cuenta) {
+    mostrarPantallaDentro(cuenta)
+    return
+  }
+
+  // El de la contraseña queda **abajo de la sesión, como estaba desde la pieza 9**, y no se movió a
+  // propósito: cambiar cuándo se atiende ese enlace es cambiar el comportamiento de otra pieza, y eso
+  // se decide aparte. *(Hoy, con sesión abierta, un enlace de recuperación se ignora igual que se
+  // ignoraba el de la cita. Queda anotado como pregunta, no arreglado de paso.)*
   if (abrirElEnlaceSiVinoUno()) return
 
   mostrarPantallaEntrada()

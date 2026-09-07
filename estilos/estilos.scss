@@ -1749,6 +1749,38 @@ body {
   list-style: none;
 }
 
+// ── Un día con sus horarios libres, en la pantalla que abre el enlace del correo (pieza 6) ─────
+//
+// Es la misma rayita de 1px entre renglón y renglón que usan las listas de citas de acá abajo
+// (`VISUALS.md` → Components, Lists), y no una caja por día.
+//
+// **No trae ningún valor nuevo**: el borde, los dos espaciados y el tamaño del título del día son
+// las mismas variables que usa `.cita`. Es una clase propia y no un modificador de `.cita` porque
+// adentro lleva otra cosa —una cuadrícula de horarios en vez de tres datos—, y desde tableta `.cita`
+// se reparte en tres columnas, que acá pondría la fecha al lado de la cuadrícula.
+.dia-libre {
+  display: grid;
+  gap: $base;
+  padding-block: $stack-sm;
+  border-top: 1px solid $borde;
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+
+  &__fecha {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    color: $texto-suave;
+  }
+}
+
 .cita {
   display: grid;
   gap: $base;

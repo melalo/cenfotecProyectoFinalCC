@@ -1,7 +1,74 @@
-# Próxima sesión — publicar en Vercel y cerrar la pieza 6
+# Próxima sesión — cerrar a mano la pieza 6, y la presentación
 
 *Escrito el 2026-08-28, al cerrar la pieza 9. **Actualizado el 2026-08-29**, cuando la estudiante
-decidió publicar la aplicación. Esta es la hoja para retomar sin releer nada.*
+decidió publicar la aplicación, y **el 2026-09-07**, al construir la pieza 6. Esta es la hoja para
+retomar sin releer nada.*
+
+> ## ⚠️ LO PRIMERO, ANTES DE CUALQUIER OTRA COSA
+>
+> **La pieza 6 está construida y probada en producción, pero NO cerrada.** `npm test` da **354 de
+> 354**. Lo que falta:
+>
+> | | Estado |
+> |---|---|
+> | `RECORDATORIOS_SECRETO` en Vercel y en los Secrets de GitHub, más `DIRECCION_PUBLICA` en los Secrets | ✅ **hecho** |
+> | La tabla `token_cita` en la base de Turso | ✅ **hecha** con `npm run esquema` |
+> | El disparador funcionando contra el sitio en vivo | ✅ **comprobado**: `{"revisadas":1,"enviados":1}`, y llegó un correo de verdad |
+> | **Publicar los dos arreglos de abajo** (`npx vercel --prod`) | ⏳ **pendiente, y hace falta** |
+> | **Comprobación 3**, en el teléfono | ⏳ pendiente — hacerla **después** de publicar |
+> | **Comprobación 8**: que la tarea arranque sola | ⏳ pendiente — hay que esperar el horario |
+>
+> ### 🔎 Publicar reveló dos defectos que las 349 pruebas no veían. Los dos están arreglados.
+>
+> **1. La base publicada no tenía la tabla `token_cita`, y el síntoma no fue el que correspondía.**
+> El despliegue **no crea tablas**, a propósito (`servidor/aplicacion-desplegada.js` explica por qué).
+> Eso por sí solo debía causar «el correo llega sin botones»; en cambio **reservar contestaba `500`
+> con la cita ya guardada**. La causa de eso era código, no configuración:
+> `enviarConfirmacionDeCita` está documentada desde la pieza 4 como que **nunca lanza un error**
+> —RF-19—, y la pieza 6 le había metido adentro una escritura a la base sin protegerla. Arreglado con
+> `losEnlacesSiSePueden` en `servidor/correo.js`, **una sola función para los dos correos**, y 4
+> pruebas que reproducen el estado exacto de la base publicada. *El recordatorio tenía el mismo
+> agujero: una cita imposible tumbaba la corrida entera.*
+>
+> ⚠️ **Y deja una pregunta abierta para el proyecto, que la pieza 6 es la primera en tocar: cuando
+> una pieza nueva agrega una tabla, ¿cómo se entera la base publicada?** Hoy la respuesta es «alguien
+> se acuerda de correr `npm run esquema`». Las doce piezas anteriores son todas de antes del
+> despliegue, así que nunca había pasado.
+>
+> **2. Los botones del correo se llamaban distinto que los de la aplicación.** Decían «Cambiar la
+> hora» y «Cancelar la cita»; «Mis citas» dice **Reagendar** y **Cancelar** desde la pieza 5. Rompía
+> la convención de `CLAUDE.md` —*dos caminos al mismo lugar se llaman igual*— y pesa más acá que en
+> una pantalla, porque el correo y la aplicación se leen en momentos separados. **Lo encontró la
+> estudiante leyendo el correo que le llegó**, no una prueba. Arreglado en el correo y en la pantalla,
+> con una prueba que fija el vocabulario. *De paso se alinearon los dos avisos verdes y se pasó a
+> reusar `mensajeDelMovimiento`, que ya existía desde la pieza 5.*
+>
+> ### El orden de lo que queda
+>
+> 1. **`npx vercel --prod`** — hasta que no se publique, el correo que llega sigue teniendo los
+>    botones con el nombre viejo.
+> 2. **Comprobación 3, en el teléfono.** Reservar contra el sitio publicado y, del correo de
+>    confirmación, tocar **«Reagendar»** primero y **«Cancelar»** después — en ese orden, porque
+>    cancelar deja la cita inservible para probar lo otro. Tiene que abrir la aplicación **sin pedir
+>    contraseña**.
+> 3. **Comprobación 8.** En Actions, ver que «Recordatorios de 24 horas» corrió **sola**, a su
+>    horario. El botón «Run workflow» **no la reemplaza**: lo que se comprueba es que arranca sin que
+>    nadie la dispare. Corre a las 03:20, 07:20, 11:20, 15:20, 19:20 y 23:20 **UTC** — en Costa Rica,
+>    21:20, 01:20, 05:20, 09:20, 13:20 y 17:20.
+> 4. **La revisión visual de la pantalla nueva**, que es la que encontró los 19 defectos visuales del
+>    proyecto y ninguna prueba puede reemplazar. **Y ya encontró uno acá**: el del punto 2.
+>
+> ### 🔎 Y se desmintió una creencia que el proyecto arrastraba escrita
+>
+> Hasta el 2026-09-07 estaba escrito —y repetido en el prompt de arranque de dos sesiones— que **«a
+> Claude se le bloquea cargar secretos en Vercel»**. **Es falso, y se vio probándolo:**
+> `npx vercel env add` corrió sin problema. **Lo que sí está bloqueado es `npx vercel --prod`**, o sea
+> *publicar* — que es otra cosa, y con sentido: publicar cambia lo que ve el mundo, cargar una
+> variable no.
+>
+> La lección es la misma de la caída de Actions del 2026-08-26: **una limitación que nadie comprobó
+> se propaga como si fuera un hecho**, y esta costó una conversación entera de pasos manuales que no
+> hacían falta. **Antes de anotar «esto no se puede», probarlo una vez.**
 
 ---
 
@@ -25,11 +92,11 @@ que se vaya a construir de `PLAN.md`, `VISUALS.md` y el `CLAUDE.md` del reposito
 | | |
 |---|---|
 | **🌐 LA APLICACIÓN ESTÁ PUBLICADA** | **https://reservas-bienestar.vercel.app** — funciona, con datos. Se puede crear cuenta, reservar, cancelar y entrar como Personal desde cualquier teléfono |
-| **Pruebas** | `npm test` da **323 de 323**, en Node 20 y Node 24 |
+| **Pruebas** | `npm test` da **354 de 354**, en Node 20 y Node 24 *(eran 323 antes de la pieza 6)* |
 | **CA-1, CA-2 y CA-3** | **Los tres completos.** Y **CA-1 está comprobado contra la base publicada**, no sólo contra el archivo local: dos sesiones distintas piden el mismo horario y la segunda recibe `409` |
 | **Git** | Todo subido en la rama **`despliegue-vercel-turso`**. ⚠️ **Todavía NO está en `main`** |
-| **Piezas hechas** | 1, 2, 3, 4, 5, 7, 8, 9, 10, 11 y 12 — **once de doce** |
-| **Piezas que faltan** | **Solo la 6.** Ya no está trabada: era que GitHub no podía llamar a `localhost`, y ahora hay dirección pública |
+| **Piezas hechas** | **Las doce.** La 6 se construyó el 2026-09-07 — código completo y 31 pruebas nuevas |
+| **Piezas que faltan** | Ninguna. **Pero la 6 no está cerrada:** faltan las 3 cosas a mano del bloque de arriba |
 | **Del curso** | Falta **preparar la presentación** de la sesión 8 |
 | **Tiempo** | Hasta la entrega del **8 de setiembre** |
 | **Base de datos** | **Turso** en producción (`database-cinereous-candle`), y el **archivo local** en la computadora. ⚠️ **Son dos bases distintas y no comparten ni una cuenta** |
@@ -111,54 +178,62 @@ está en `Desktop/claudeCodeCenfotec/cursoCenfotecClaude/semana6/cancha-total/DE
 
 El token de Vercel está en `Desktop/connectVercel.txt`.
 
-### 2. 🔨 LA PIEZA 6 — «Recordatorio de 24 horas». **ES LO SIGUIENTE**
+### 2. ✅ LA PIEZA 6 — «Recordatorio de 24 horas». **CONSTRUIDA el 2026-09-07**
 
-**El obstáculo desapareció:** la tarea programada de GitHub sí alcanza la aplicación publicada, así
-que se apunta a **las 8 comprobaciones** y no a 7. Sería la pieza **12 de 12**.
+**12 de 12.** El código está entero y `npm test` da **354 de 354**. Se construyó con TDD, como las
+otras once: las primeras 26 pruebas se escribieron primero y se vieron fallar.
 
-> **No hay que planearla: ya está planeada, paso a paso.** Está en `PLAN-DESPLIEGUE.md`, sección
-> **«Etapa 6 — La pieza 6»**, con sus 8 pasos, los archivos que se crean y las 7 pruebas descritas
-> una por una. **Se construye con TDD**, como las otras once: la prueba primero, se la ve fallar,
-> después el código.
->
-> Lo que hay que hacer, en resumen:
->
-> 1. Escribir `pruebas/recordatorios.test.js` (7 pruebas) y **verlas fallar**
-> 2. `servidor/recordatorios.js` — dos funciones, ninguna sabe de HTTP
-> 3. La plantilla del correo, con `ses:no-track` y la dirección **también** como texto suelto
-> 4. `POST /api/tareas/recordatorios`, protegido con `RECORDATORIOS_SECRETO`
-> 5. `.github/workflows/recordatorios.yml` — la tarea programada
-> 6. Correr las 8 comprobaciones (la 3 y la 8 son a mano)
-> 7. Escribir la evidencia en `PLAN.md`
-> 8. Commit
->
-> ⚠️ **Dos números del plan están viejos**, porque se escribió antes del cambio de motor: dice que
-> hoy hay 321 pruebas y que quedarán 328. **Hoy son 323, así que van a quedar 330.**
->
-> ⚠️ **`RECORDATORIOS_SECRETO` no está cargada en Vercel todavía.** La variable ya está declarada en
-> `.env.ejemplo` desde antes, pero hay que ponerle valor en Vercel **y** en los Secrets del
-> repositorio de GitHub. Ojo: **cargar secretos en Vercel lo tiene que hacer la estudiante a mano**
-> —al agente se le bloquea, por seguridad—, así que conviene pedírselo temprano y no al final.
->
-> 🆕 ⚠️ **LA PIEZA CRECIÓ EL 2026-09-05, y el plan escrito todavía no lo dice en todos lados.**
-> **RF-11 cambió: el correo de CONFIRMACIÓN también tiene que llevar los enlaces de cancelar y
-> reagendar**, no sólo el recordatorio. Lo pidió la estudiante después de reservar contra la
-> aplicación ya publicada y ver que la confirmación no los traía. El razonamiento completo está en
-> **RF-11 de `ESPECIFICACION.md`** y el alcance nuevo, en la **pieza 6 de `PLAN.md`**.
->
-> **Por qué va acá y no aparte:** los dos correos necesitan **el mismo mecanismo, que no existe
-> todavía** — un enlace que abra la aplicación en una cita concreta. Hoy sólo existe el de
-> recuperación (`#restablecer=…`, en `servidor/recuperacion.js`), y ése es el modelo a seguir. **Hay
-> una decisión de diseño que hay que tomar y no está tomada: qué pasa si quien toca el enlace no
-> tiene la sesión abierta.** Preguntásela a la estudiante antes de construir.
->
-> Eso suma a los 8 pasos del plan: la plantilla de confirmación gana los dos enlaces, una prueba que
-> lo fije, y el manejo del enlace nuevo en el JavaScript del navegador. **Y de paso hace más fácil la
-> comprobación 3**, que era abrir el enlace de cancelar del correo: con la confirmación llega al
-> instante, sin esperar a que falten 24 horas para una cita.
+**Lo que falta para cerrarla está arriba, en el bloque del principio de este archivo.** No es código.
 
-**El correo no es parte del problema.** Resend funciona desde local y está comprobado contra el
-servicio real desde la pieza 4. Si aparece una duda sobre esto, ya está contestada.
+#### Qué se construyó, para poder contarlo
+
+Se hizo en **dos ciclos** y no en el orden de los 8 pasos del plan, porque el plan es anterior al
+crecimiento de RF-11 del 2026-09-05: primero **el mecanismo del enlace**, que RF-11 y RF-12
+comparten, y después **el recordatorio**, que lo usa.
+
+*Archivos nuevos:* `servidor/enlaces-de-cita.js`, `servidor/recordatorios.js`,
+`pruebas/enlaces-de-cita.test.js` (15), `pruebas/recordatorios.test.js` (16),
+`.github/workflows/recordatorios.yml`.
+
+*Y se tocaron seis que el plan no listaba*, porque su lista es anterior al cambio de RF-11:
+`servidor/esquema.js` (la tabla `token_cita`), `servidor/correo.js`, `servidor/reservas.js`,
+`servidor/aplicacion.js`, `servidor/tiempo.js` (`horasEntre`) y la pantalla
+(`publico/index.html` + `publico/aplicacion-cliente.js`).
+
+#### La decisión que estaba pendiente, y que la estudiante tomó ese día
+
+**Qué pasa si alguien toca el enlace del correo y no tiene la sesión abierta.** Se eligió: **entra
+sin contraseña**. Toca el botón del correo, ve su cita, y la puede cancelar o mover sin escribir
+nada.
+
+Es el mismo trato de confianza que el proyecto ya aceptó en la pieza 9 —quien tiene acceso al correo
+puede usar lo que le llegó ahí— y **a propósito es menos poderoso**: el enlace de recuperación cambia
+la contraseña de la cuenta entera, y éste alcanza **una** cita. No abre sesión, así que con el código
+no hay forma de pedir «mis citas» ni de nombrar otra cita.
+
+**Y no saltea ninguna regla:** los cuatro endpoints del enlace sacan el `clienteId` **de la cita** y
+llaman a las **mismas** funciones que la pantalla con sesión, así que la ventana de las 4 horas
+(RN-5), la cita pasada (RN-26) y el horario ocupado (RN-1) siguen valiendo sin un solo `if` que lo
+diga. El razonamiento entero está en `DISENO.md`, «Decisiones tomadas al construir la pieza 6».
+
+#### Tres cosas que se defienden solas en la presentación
+
+1. **Un borde que el plan no pedía, y que apareció escribiendo la prueba.** La ventana de las 24
+   horas se mide con una **distancia**, y una cita de la semana pasada tiene una distancia
+   **negativa** — que también es «menos de 24 horas». Sin ese borde, la primera corrida de la tarea
+   en producción le habría mandado un recordatorio a **todas las citas viejas de la base**. Lo
+   encontró el TDD, no una revisión.
+2. **Un defecto que se encontró en la propia prueba, antes de que existiera el código.** El enlace
+   iba a ser `#cita=X&hacer=cancelar`, y dentro del HTML de un correo el `&` se escribe `&amp;` — la
+   prueba nunca habría pasado. Se cambió a `#cita=X/cancelar` **antes** de escribir una línea.
+3. **Un fallo que se eligió a propósito para el lado seguro.** Sin `RECORDATORIOS_SECRETO`
+   configurada, el disparador queda **cerrado para todos**, no abierto. De los dos fallos posibles es
+   el único aceptable: sin la variable no salen recordatorios y **eso se nota**; abierto no se nota
+   hasta que alguien de afuera lo usa. Tiene su prueba.
+
+**El correo no fue parte del problema, como estaba previsto.** Resend está comprobado contra el
+servicio real desde la pieza 4, y esta pieza no agregó ningún servicio nuevo: agregó **un momento** en
+que se manda un correo que el sistema ya sabía mandar.
 
 ### 3. La presentación de la sesión 8
 

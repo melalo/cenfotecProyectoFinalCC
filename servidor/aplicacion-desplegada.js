@@ -44,5 +44,15 @@ export async function crearAplicacionDesplegada() {
     )
   }
 
-  return crearAplicacion({ base, sesionSecreto, enviador, direccionPublica })
+  // La clave del disparador del recordatorio (pieza 6). **No se exige acá, al contrario de las dos
+  // de arriba**, y es a propósito: sin ella la aplicación funciona entera y lo único que no pasa es
+  // que salgan los recordatorios. Tirar un error dejaría el sitio caído por una pieza que puede
+  // esperar, y eso sería peor. Que falte se ve en la tarea de GitHub, que empieza a recibir `401`.
+  return crearAplicacion({
+    base,
+    sesionSecreto,
+    enviador,
+    direccionPublica,
+    recordatoriosSecreto: process.env.RECORDATORIOS_SECRETO,
+  })
 }

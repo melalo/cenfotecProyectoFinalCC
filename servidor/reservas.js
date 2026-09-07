@@ -220,6 +220,10 @@ export async function crearCitaYConfirmar({
   inicio,
   ahora,
   personalIdCreador = null,
+  // Con qué dirección se escriben los dos enlaces que el correo lleva desde la pieza 6 (RF-11).
+  // Viaja de acá para abajo en vez de leerse del entorno adentro del correo, por la misma razón por
+  // la que el reloj y el enviador viajan así desde la pieza 2: nada averigua nada por su cuenta.
+  direccionPublica,
 }) {
   const resultado = await crearCita({
     base,
@@ -232,7 +236,13 @@ export async function crearCitaYConfirmar({
   })
 
   if (resultado.ok) {
-    await enviarConfirmacionDeCita({ base, enviador, citaId: resultado.cita.id, ahora })
+    await enviarConfirmacionDeCita({
+      base,
+      enviador,
+      citaId: resultado.cita.id,
+      ahora,
+      direccionPublica,
+    })
   }
 
   return resultado
@@ -492,11 +502,12 @@ export async function reagendarCitaYConfirmar({
   quien,
   inicio,
   ahora,
+  direccionPublica,
 }) {
   const resultado = await reagendarCita({ base, citaId, clienteId, quien, inicio, ahora })
 
   if (resultado.ok) {
-    await enviarConfirmacionDeCita({ base, enviador, citaId, ahora })
+    await enviarConfirmacionDeCita({ base, enviador, citaId, ahora, direccionPublica })
   }
 
   return resultado
