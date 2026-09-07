@@ -2857,11 +2857,15 @@ function diaConHorariosLibres(dia, libres) {
   renglon.className = "dia-libre"
   renglon.appendChild(textoEn("span", "dia-libre__fecha", tituloDelDia(dia.fecha)))
 
-  const cuadricula = document.createElement("ul")
+  // **Un `<div>` y los botones adentro, sin `<li>`**, igual que `lista-horarios` en el HTML del
+  // calendario. *Acá había un `<ul>` con un `<li>` por horario hasta el 2026-09-07, y la estudiante
+  // vio el resultado en la pantalla: `.horarios` es una cuadrícula y **no apaga los puntitos de
+  // lista**, así que aparecía una viñeta suelta al lado de cada fila. La clase nunca los apagó porque
+  // el calendario, que la usó primero, nunca puso una lista adentro.*
+  const cuadricula = document.createElement("div")
   cuadricula.className = "horarios"
 
   for (const horario of libres) {
-    const casilla = document.createElement("li")
     const ficha = document.createElement("button")
     ficha.type = "button"
     ficha.className = "horario"
@@ -2873,8 +2877,7 @@ function diaConHorariosLibres(dia, libres) {
     ficha.title = "Libre: tocá para mover tu cita acá"
     ficha.addEventListener("click", () => moverLaCitaDelEnlaceA(horario.inicio))
 
-    casilla.appendChild(ficha)
-    cuadricula.appendChild(casilla)
+    cuadricula.appendChild(ficha)
   }
 
   renglon.appendChild(cuadricula)

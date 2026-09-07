@@ -482,21 +482,31 @@
         -->
         <section id="pantalla-cita" class="pantalla" hidden>
           <div>
-            <article class="tarjeta tarjeta--sola">
+            <article class="tarjeta tarjeta--horarios">
               <h2 class="tarjeta__titulo">Tu cita</h2>
 
-              <div id="cita-enlace-datos" class="cita">
-                <div class="cita__cuando">
-                  <span id="cita-enlace-fecha" class="cita__fecha"></span>
-                  <span id="cita-enlace-hora" class="cita__hora"></span>
-                </div>
-                <div class="cita__que">
-                  <span id="cita-enlace-servicio" class="cita__servicio"></span>
-                  <span id="cita-enlace-proveedor" class="cita__proveedor"></span>
-                </div>
-              </div>
+              <!--
+                **Los datos de la cita van juntos, en un bloque gris.** *Pedido por la estudiante el
+                2026-09-07, mirando la pantalla: sin fondo, los datos y lo que se puede hacer con
+                ellos se leían como una sola cosa corrida.*
 
-              <p id="cita-enlace-donde" class="tarjeta__nota"></p>
+                La dirección va **adentro** del mismo bloque y no debajo: también es un dato de la
+                cita, y dejarla afuera partiría en dos lo que es una sola cosa.
+              -->
+              <div id="cita-enlace-datos" class="cita-panel">
+                <div class="cita">
+                  <div class="cita__cuando">
+                    <span id="cita-enlace-fecha" class="cita__fecha"></span>
+                    <span id="cita-enlace-hora" class="cita__hora"></span>
+                  </div>
+                  <div class="cita__que">
+                    <span id="cita-enlace-servicio" class="cita__servicio"></span>
+                    <span id="cita-enlace-proveedor" class="cita__proveedor"></span>
+                  </div>
+                </div>
+
+                <p id="cita-enlace-donde" class="tarjeta__nota"></p>
+              </div>
 
               <!--
                 Los dos botones. **Cuál se puede usar lo decide el servidor**, en los campos

@@ -58,6 +58,23 @@ retomar sin releer nada.*
 > 4. **La revisión visual de la pantalla nueva**, que es la que encontró los 19 defectos visuales del
 >    proyecto y ninguna prueba puede reemplazar. **Y ya encontró uno acá**: el del punto 2.
 >
+> ### 📌 Aplazado a propósito para después de la entrega
+>
+> **Toda la letra de la aplicación se dibuja un 20% más chica de lo que dice `VISUALS.md`.** Lo vio
+> la estudiante en el inspector el 2026-09-07 y **eligió no tocarlo antes de la presentación**, que
+> era al día siguiente.
+>
+> El porqué: `html { font-size: 80% }` hace que `1rem` valga **12.8px y no 16**, así que las **46**
+> medidas del `.scss` rinden al 80%. Ya medido: 12px→9.6, **14px→11.2**, 16px→**12.8**, 18px→14.4,
+> 24px→19.2. El texto normal queda bajo el mínimo accesible de 16px que `VISUALS.md` nombra.
+>
+> **El arreglo es borrar un renglón** —esa línea de `html`— y con eso las 46 rinden lo que su tabla
+> promete. **Lo que hay que revisar después de borrarlo:** todo crece 25%, y las fichas de horario
+> del calendario están al límite a 320px de ancho (por eso muestran «10:00» sin `am`/`pm`).
+>
+> La discusión completa, con las tres opciones y por qué se descartó arreglar clase por clase, está
+> en `DISENO.md` → «Decisiones dejadas abiertas».
+>
 > ### 🔎 Y se desmintió una creencia que el proyecto arrastraba escrita
 >
 > Hasta el 2026-09-07 estaba escrito —y repetido en el prompt de arranque de dos sesiones— que **«a

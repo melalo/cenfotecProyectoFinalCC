@@ -126,6 +126,16 @@ $margen-movil: 16px;
 $margen-escritorio: 48px;
 $ancho-maximo: 1280px;
 
+// El ancho al que deja de crecer todo lo que contiene la **parrilla de horarios**, de tableta para
+// arriba. Sin tope, en una pantalla ancha las fichas se estiran y el bloque queda desparramado; la
+// razón larga está escrita abajo, en `paso--calendario`, que fue el primero en necesitarlo.
+//
+// **Es una variable desde el 2026-09-07 y antes era un `40rem` escrito a mano**, porque desde la
+// pieza 6 lo usan **dos** pantallas: el paso del calendario y la que abre el enlace del correo. Las
+// dos muestran la misma parrilla, así que tienen que medir lo mismo — escrito dos veces, un día una
+// de las dos se quedaría atrás.
+$ancho-de-los-horarios: 40rem;
+
 // El sistema pide esquinas geométricas, no redondeadas de más: 4px en botones y campos, 8 o 12 en
 // tarjetas.
 $radio-control: 0.25rem;
@@ -749,6 +759,22 @@ body {
     max-width: 34rem;
   }
 
+  // La tarjeta de la pantalla que abre el enlace del correo (pieza 6).
+  //
+  // ⚠️ **Existe porque `--sola` era el modificador equivocado, y se vio mirando la pantalla**
+  // *(2026-09-07)*. `--sola` mide 34rem y está pensado para **un formulario de una columna**
+  // —entrar, elegir la contraseña—; adentro de esta tarjeta va la **parrilla de 8 horarios**, y a
+  // 34rem, con la aplicación dibujada al 80%, eso son 435px: en una pantalla de escritorio se veía
+  // como una columna de teléfono en la que los horarios no entraban.
+  //
+  // El ancho no se eligió acá: es el mismo `$ancho-de-los-horarios` que ya usaba el paso del
+  // calendario, **que muestra esta misma parrilla**. Las dos pantallas tienen que medir lo mismo.
+  &--horarios {
+    @media (min-width: $tableta) {
+      max-width: $ancho-de-los-horarios;
+    }
+  }
+
   &__titulo {
     margin: 0;
     // headline-md: hasta 24px / 32px, y menos en pantalla angosta.
@@ -1159,7 +1185,7 @@ body {
   // horarios queden **del mismo ancho**, una debajo de la otra.
   &--calendario {
     @media (min-width: $tableta) {
-      max-width: 40rem;
+      max-width: $ancho-de-los-horarios;
     }
   }
 
@@ -1747,6 +1773,29 @@ body {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+// ── Los datos de la cita, en la pantalla que abre el enlace del correo (pieza 6) ───────────────
+//
+// **Pedido por la estudiante el 2026-09-07**, mirando la pantalla: sin fondo, los datos de la cita y
+// los botones de abajo se leían como una sola cosa corrida, y no se veía dónde termina «lo que
+// tenés» y dónde empieza «lo que podés hacer con eso».
+//
+// **Ningún valor se inventó acá.** El gris es `$canvas` —el `surface` de `VISUALS.md`, el mismo del
+// fondo de la página—, y el borde de 1px con esquina redondeada es **el tratamiento que el proyecto
+// ya usaba para esto**: es igual a la caja de la dirección suelta del correo de recuperación. Ése es
+// el idioma que este proyecto tiene para «un bloque distinto adentro de una tarjeta blanca».
+//
+// *Se eligió `$canvas` y no los grises cálidos de la escala (`$gris-apagado`, `$gris-medio`) porque
+// esos dos ya significan otra cosa en esta aplicación: el fondo de un día cerrado y el de un día sin
+// cupo. Reusar uno acá le daría dos significados al mismo color.*
+.cita-panel {
+  display: grid;
+  gap: $base;
+  padding: $stack-sm;
+  background-color: $canvas;
+  border: 1px solid $borde;
+  border-radius: $radio-tarjeta;
 }
 
 // ── Un día con sus horarios libres, en la pantalla que abre el enlace del correo (pieza 6) ─────
